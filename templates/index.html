@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Job Matcher</title>
+    <!-- Bootstrap CSS (Replit-themed) -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-briefcase"></i> AI Job Matcher
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="text-center">Find Your Perfect Job Match</h3>
+                    </div>
+                    <div class="card-body">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <p class="lead text-center mb-4">
+                            Upload your resume to find jobs that match your skills and experience using AI-powered matching.
+                        </p>
+
+                        <form method="POST" action="{{ url_for('upload_resume') }}" enctype="multipart/form-data">
+                            <div class="mb-4">
+                                <label for="resume" class="form-label">Upload Resume (PDF, DOCX, or TXT)</label>
+                                <input class="form-control" type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <h5>Filters</h5>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="remote" name="remote">
+                                    <label class="form-check-label" for="remote">
+                                        Remote Jobs Only
+                                    </label>
+                                </div>
+                                <div class="mb-2">
+                                    <label for="location" class="form-label">Preferred Location</label>
+                                    <input type="text" class="form-control" id="location" name="location" placeholder="e.g., New York, San Francisco">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="keywords" class="form-label">Keywords (comma separated)</label>
+                                    <input type="text" class="form-control" id="keywords" name="keywords" placeholder="e.g., Python, Machine Learning, Data Science">
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-search"></i> Find Matching Jobs
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h4>How It Works</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="feature-icon">
+                                    <i class="fas fa-file-upload fa-3x mb-3 text-primary"></i>
+                                </div>
+                                <h5>1. Upload Resume</h5>
+                                <p>Upload your resume in PDF, DOCX, or TXT format</p>
+                            </div>
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="feature-icon">
+                                    <i class="fas fa-brain fa-3x mb-3 text-primary"></i>
+                                </div>
+                                <h5>2. AI Analysis</h5>
+                                <p>Our AI analyzes your resume and compares it to job listings</p>
+                            </div>
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="feature-icon">
+                                    <i class="fas fa-list-check fa-3x mb-3 text-primary"></i>
+                                </div>
+                                <h5>3. Get Matches</h5>
+                                <p>View jobs ranked by how well they match your skills</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-center text-white p-3 mt-5">
+        <div class="container">
+            <p class="mb-0">© 2023 AI Job Matcher | Powered by Sentence Transformers</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

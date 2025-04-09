@@ -1,0 +1,112 @@
+[
+  {
+    "title": "Machine Learning Engineer",
+    "company": "TechCorp",
+    "description": "We are looking for a Machine Learning Engineer to join our AI team. You will be responsible for developing and implementing machine learning models and algorithms to solve complex business problems. The ideal candidate has experience with Python, TensorFlow, PyTorch, and natural language processing.\n\nResponsibilities:\n- Design and implement machine learning models\n- Process, cleanse, and verify data quality\n- Train and retrain systems as necessary\n- Extend existing ML libraries and frameworks\n- Develop ML applications according to requirements\n\nRequirements:\n- Bachelor's or Master's degree in Computer Science, AI, or related field\n- 2+ years of experience in machine learning\n- Proficiency in Python and ML frameworks (TensorFlow, PyTorch)\n- Experience with NLP techniques\n- Strong problem-solving skills",
+    "location": "San Francisco, CA",
+    "is_remote": true,
+    "posted_date": "2023-09-01",
+    "url": "https://example.com/jobs/ml-engineer",
+    "skills": ["Python", "TensorFlow", "PyTorch", "NLP", "Machine Learning"],
+    "salary_range": "$120,000 - $160,000"
+  },
+  {
+    "title": "Full Stack Developer",
+    "company": "WebSolutions Inc.",
+    "description": "We're seeking a talented Full Stack Developer to build and maintain web applications. You'll work with both front-end and back-end technologies to deliver complete user experiences.\n\nResponsibilities:\n- Develop user-facing features using React.js\n- Build backend services using Node.js and Express\n- Design and implement database schemas\n- Ensure application security and data protection\n- Optimize applications for performance\n\nRequirements:\n- 3+ years of experience in full stack development\n- Proficiency in JavaScript, HTML, CSS\n- Experience with React.js and Node.js\n- Knowledge of database systems (MongoDB, MySQL)\n- Understanding of server-side CSS processing",
+    "location": "New York, NY",
+    "is_remote": false,
+    "posted_date": "2023-09-05",
+    "url": "https://example.com/jobs/fullstack-dev",
+    "skills": ["JavaScript", "React", "Node.js", "HTML", "CSS", "MongoDB"],
+    "salary_range": "$100,000 - $130,000"
+  },
+  {
+    "title": "Data Scientist",
+    "company": "AnalyticsPro",
+    "description": "Join our data science team to uncover insights from complex datasets. You'll apply statistical analysis and machine learning techniques to solve real-world business problems.\n\nResponsibilities:\n- Analyze large datasets to extract actionable insights\n- Build predictive models using machine learning techniques\n- Collaborate with product and engineering teams\n- Present findings to stakeholders\n- Stay current with the latest data science research\n\nRequirements:\n- MS or PhD in Statistics, Computer Science, or related field\n- Experience with Python, R, and SQL\n- Knowledge of machine learning algorithms\n- Experience with data visualization tools\n- Strong statistical background",
+    "location": "Boston, MA",
+    "is_remote": true,
+    "posted_date": "2023-09-10",
+    "url": "https://example.com/jobs/data-scientist",
+    "skills": ["Python", "R", "SQL", "Statistics", "Machine Learning", "Data Visualization"],
+    "salary_range": "$110,000 - $150,000"
+  },
+  {
+    "title": "DevOps Engineer",
+    "company": "CloudTech Solutions",
+    "description": "We are looking for a DevOps Engineer to help us build and maintain our cloud infrastructure. You'll be responsible for deployment automation, CI/CD pipelines, and infrastructure management.\n\nResponsibilities:\n- Design and implement CI/CD pipelines\n- Manage cloud infrastructure (AWS/Azure/GCP)\n- Automate deployment processes\n- Monitor system performance and reliability\n- Implement security best practices\n\nRequirements:\n- 3+ years of experience in DevOps\n- Proficiency with AWS, Azure, or GCP\n- Experience with Docker and Kubernetes\n- Knowledge of Infrastructure as Code tools (Terraform, CloudFormation)\n- Scripting skills (Python, Bash)",
+    "location": "Seattle, WA",
+    "is_remote": true,
+    "posted_date": "2023-09-15",
+    "url": "https://example.com/jobs/devops",
+    "skills": ["AWS", "Docker", "Kubernetes", "Terraform", "Python", "CI/CD"],
+    "salary_range": "$115,000 - $145,000"
+  },
+  {
+    "title": "Frontend Developer",
+    "company": "UX Innovations",
+    "description": "We're looking for a Frontend Developer to create responsive and interactive web applications. You'll work closely with our design team to implement user interfaces that are both beautiful and functional.\n\nResponsibilities:\n- Develop responsive web applications using React\n- Implement UI designs with precision\n- Optimize applications for maximum performance\n- Collaborate with backend developers\n- Write clean, maintainable code\n\nRequirements:\n- 2+ years of experience in frontend development\n- Strong knowledge of React.js\n- Proficiency in HTML, CSS, and JavaScript\n- Experience with responsive design\n- Understanding of cross-browser compatibility issues",
+    "location": "Austin, TX",
+    "is_remote": false,
+    "posted_date": "2023-09-18",
+    "url": "https://example.com/jobs/frontend",
+    "skills": ["React", "JavaScript", "HTML", "CSS", "Responsive Design"],
+    "salary_range": "$90,000 - $120,000"
+  },
+  {
+    "title": "Backend Software Engineer",
+    "company": "ServerSide Systems",
+    "description": "Join our backend team to develop scalable and robust server-side applications. You'll design APIs, implement business logic, and optimize database interactions.\n\nResponsibilities:\n- Design and develop RESTful APIs\n- Implement business logic and database schemas\n- Ensure high performance and reliability\n- Write unit and integration tests\n- Document code and APIs\n\nRequirements:\n- 3+ years of experience in backend development\n- Proficiency in Java, Python, or Go\n- Experience with relational databases\n- Knowledge of API design principles\n- Understanding of microservices architecture",
+    "location": "Chicago, IL",
+    "is_remote": true,
+    "posted_date": "2023-09-20",
+    "url": "https://example.com/jobs/backend",
+    "skills": ["Java", "Python", "SQL", "API Design", "Microservices"],
+    "salary_range": "$100,000 - $135,000"
+  },
+  {
+    "title": "AI Research Scientist",
+    "company": "InnovateAI",
+    "description": "We are seeking an AI Research Scientist to push the boundaries of artificial intelligence. You'll conduct cutting-edge research in machine learning, natural language processing, and computer vision.\n\nResponsibilities:\n- Conduct research in AI and machine learning\n- Develop novel algorithms and approaches\n- Publish research papers in top conferences\n- Collaborate with engineering teams to implement research\n- Stay current with the latest AI research\n\nRequirements:\n- PhD in Computer Science, AI, or related field\n- Strong publication record in AI conferences\n- Experience with deep learning frameworks\n- Excellent programming skills in Python\n- Background in NLP, computer vision, or reinforcement learning",
+    "location": "Palo Alto, CA",
+    "is_remote": true,
+    "posted_date": "2023-09-22",
+    "url": "https://example.com/jobs/ai-scientist",
+    "skills": ["Deep Learning", "NLP", "Computer Vision", "PyTorch", "Research"],
+    "salary_range": "$150,000 - $200,000"
+  },
+  {
+    "title": "Product Manager - AI Solutions",
+    "company": "TechVision",
+    "description": "We're looking for a Product Manager to lead our AI product initiatives. You'll define product strategy, gather requirements, and work with cross-functional teams to deliver innovative AI solutions.\n\nResponsibilities:\n- Define product vision and strategy for AI solutions\n- Gather and prioritize product requirements\n- Work with engineering, design, and data science teams\n- Define success metrics and track product performance\n- Conduct user research and gather feedback\n\nRequirements:\n- 4+ years of experience in product management\n- Background in AI, machine learning, or data science\n- Strong technical understanding of AI capabilities\n- Excellent communication skills\n- Experience bringing technical products to market",
+    "location": "Denver, CO",
+    "is_remote": false,
+    "posted_date": "2023-09-25",
+    "url": "https://example.com/jobs/product-manager",
+    "skills": ["Product Management", "AI", "User Research", "Roadmapping", "Agile"],
+    "salary_range": "$120,000 - $160,000"
+  },
+  {
+    "title": "NLP Engineer",
+    "company": "LanguageTech",
+    "description": "Join our NLP team to build cutting-edge natural language processing systems. You'll develop models for text classification, sentiment analysis, entity recognition, and more.\n\nResponsibilities:\n- Develop NLP models and algorithms\n- Process and analyze large text datasets\n- Implement text classification and entity recognition\n- Build language models and conversational AI\n- Evaluate and improve model performance\n\nRequirements:\n- MS or PhD in NLP, Computational Linguistics, or related field\n- Experience with NLP libraries (spaCy, NLTK, Transformers)\n- Proficiency in Python and deep learning frameworks\n- Knowledge of language models like BERT, GPT\n- Publications in NLP or machine learning conferences is a plus",
+    "location": "Remote",
+    "is_remote": true,
+    "posted_date": "2023-09-28",
+    "url": "https://example.com/jobs/nlp-engineer",
+    "skills": ["NLP", "Python", "BERT", "Transformers", "Machine Learning", "Deep Learning"],
+    "salary_range": "$130,000 - $170,000"
+  },
+  {
+    "title": "Data Engineer",
+    "company": "DataFlow Systems",
+    "description": "We are looking for a Data Engineer to design and build data pipelines and infrastructure. You'll enable our organization to efficiently process, store, and analyze large datasets.\n\nResponsibilities:\n- Design and implement data pipelines\n- Build and maintain data infrastructure\n- Optimize data flows for performance and reliability\n- Collaborate with data scientists and analysts\n- Ensure data quality and accessibility\n\nRequirements:\n- 3+ years of experience in data engineering\n- Proficiency with SQL and NoSQL databases\n- Experience with data processing frameworks (Spark, Hadoop)\n- Knowledge of data warehousing concepts\n- Programming skills in Python or Scala",
+    "location": "Atlanta, GA",
+    "is_remote": false,
+    "posted_date": "2023-09-30",
+    "url": "https://example.com/jobs/data-engineer",
+    "skills": ["SQL", "Python", "Spark", "ETL", "Data Warehousing", "Big Data"],
+    "salary_range": "$105,000 - $140,000"
+  }
+]
