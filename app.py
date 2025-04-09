@@ -295,6 +295,114 @@ def scrape_all_jobs():
         logger.error(f"Error scraping jobs: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/scrape/adzuna', methods=['POST'])
+def scrape_adzuna_jobs():
+    """API endpoint to scrape jobs from Adzuna with specific parameters"""
+    try:
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+            
+        data = request.json
+        keywords = data.get('keywords', '')
+        location = data.get('location', '')
+        
+        # Import here to avoid circular imports
+        try:
+            from job_scraper import scrape_jobs_from_adzuna, save_scraped_jobs
+        except ImportError:
+            return jsonify({
+                "success": False,
+                "error": "Adzuna integration is not available"
+            }), 500
+        
+        jobs = scrape_jobs_from_adzuna(keywords=keywords, location=location)
+        
+        if not jobs:
+            return jsonify({
+                "success": False,
+                "error": "No jobs found or Adzuna API configuration is missing"
+            }), 404
+            
+        saved_count = save_scraped_jobs(jobs)
+        
+        return jsonify({
+            "success": True,
+            "count": saved_count,
+            "message": f"Successfully scraped {saved_count} jobs from Adzuna"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error scraping Adzuna jobs: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+        
+@app.route('/api/config/adzuna', methods=['POST'])
+def config_adzuna():
+    """API endpoint to configure Adzuna API credentials"""
+    try:
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+            
+        data = request.json
+        app_id = data.get('app_id')
+        api_key = data.get('api_key')
+        
+        # Here we would normally save these to environment variables or a secure storage
+        # For this example, we'll just set them in the current process environment
+        if app_id:
+            os.environ['ADZUNA_APP_ID'] = app_id
+            logger.info("Adzuna App ID configured")
+            
+        if api_key:
+            os.environ['ADZUNA_API_KEY'] = api_key
+            logger.info("Adzuna API Key configured")
+            
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        logger.error(f"Error configuring Adzuna API: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+        
+@app.route('/api/config/adzuna/status', methods=['GET'])
+def check_adzuna_status():
+    """API endpoint to check Adzuna API status"""
+    try:
+        # Check if credentials are configured
+        app_id = os.environ.get('ADZUNA_APP_ID')
+        api_key = os.environ.get('ADZUNA_API_KEY')
+        
+        if not app_id or not api_key:
+            return jsonify({
+                "success": False,
+                "error": "Adzuna API credentials not configured"
+            }), 400
+            
+        # Make a test API call
+        try:
+            from adzuna_api import search_jobs
+            jobs = search_jobs(results_per_page=1)  # Just get 1 job to test
+            
+            if jobs is None:
+                return jsonify({
+                    "success": False,
+                    "error": "Adzuna API returned an invalid response"
+                }), 500
+                
+            return jsonify({
+                "success": True,
+                "message": "Adzuna API is properly configured and working"
+            })
+            
+        except Exception as e:
+            logger.error(f"Error testing Adzuna API: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": f"Adzuna API test failed: {str(e)}"
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error checking Adzuna API status: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/admin/scrape', methods=['GET'])
 def admin_scrape_page():
     """Admin page for job scraping"""

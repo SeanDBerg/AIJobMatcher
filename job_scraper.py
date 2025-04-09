@@ -13,6 +13,14 @@ import requests
 from models import Job
 from job_data import add_job
 
+# Import Adzuna API module (will be used when credentials are available)
+try:
+    from adzuna_api import search_jobs as adzuna_search_jobs, AdzunaAPIError
+    ADZUNA_AVAILABLE = True
+except (ImportError, Exception) as e:
+    logging.warning(f"Adzuna API not available: {str(e)}")
+    ADZUNA_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # Job board sources
@@ -307,6 +315,48 @@ def save_scraped_jobs(jobs):
     logger.info(f"Successfully saved {count} jobs")
     return count
 
+def scrape_jobs_from_adzuna(keywords=None, location=None):
+    """
+    Scrape jobs from Adzuna API
+    
+    Args:
+        keywords: Optional keywords to search for
+        location: Optional location to search in
+        
+    Returns:
+        List of Job objects
+    """
+    logger.info(f"Scraping jobs from Adzuna API with keywords={keywords}, location={location}")
+    
+    if not ADZUNA_AVAILABLE:
+        logger.warning("Adzuna API not available")
+        return []
+    
+    try:
+        # Check if Adzuna credentials are available
+        if not os.environ.get('ADZUNA_APP_ID') or not os.environ.get('ADZUNA_API_KEY'):
+            logger.warning("Adzuna API credentials not found in environment variables")
+            return []
+        
+        # Call Adzuna API
+        jobs = adzuna_search_jobs(
+            keywords=keywords,
+            location=location,
+            country="gb",  # Default to UK
+            max_days_old=30,
+            results_per_page=50
+        )
+        
+        logger.info(f"Scraped {len(jobs)} jobs from Adzuna")
+        return jobs
+        
+    except Exception as e:
+        if isinstance(e, AdzunaAPIError):
+            logger.error(f"Adzuna API error: {str(e)}")
+        else:
+            logger.error(f"Error scraping Adzuna: {str(e)}")
+        return []
+
 def scrape_all_job_sources():
     """
     Scrape jobs from all configured sources
@@ -328,6 +378,18 @@ def scrape_all_job_sources():
     remoteok_jobs = scrape_jobs_from_remoteok()
     results["remoteok"] = len(remoteok_jobs)
     all_jobs.extend(remoteok_jobs)
+    
+    # Adzuna (if available)
+    if ADZUNA_AVAILABLE:
+        try:
+            adzuna_jobs = scrape_jobs_from_adzuna()
+            results["adzuna"] = len(adzuna_jobs)
+            all_jobs.extend(adzuna_jobs)
+        except Exception as e:
+            logger.error(f"Error scraping Adzuna: {str(e)}")
+            results["adzuna"] = 0
+    else:
+        results["adzuna"] = "Not available"
     
     # Save all jobs
     saved_count = save_scraped_jobs(all_jobs)

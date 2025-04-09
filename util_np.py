@@ -1,13 +1,8 @@
-"""
-Utility module to provide basic numpy-like functionality without requiring numpy
-"""
+# utils_np.py - Utility module to provide numpy-like functionality without requiring numpy
 import math
 import random
-
+# A simple class that mimics numpy arrays for our specific use case
 class NumpyArray:
-    """
-    A simple class that mimics numpy arrays for our specific use case
-    """
     def __init__(self, data):
         self.data = data
         self.shape = (len(data),)
@@ -17,49 +12,20 @@ class NumpyArray:
     
     def __getitem__(self, index):
         return self.data[index]
-
+# Create an array of zeros
 def zeros(size):
-    """
-    Create an array of zeros
-    
-    Args:
-        size: Integer size of array
-        
-    Returns:
-        NumpyArray of zeros
-    """
     return NumpyArray([0.0] * size)
-
+# Generate an array of random values from a normal distribution
 def random_randn(size):
-    """
-    Generate an array of random values from a normal distribution
-    
-    Args:
-        size: Integer size of array
-        
-    Returns:
-        NumpyArray of random values
-    """
     # Box-Muller transform to generate normally distributed random numbers
     def box_muller():
         u1 = random.random()
         u2 = random.random()
         z0 = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
         return z0
-    
     return NumpyArray([box_muller() for _ in range(size)])
-
+# Calculate the mean of an array along a specified axis
 def mean(array, axis=0):
-    """
-    Calculate the mean of an array along a specified axis
-    
-    Args:
-        array: List of arrays or NumpyArray
-        axis: Axis along which to calculate mean
-        
-    Returns:
-        NumpyArray containing the mean values
-    """
     if axis == 0:
         # Calculate mean along the first axis
         # Assuming all arrays have the same length
@@ -81,17 +47,8 @@ def mean(array, axis=0):
             return NumpyArray([sum(array) / len(array)])
     else:
         raise ValueError(f"Unsupported axis: {axis}")
-
+# Calculate the L2 norm (Euclidean norm) of a vector
 def norm(vector):
-    """
-    Calculate the L2 norm (Euclidean norm) of a vector
-    
-    Args:
-        vector: NumpyArray or list
-        
-    Returns:
-        Float representing the L2 norm
-    """
     if isinstance(vector, NumpyArray):
         data = vector.data
     else:

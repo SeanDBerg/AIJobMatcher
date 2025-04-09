@@ -39,7 +39,7 @@
 
                         <div class="row mb-4">
                             <div class="col-md-6">
-                                <div class="card h-100">
+                                <div class="card h-100 mb-4">
                                     <div class="card-header">
                                         <h5>Scrape from URL</h5>
                                     </div>
@@ -75,6 +75,45 @@
                                         </form>
                                     </div>
                                 </div>
+                                
+                                <!-- Adzuna API Configuration -->
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5>Adzuna API Configuration</h5>
+                                        <span class="badge bg-info">Premium Source</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Configure your Adzuna API credentials to enable this data source.</p>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> Adzuna offers access to millions of job listings. You'll need to register for an API key at <a href="https://developer.adzuna.com/" target="_blank" class="text-info">developer.adzuna.com</a>
+                                        </div>
+                                        
+                                        <p><strong>API Credentials</strong></p>
+                                        <p>These credentials are stored in environment variables and not in the code.</p>
+                                        
+                                        <div class="mb-3">
+                                            <label for="adzuna-app-id" class="form-label">App ID</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="adzuna-app-id" placeholder="Your Adzuna App ID">
+                                                <button class="btn btn-outline-secondary" type="button" id="save-app-id">Save</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="adzuna-api-key" class="form-label">API Key</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="adzuna-api-key" placeholder="Your Adzuna API Key">
+                                                <button class="btn btn-outline-secondary" type="button" id="save-api-key">Save</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-sm btn-outline-info" id="check-adzuna-status">
+                                                <i class="fas fa-check-circle"></i> Check API Status
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="card h-100">
@@ -87,6 +126,7 @@
                                         <ul>
                                             <li>GitHub Jobs</li>
                                             <li>RemoteOK</li>
+                                            <li>Adzuna (requires API credentials)</li>
                                         </ul>
                                         <p>This operation may take some time to complete.</p>
                                         <button id="scrape-all-btn" class="btn btn-primary">
@@ -96,6 +136,24 @@
                                             <h6>Results:</h6>
                                             <pre id="results-json" class="bg-dark text-light p-3 rounded" style="max-height: 200px; overflow-y: auto;"></pre>
                                         </div>
+                                        
+                                        <hr class="my-4">
+                                        
+                                        <h5>Adzuna Specific Search</h5>
+                                        <p>Search for jobs from Adzuna with specific criteria.</p>
+                                        <form id="adzuna-search-form">
+                                            <div class="mb-3">
+                                                <label for="adzuna-keywords" class="form-label">Keywords</label>
+                                                <input type="text" class="form-control" id="adzuna-keywords" placeholder="e.g. Python Developer">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="adzuna-location" class="form-label">Location</label>
+                                                <input type="text" class="form-control" id="adzuna-location" placeholder="e.g. London">
+                                            </div>
+                                            <button type="submit" class="btn btn-primary" id="adzuna-search-btn">
+                                                <i class="fas fa-search"></i> Search Adzuna
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -228,6 +286,159 @@
                         // Re-enable button
                         this.disabled = false;
                         this.innerHTML = originalBtnText;
+                    }
+                });
+            }
+            
+            // Adzuna API Configuration
+            const saveAppIdBtn = document.getElementById('save-app-id');
+            const saveApiKeyBtn = document.getElementById('save-api-key');
+            const checkAdzunaStatusBtn = document.getElementById('check-adzuna-status');
+            const adzunaSearchForm = document.getElementById('adzuna-search-form');
+            
+            // Save App ID
+            if (saveAppIdBtn) {
+                saveAppIdBtn.addEventListener('click', async function() {
+                    const appIdInput = document.getElementById('adzuna-app-id');
+                    const appId = appIdInput.value.trim();
+                    
+                    if (!appId) {
+                        showAlert('<strong>Error:</strong> Please enter an App ID', 'danger');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/api/config/adzuna', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                app_id: appId
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert('<strong>Success!</strong> Adzuna App ID saved', 'success');
+                            appIdInput.value = '';
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    }
+                });
+            }
+            
+            // Save API Key
+            if (saveApiKeyBtn) {
+                saveApiKeyBtn.addEventListener('click', async function() {
+                    const apiKeyInput = document.getElementById('adzuna-api-key');
+                    const apiKey = apiKeyInput.value.trim();
+                    
+                    if (!apiKey) {
+                        showAlert('<strong>Error:</strong> Please enter an API Key', 'danger');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/api/config/adzuna', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                api_key: apiKey
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert('<strong>Success!</strong> Adzuna API Key saved', 'success');
+                            apiKeyInput.value = '';
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    }
+                });
+            }
+            
+            // Check Adzuna API Status
+            if (checkAdzunaStatusBtn) {
+                checkAdzunaStatusBtn.addEventListener('click', async function() {
+                    const originalBtnText = this.innerHTML;
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+                    
+                    try {
+                        const response = await fetch('/api/config/adzuna/status', {
+                            method: 'GET'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> Adzuna API is properly configured and working`, 'success');
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        this.disabled = false;
+                        this.innerHTML = originalBtnText;
+                    }
+                });
+            }
+            
+            // Adzuna Search Form
+            if (adzunaSearchForm) {
+                adzunaSearchForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const keywords = document.getElementById('adzuna-keywords').value.trim();
+                    const location = document.getElementById('adzuna-location').value.trim();
+                    
+                    if (!keywords && !location) {
+                        showAlert('<strong>Error:</strong> Please enter at least keywords or location', 'danger');
+                        return;
+                    }
+                    
+                    const searchBtn = this.querySelector('button[type="submit"]');
+                    const originalBtnText = searchBtn.innerHTML;
+                    searchBtn.disabled = true;
+                    searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+                    
+                    try {
+                        const response = await fetch('/api/scrape/adzuna', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                keywords,
+                                location
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> Found and saved ${data.count} jobs from Adzuna`, 'success');
+                            this.reset();
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        searchBtn.disabled = false;
+                        searchBtn.innerHTML = originalBtnText;
                     }
                 });
             }
