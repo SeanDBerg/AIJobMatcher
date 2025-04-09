@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Job Scraper</title>
+    <!-- Bootstrap CSS (Replit-themed) -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-briefcase"></i> AI Job Matcher
+            </a>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}">
+                        <i class="fas fa-home"></i> Home
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3>Job Scraper Admin</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="alert-container"></div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5>Scrape from URL</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="url-scrape-form">
+                                            <div class="mb-3">
+                                                <label for="job-url" class="form-label">Job Posting URL</label>
+                                                <input type="url" class="form-control" id="job-url" required placeholder="https://example.com/job-posting">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="job-title" class="form-label">Job Title</label>
+                                                <input type="text" class="form-control" id="job-title" required placeholder="Software Engineer">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="job-company" class="form-label">Company</label>
+                                                <input type="text" class="form-control" id="job-company" required placeholder="Example Corp">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="job-location" class="form-label">Location</label>
+                                                <input type="text" class="form-control" id="job-location" placeholder="New York, NY">
+                                            </div>
+                                            <div class="mb-3 form-check">
+                                                <input type="checkbox" class="form-check-input" id="job-remote">
+                                                <label class="form-check-label" for="job-remote">Remote Position</label>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="job-salary" class="form-label">Salary Range (Optional)</label>
+                                                <input type="text" class="form-control" id="job-salary" placeholder="$100,000 - $150,000">
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-download"></i> Scrape Job
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5>Scrape from All Sources</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>This will scrape job listings from all configured job boards and add them to the database.</p>
+                                        <p><strong>Sources:</strong></p>
+                                        <ul>
+                                            <li>GitHub Jobs</li>
+                                            <li>RemoteOK</li>
+                                        </ul>
+                                        <p>This operation may take some time to complete.</p>
+                                        <button id="scrape-all-btn" class="btn btn-primary">
+                                            <i class="fas fa-sync"></i> Scrape All Sources
+                                        </button>
+                                        <div id="scrape-results" class="mt-3 d-none">
+                                            <h6>Results:</h6>
+                                            <pre id="results-json" class="bg-dark text-light p-3 rounded" style="max-height: 200px; overflow-y: auto;"></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-center text-white p-3 mt-5">
+        <div class="container">
+            <p class="mb-0">© 2023 AI Job Matcher | Admin</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Admin Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show alerts
+            function showAlert(message, type = 'success') {
+                const alertContainer = document.getElementById('alert-container');
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                alertContainer.appendChild(alertDiv);
+                
+                // Auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alertDiv);
+                    bsAlert.close();
+                }, 5000);
+            }
+            
+            // URL Scrape Form
+            const urlScrapeForm = document.getElementById('url-scrape-form');
+            if (urlScrapeForm) {
+                urlScrapeForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    // Get form values
+                    const url = document.getElementById('job-url').value;
+                    const title = document.getElementById('job-title').value;
+                    const company = document.getElementById('job-company').value;
+                    const location = document.getElementById('job-location').value;
+                    const isRemote = document.getElementById('job-remote').checked;
+                    const salaryRange = document.getElementById('job-salary').value;
+                    
+                    // Disable submit button
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    const originalBtnText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scraping...';
+                    
+                    try {
+                        // Send request
+                        const response = await fetch('/api/scrape/url', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                url,
+                                title,
+                                company,
+                                location,
+                                is_remote: isRemote,
+                                salary_range: salaryRange
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                            // Reset form
+                            urlScrapeForm.reset();
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        // Re-enable submit button
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                });
+            }
+            
+            // Scrape All Button
+            const scrapeAllBtn = document.getElementById('scrape-all-btn');
+            if (scrapeAllBtn) {
+                scrapeAllBtn.addEventListener('click', async function() {
+                    // Disable button
+                    const originalBtnText = this.innerHTML;
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scraping...';
+                    
+                    try {
+                        // Send request
+                        const response = await fetch('/api/scrape/all', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                            
+                            // Display results
+                            const resultsContainer = document.getElementById('scrape-results');
+                            const resultsJson = document.getElementById('results-json');
+                            resultsContainer.classList.remove('d-none');
+                            resultsJson.textContent = JSON.stringify(data.results, null, 2);
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        // Re-enable button
+                        this.disabled = false;
+                        this.innerHTML = originalBtnText;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
