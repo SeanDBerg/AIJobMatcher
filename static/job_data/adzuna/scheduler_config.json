@@ -3,7 +3,7 @@
   "daily_sync_time": "02:00",
   "keywords": "",
   "location": "Northampton, PA",
-  "country": "gb",
+  "country": "us",
   "cleanup_old_jobs": true,
   "cleanup_days": 90,
   "last_run": null,
