@@ -14,7 +14,9 @@ from models import Job
 from resume_storage import resume_storage
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 # Optional import for Adzuna functionality
@@ -106,16 +108,29 @@ def delete_resume(resume_id):
 
 @app.route('/job_tracker')
 def job_tracker():
-    # Get parameters from session (if coming from settings) or from request args
-    keywords = session.get('job_search_keywords', request.args.get('keywords', ''))
-    location = session.get('job_search_location', request.args.get('location', ''))
-    country = session.get('job_search_country', request.args.get('country', 'gb'))
-    max_days_old = session.get('job_search_max_days_old', request.args.get('max_days_old', '30'))
-    remote_only = session.get('job_search_remote_only', request.args.get('remote_only', '')) == '1'
+    # Use scheduler config directly (most reliable source of settings)
+    scheduler_config = None
+    if ADZUNA_SCHEDULER_AVAILABLE:
+        scheduler_config = get_scheduler_config()
+    
+    # If config exists, use it as the source of truth
+    if scheduler_config:
+        keywords = scheduler_config.get('keywords', '')
+        location = scheduler_config.get('location', '')
+        country = scheduler_config.get('country', 'gb')
+        max_days_old = scheduler_config.get('max_days_old', 30)
+        remote_only = scheduler_config.get('remote_only', False)
+    else:
+        # Fallback to request args only if no scheduler config
+        keywords = request.args.get('keywords', '')
+        location = request.args.get('location', '')
+        country = request.args.get('country', 'gb')
+        max_days_old = request.args.get('max_days_old', '30')
+        remote_only = request.args.get('remote_only', '') == '1'
     
     # Debug log to see the actual values
     logger.debug(f"Job tracker parameters: keywords='{keywords}', location='{location}', country='{country}', max_days_old='{max_days_old}', remote_only='{remote_only}'")
-    logger.debug(f"Session values: {dict([(k,v) for k,v in session.items() if k.startswith('job_search_')])}")
+    logger.debug(f"Scheduler config: {scheduler_config}")
     logger.debug(f"Request args: {dict(request.args)}")
     
     # Get Adzuna storage and scheduler status
