@@ -544,7 +544,8 @@
             $.ajax({
                 url: '/api/adzuna/bulk-sync',
                 method: 'POST',
-                data: {},
+                contentType: 'application/json',
+                data: JSON.stringify({}),
                 success: function(response) {
                     $('#syncStatus').removeClass('alert-info').addClass('alert-success');
                     $('#syncStatusText').html(`<i class="fas fa-check-circle"></i> Sync completed: ${response.message}`);
