@@ -18,6 +18,20 @@ from matching_engine import find_matching_jobs
 from job_scraper import scrape_webpage_for_jobs, extract_skills_from_description, scrape_all_job_sources
 from models import Job
 
+# Optional import for Adzuna functionality
+try:
+    from adzuna_scraper import (
+        sync_jobs_from_adzuna, 
+        get_adzuna_jobs, 
+        import_adzuna_jobs_to_main_storage,
+        cleanup_old_adzuna_jobs,
+        get_adzuna_storage_status
+    )
+    ADZUNA_SCRAPER_AVAILABLE = True
+except ImportError:
+    logger.warning("Adzuna scraper module not available")
+    ADZUNA_SCRAPER_AVAILABLE = False
+
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
@@ -401,6 +415,164 @@ def check_adzuna_status():
             
     except Exception as e:
         logger.error(f"Error checking Adzuna API status: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/adzuna/bulk-sync', methods=['POST'])
+def bulk_sync_adzuna_jobs():
+    """API endpoint to perform a bulk job sync from Adzuna with rate limiting"""
+    try:
+        if not ADZUNA_SCRAPER_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "Adzuna bulk scraper is not available"
+            }), 500
+            
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+            
+        data = request.json
+        keywords = data.get('keywords', '')
+        location = data.get('location', '')
+        country = data.get('country', 'gb')
+        max_pages = data.get('max_pages', None)
+        
+        # Perform bulk sync
+        results = sync_jobs_from_adzuna(
+            keywords=keywords,
+            location=location,
+            country=country,
+            max_pages=max_pages
+        )
+        
+        if results.get('status') != 'success':
+            return jsonify({
+                "success": False,
+                "error": results.get('error', 'Unknown error occurred during sync')
+            }), 500
+            
+        return jsonify({
+            "success": True,
+            "results": results,
+            "message": f"Successfully synced {results.get('new_jobs', 0)} new jobs " + 
+                       f"across {results.get('pages_fetched', 0)} pages"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during Adzuna bulk sync: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/adzuna/jobs', methods=['GET'])
+def get_adzuna_jobs_endpoint():
+    """API endpoint to get Adzuna jobs from storage"""
+    try:
+        if not ADZUNA_SCRAPER_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "Adzuna bulk scraper is not available"
+            }), 500
+            
+        days = request.args.get('days', 30, type=int)
+        import_to_main = request.args.get('import_to_main', 'false').lower() == 'true'
+        
+        # Get jobs
+        jobs = get_adzuna_jobs(import_to_main=import_to_main, days=days)
+        
+        # Convert to dictionaries for JSON response
+        job_dicts = [job.to_dict() for job in jobs]
+        
+        return jsonify({
+            "success": True,
+            "jobs": job_dicts,
+            "count": len(job_dicts),
+            "imported": import_to_main
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting Adzuna jobs: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/adzuna/cleanup', methods=['POST'])
+def cleanup_adzuna_jobs_endpoint():
+    """API endpoint to clean up old Adzuna jobs"""
+    try:
+        if not ADZUNA_SCRAPER_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "Adzuna bulk scraper is not available"
+            }), 500
+            
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+            
+        data = request.json
+        max_age_days = data.get('max_age_days', 90)
+        
+        # Clean up old jobs
+        removed_count = cleanup_old_adzuna_jobs(max_age_days=max_age_days)
+        
+        return jsonify({
+            "success": True,
+            "removed_count": removed_count,
+            "message": f"Successfully removed {removed_count} old Adzuna jobs"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error cleaning up Adzuna jobs: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/adzuna/status', methods=['GET'])
+def get_adzuna_storage_status_endpoint():
+    """API endpoint to get Adzuna storage status"""
+    try:
+        if not ADZUNA_SCRAPER_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "Adzuna bulk scraper is not available"
+            }), 500
+            
+        # Get status
+        status = get_adzuna_storage_status()
+        
+        # Format datetime for JSON
+        if status.get('last_sync'):
+            status['last_sync'] = status['last_sync'].isoformat()
+        
+        return jsonify({
+            "success": True,
+            "status": status
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting Adzuna storage status: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/adzuna/import', methods=['POST'])
+def import_adzuna_jobs_endpoint():
+    """API endpoint to import Adzuna jobs to main storage"""
+    try:
+        if not ADZUNA_SCRAPER_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "Adzuna bulk scraper is not available"
+            }), 500
+            
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+            
+        data = request.json
+        days = data.get('days', 30)
+        
+        # Import jobs
+        count = import_adzuna_jobs_to_main_storage(days=days)
+        
+        return jsonify({
+            "success": True,
+            "count": count,
+            "message": f"Successfully imported {count} Adzuna jobs to main storage"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error importing Adzuna jobs: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/admin/scrape', methods=['GET'])
