@@ -231,7 +231,7 @@
                                 </thead>
                                 <tbody>
                                     {% if jobs %}
-                                        {% for job in jobs %}
+                                        {% for job_id, job in jobs.items() %}
                                             <tr>
                                                 <td>{{ job.title }}</td>
                                                 <td>{{ job.company }}</td>
@@ -240,11 +240,11 @@
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-info view-job" data-job-id="{{ loop.index0 }}">
-                                                        <i class="fas fa-eye"></i>
+                                                    <button class="btn btn-sm btn-outline-info view-job" data-job-id="{{ job_id }}" data-bs-toggle="tooltip" title="View Job Details">
+                                                        <i class="fas fa-eye"></i> View
                                                     </button>
-                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-external-link-alt"></i>
+                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Visit Job Listing">
+                                                        <i class="fas fa-external-link-alt"></i> Apply
                                                     </a>
                                                 </td>
                                             </tr>
@@ -274,7 +274,7 @@
                                 </thead>
                                 <tbody>
                                     {% if recent_jobs_list %}
-                                        {% for job in recent_jobs_list %}
+                                        {% for job_id, job in recent_jobs_list.items() %}
                                             <tr>
                                                 <td>{{ job.title }}</td>
                                                 <td>{{ job.company }}</td>
@@ -283,11 +283,11 @@
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-info view-job" data-job-id="{{ loop.index0 }}">
-                                                        <i class="fas fa-eye"></i>
+                                                    <button class="btn btn-sm btn-outline-info view-job" data-job-id="{{ job_id }}" data-bs-toggle="tooltip" title="View Job Details">
+                                                        <i class="fas fa-eye"></i> View
                                                     </button>
-                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-external-link-alt"></i>
+                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Visit Job Listing">
+                                                        <i class="fas fa-external-link-alt"></i> Apply
                                                     </a>
                                                 </td>
                                             </tr>
@@ -316,7 +316,7 @@
                                 </thead>
                                 <tbody>
                                     {% if remote_jobs_list %}
-                                        {% for job in remote_jobs_list %}
+                                        {% for job_id, job in remote_jobs_list.items() %}
                                             <tr>
                                                 <td>{{ job.title }}</td>
                                                 <td>{{ job.company }}</td>
@@ -324,11 +324,11 @@
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-info view-job" data-job-id="{{ loop.index0 }}">
-                                                        <i class="fas fa-eye"></i>
+                                                    <button class="btn btn-sm btn-outline-info view-job" data-job-id="{{ job_id }}" data-bs-toggle="tooltip" title="View Job Details">
+                                                        <i class="fas fa-eye"></i> View
                                                     </button>
-                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-external-link-alt"></i>
+                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Visit Job Listing">
+                                                        <i class="fas fa-external-link-alt"></i> Apply
                                                     </a>
                                                 </td>
                                             </tr>

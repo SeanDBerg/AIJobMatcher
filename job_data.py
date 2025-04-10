@@ -175,7 +175,7 @@ def add_job(job_dict):
     job_dicts = [job.to_dict() for job in jobs]
     
     # Save to file
-    with open(JOB_DATA_FILE, 'w', encoding='utf-8') as f:
+    with open(FALLBACK_JOB_DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(job_dicts, f, indent=2)
     
     # Invalidate cache

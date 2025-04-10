@@ -196,6 +196,20 @@ def settings():
         scheduler_status = get_scheduler_status()
         next_sync = scheduler_status.get("next_run", "Not scheduled")
     
+    # If config is None, initialize with defaults for the template
+    if config is None:
+        config = {
+            'enabled': False,
+            'daily_sync_time': '02:00',
+            'keywords': '',
+            'location': '',
+            'country': 'gb',
+            'cleanup_old_jobs': True,
+            'cleanup_days': 90,
+            'remote_only': False,
+            'search_terms': []
+        }
+    
     return render_template('settings.html', 
                            config=config, 
                            last_sync=last_sync, 
