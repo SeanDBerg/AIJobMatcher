@@ -454,9 +454,35 @@
     <script>
         // Initialize DataTables
         $(document).ready(function() {
-            $('#jobsTable').DataTable();
-            $('#recentJobsTable').DataTable();
-            $('#remoteJobsTable').DataTable();
+            // Initialize DataTables with error handling
+            try {
+                // Check if tables have data before initializing DataTables
+                if ($('#jobsTable tbody tr').length > 0 && $('#jobsTable tbody tr:first td').length > 1) {
+                    $('#jobsTable').DataTable({
+                        "paging": true,
+                        "ordering": true,
+                        "info": true
+                    });
+                }
+                
+                if ($('#recentJobsTable tbody tr').length > 0 && $('#recentJobsTable tbody tr:first td').length > 1) {
+                    $('#recentJobsTable').DataTable({
+                        "paging": true,
+                        "ordering": true,
+                        "info": true
+                    });
+                }
+                
+                if ($('#remoteJobsTable tbody tr').length > 0 && $('#remoteJobsTable tbody tr:first td').length > 1) {
+                    $('#remoteJobsTable').DataTable({
+                        "paging": true,
+                        "ordering": true,
+                        "info": true
+                    });
+                }
+            } catch (e) {
+                console.log("DataTables initialization error:", e);
+            }
             
             // Job details view
             $('.view-job').on('click', function() {
