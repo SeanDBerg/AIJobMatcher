@@ -10,12 +10,16 @@
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Resume preview */
-.resume-preview {
+/* Resume preview and content */
+.resume-preview, .resume-content {
     background-color: rgba(0, 0, 0, 0.1);
     border-radius: 4px;
     font-family: monospace;
     font-size: 0.9rem;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 /* Job description formatting */
