@@ -315,6 +315,8 @@ def save_scraped_jobs(jobs):
     logger.info(f"Successfully saved {count} jobs")
     return count
 
+# This function is redundant with functionality in adzuna_api.py and adzuna_scraper.py
+# We'll use a simplified version that delegates directly to the Adzuna API
 def scrape_jobs_from_adzuna(keywords=None, location=None):
     """
     Scrape jobs from Adzuna API
@@ -333,23 +335,16 @@ def scrape_jobs_from_adzuna(keywords=None, location=None):
         return []
     
     try:
-        # Use the existing Adzuna scraper which already handles credential checking
-        jobs = adzuna_search_jobs(
+        # Directly use the Adzuna API module's search_jobs function
+        return adzuna_search_jobs(
             keywords=keywords,
             location=location,
-            country="gb",  # Default to UK
+            country="gb",
             max_days_old=30,
             results_per_page=50
         )
-        
-        logger.info(f"Scraped {len(jobs)} jobs from Adzuna")
-        return jobs
-        
     except Exception as e:
-        if isinstance(e, AdzunaAPIError):
-            logger.error(f"Adzuna API error: {str(e)}")
-        else:
-            logger.error(f"Error scraping Adzuna: {str(e)}")
+        logger.error(f"Error scraping Adzuna: {str(e)}")
         return []
 
 def scrape_all_job_sources():

@@ -1030,11 +1030,10 @@ def control_adzuna_sync():
 def adzuna_scraper_config():
     """API endpoint to get or update Adzuna scraper configuration"""
     try:
-        if not ADZUNA_SCRAPER_AVAILABLE:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna bulk scraper is not available"
-            }), 500
+        # Check if Adzuna API is available
+        error_response = _adzuna_api_check()
+        if error_response:
+            return error_response
             
         # Import here to avoid circular imports
         from adzuna_scraper import config, update_scraper_config
@@ -1051,8 +1050,10 @@ def adzuna_scraper_config():
             })
         
         elif request.method == 'POST':
-            if not request.is_json:
-                return jsonify({"success": False, "error": "Request must be JSON"}), 400
+            # Check if request is JSON
+            json_error = _require_json_request()
+            if json_error:
+                return json_error
                 
             data = request.json
             update_scraper_config(data)
@@ -1068,18 +1069,16 @@ def adzuna_scraper_config():
             })
             
     except Exception as e:
-        logger.error(f"Error with scraper config: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _handle_api_exception(e, "configuring Adzuna scraper")
 
 @app.route('/api/adzuna/status', methods=['GET'])
 def get_adzuna_storage_status_endpoint():
     """API endpoint to get Adzuna storage status"""
     try:
-        if not ADZUNA_SCRAPER_AVAILABLE:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna bulk scraper is not available"
-            }), 500
+        # Check if Adzuna API is available
+        error_response = _adzuna_api_check()
+        if error_response:
+            return error_response
             
         # Get status
         status = get_adzuna_storage_status()
@@ -1094,21 +1093,21 @@ def get_adzuna_storage_status_endpoint():
         })
         
     except Exception as e:
-        logger.error(f"Error getting Adzuna storage status: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _handle_api_exception(e, "getting Adzuna storage status")
 
 @app.route('/api/adzuna/import', methods=['POST'])
 def import_adzuna_jobs_endpoint():
     """API endpoint to import Adzuna jobs to main storage"""
     try:
-        if not ADZUNA_SCRAPER_AVAILABLE:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna bulk scraper is not available"
-            }), 500
+        # Check if Adzuna API is available
+        error_response = _adzuna_api_check()
+        if error_response:
+            return error_response
             
-        if not request.is_json:
-            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+        # Check if request is JSON
+        json_error = _require_json_request()
+        if json_error:
+            return json_error
             
         data = request.json
         days = data.get('days', 30)
@@ -1123,105 +1122,113 @@ def import_adzuna_jobs_endpoint():
         })
         
     except Exception as e:
-        logger.error(f"Error importing Adzuna jobs: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _handle_api_exception(e, "importing Adzuna jobs")
 
 @app.route('/api/adzuna/scheduler/config', methods=['GET', 'POST'])
 def adzuna_scheduler_config():
     """API endpoint to get or update Adzuna scheduler configuration"""
-    if not ADZUNA_SCHEDULER_AVAILABLE:
-        return jsonify({
-            "success": False,
-            "error": "Adzuna scheduler is not available"
-        }), 500
-    
-    if request.method == 'GET':
-        # Get current configuration
-        config = get_scheduler_config()
-        return jsonify({
-            "success": True,
-            "config": config
-        })
-    else:
-        # Update configuration
-        if not request.is_json:
-            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+    try:
+        # Check if Adzuna scheduler is available
+        error_response = _adzuna_scheduler_check()
+        if error_response:
+            return error_response
         
-        data = request.json
-        updated_config = update_scheduler_config(data)
-        
-        return jsonify({
-            "success": True,
-            "config": updated_config,
-            "message": "Scheduler configuration updated"
-        })
+        if request.method == 'GET':
+            # Get current configuration
+            config = get_scheduler_config()
+            return jsonify({
+                "success": True,
+                "config": config
+            })
+        else:
+            # Check if request is JSON
+            json_error = _require_json_request()
+            if json_error:
+                return json_error
+            
+            data = request.json
+            updated_config = update_scheduler_config(data)
+            
+            return jsonify({
+                "success": True,
+                "config": updated_config,
+                "message": "Scheduler configuration updated"
+            })
+    except Exception as e:
+        return _handle_api_exception(e, "configuring Adzuna scheduler")
 
 @app.route('/api/adzuna/scheduler/status', methods=['GET'])
 def adzuna_scheduler_status():
     """API endpoint to get Adzuna scheduler status"""
-    if not ADZUNA_SCHEDULER_AVAILABLE:
+    try:
+        # Check if Adzuna scheduler is available
+        error_response = _adzuna_scheduler_check()
+        if error_response:
+            return error_response
+        
+        status = get_scheduler_status()
+        
+        # Format datetimes for JSON
+        if status.get('last_run'):
+            try:
+                last_run = datetime.fromisoformat(status['last_run'])
+                status['last_run_formatted'] = last_run.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                status['last_run_formatted'] = status['last_run']
+        
+        if status.get('next_run'):
+            try:
+                next_run = datetime.fromisoformat(status['next_run'])
+                status['next_run_formatted'] = next_run.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                status['next_run_formatted'] = status['next_run']
+        
         return jsonify({
-            "success": False,
-            "error": "Adzuna scheduler is not available"
-        }), 500
-    
-    status = get_scheduler_status()
-    
-    # Format datetimes for JSON
-    if status.get('last_run'):
-        try:
-            last_run = datetime.fromisoformat(status['last_run'])
-            status['last_run_formatted'] = last_run.strftime("%Y-%m-%d %H:%M:%S")
-        except (ValueError, TypeError):
-            status['last_run_formatted'] = status['last_run']
-    
-    if status.get('next_run'):
-        try:
-            next_run = datetime.fromisoformat(status['next_run'])
-            status['next_run_formatted'] = next_run.strftime("%Y-%m-%d %H:%M:%S")
-        except (ValueError, TypeError):
-            status['next_run_formatted'] = status['next_run']
-    
-    return jsonify({
-        "success": True,
-        "status": status
-    })
+            "success": True,
+            "status": status
+        })
+    except Exception as e:
+        return _handle_api_exception(e, "getting Adzuna scheduler status")
 
 @app.route('/api/adzuna/scheduler/control', methods=['POST'])
 def adzuna_scheduler_control():
     """API endpoint to control the Adzuna scheduler (start/stop/restart)"""
-    if not ADZUNA_SCHEDULER_AVAILABLE:
+    try:
+        # Check if Adzuna scheduler is available
+        error_response = _adzuna_scheduler_check()
+        if error_response:
+            return error_response
+        
+        # Check if request is JSON
+        json_error = _require_json_request()
+        if json_error:
+            return json_error
+        
+        data = request.json
+        action = data.get('action', '').lower()
+        
+        if action == 'start':
+            result = start_scheduler()
+            message = "Scheduler started" if result else "Scheduler was already running"
+        elif action == 'stop':
+            result = stop_scheduler()
+            message = "Scheduler stopped" if result else "Scheduler was not running"
+        elif action == 'restart':
+            result = restart_scheduler()
+            message = "Scheduler restarted"
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Invalid action. Must be 'start', 'stop', or 'restart'."
+            }), 400
+        
         return jsonify({
-            "success": False,
-            "error": "Adzuna scheduler is not available"
-        }), 500
-    
-    if not request.is_json:
-        return jsonify({"success": False, "error": "Request must be JSON"}), 400
-    
-    data = request.json
-    action = data.get('action', '').lower()
-    
-    if action == 'start':
-        result = start_scheduler()
-        message = "Scheduler started" if result else "Scheduler was already running"
-    elif action == 'stop':
-        result = stop_scheduler()
-        message = "Scheduler stopped" if result else "Scheduler was not running"
-    elif action == 'restart':
-        result = restart_scheduler()
-        message = "Scheduler restarted"
-    else:
-        return jsonify({
-            "success": False,
-            "error": "Invalid action. Must be 'start', 'stop', or 'restart'."
-        }), 400
-    
-    return jsonify({
-        "success": True,
-        "result": result,
-        "message": message
-    })
+            "success": True,
+            "result": result,
+            "message": message
+        })
+    except Exception as e:
+        return _handle_api_exception(e, "controlling Adzuna scheduler")
 
 @app.route('/admin/scrape', methods=['GET'])
 def admin_scrape_page():
