@@ -252,28 +252,42 @@ class AdzunaStorage:
                 if not job.posted_date:
                     continue
                     
-                # Convert string to datetime if needed
-                if isinstance(job.posted_date, str):
-                    try:
-                        job_date = job.posted_date
-                        # No need to convert back since we're just comparing
-                    except ValueError:
-                        continue
-                else:
-                    job_date = job.posted_date  # Already a datetime or other type
-                    
+                # Convert string to datetime for comparison
                 try:
-                    # Ensure both are strings for comparison
-                    job_date_str = job_date if isinstance(job_date, str) else str(job_date)
-                    cutoff_date_str = cutoff_date if isinstance(cutoff_date, str) else str(cutoff_date)
+                    job_date = None
+                    if isinstance(job.posted_date, str):
+                        # Handle ISO format dates
+                        if 'T' in job.posted_date:
+                            job_date = datetime.fromisoformat(job.posted_date.replace('Z', '+00:00'))
+                        # Handle plain date strings (YYYY-MM-DD)
+                        elif '-' in job.posted_date and len(job.posted_date) >= 10:
+                            job_date = datetime.fromisoformat(job.posted_date[:10])
+                        # Handle other formats as needed
+                        else:
+                            try:
+                                # Parse as plain date if possible
+                                job_date = datetime.strptime(job.posted_date[:10], "%Y-%m-%d")
+                            except:
+                                # Last resort: use string comparison
+                                if job.posted_date >= cutoff_date:
+                                    recent_jobs.append(job)
+                                continue
+                    elif isinstance(job.posted_date, datetime):
+                        job_date = job.posted_date
+                    else:
+                        # Unknown type, skip
+                        continue
+                        
+                    # Convert cutoff_date to datetime if it's a string
+                    cutoff_datetime = datetime.fromisoformat(cutoff_date) if isinstance(cutoff_date, str) else cutoff_date
                     
-                    # Compare dates as strings (ISO format allows string comparison)
-                    # This works because ISO format dates sort correctly as strings
-                    if job_date_str >= cutoff_date_str:
+                    # Compare datetime objects
+                    if job_date >= cutoff_datetime:
                         recent_jobs.append(job)
+                        
                 except Exception as e:
-                    logger.error(f"Error comparing dates: {str(e)}")
-                    # Include the job if comparison fails (better to include than exclude)
+                    logger.error(f"Error comparing dates for job {job.title}: {str(e)}")
+                    # Include jobs with date parsing errors to avoid excluding valid jobs
                     recent_jobs.append(job)
             
             return recent_jobs
