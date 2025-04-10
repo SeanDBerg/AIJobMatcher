@@ -333,12 +333,7 @@ def scrape_jobs_from_adzuna(keywords=None, location=None):
         return []
     
     try:
-        # Check if Adzuna credentials are available
-        if not os.environ.get('ADZUNA_APP_ID') or not os.environ.get('ADZUNA_API_KEY'):
-            logger.warning("Adzuna API credentials not found in environment variables")
-            return []
-        
-        # Call Adzuna API
+        # Use the existing Adzuna scraper which already handles credential checking
         jobs = adzuna_search_jobs(
             keywords=keywords,
             location=location,
