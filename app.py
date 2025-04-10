@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session, send_from_directory
 from werkzeug.utils import secure_filename
 import tempfile
 import json
@@ -17,6 +17,7 @@ from job_data import get_job_data, add_job
 from matching_engine import find_matching_jobs
 from job_scraper import scrape_webpage_for_jobs, extract_skills_from_description, scrape_all_job_sources
 from models import Job
+from resume_storage import resume_storage
 
 # Optional import for Adzuna functionality
 try:
@@ -66,8 +67,43 @@ def index():
 
 @app.route('/resume_manager')
 def resume_manager():
+    # Get stored resumes
+    stored_resumes = resume_storage.get_all_resumes()
+    
+    # Get active resume ID from query param if any
+    active_resume_id = request.args.get('resume_id')
+    active_resume = None
+    resume_content = None
+    
+    if active_resume_id:
+        active_resume = resume_storage.get_resume(active_resume_id)
+        if active_resume:
+            resume_content = resume_storage.get_resume_content(active_resume_id)
+    
     # Render the resume manager page
-    return render_template('resume_manager.html')
+    return render_template('resume_manager.html', 
+                          stored_resumes=stored_resumes,
+                          active_resume=active_resume,
+                          resume_content=resume_content)
+                          
+@app.route('/resume_files/<resume_id>/<filename>')
+def resume_files(resume_id, filename):
+    """Serve resume files"""
+    return send_from_directory(resume_storage.RESUME_DIR, f"{resume_id}_{filename}")
+    
+@app.route('/delete_resume/<resume_id>', methods=['POST'])
+def delete_resume(resume_id):
+    """Delete a stored resume"""
+    try:
+        if resume_storage.delete_resume(resume_id):
+            flash('Resume deleted successfully', 'success')
+        else:
+            flash('Resume not found or could not be deleted', 'danger')
+    except Exception as e:
+        logger.error(f"Error deleting resume: {str(e)}")
+        flash(f'Error deleting resume: {str(e)}', 'danger')
+        
+    return redirect(url_for('resume_manager'))
 
 @app.route('/job_tracker')
 def job_tracker():
