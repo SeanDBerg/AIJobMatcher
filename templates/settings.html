@@ -315,7 +315,7 @@
                                 <input type="hidden" name="keywords" value="{{ config.keywords }}">
                                 <input type="hidden" name="location" value="{{ config.location }}">
                                 <input type="hidden" name="country" value="{{ config.country }}">
-                                <input type="hidden" name="max_days_old" value="{{ config.cleanup_days }}">
+                                <input type="hidden" name="max_days_old" value="{{ config.max_days_old|default(30) }}">
                                 <input type="hidden" name="remote_only" value="{{ '1' if config.remote_only else '0' }}">
                                 <input type="hidden" name="scheduler_enabled" value="{{ '1' if config.enabled else '0' }}">
                                 <input type="hidden" name="daily_sync_time" value="{{ config.daily_sync_time }}">
