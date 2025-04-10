@@ -135,7 +135,8 @@ def sync_jobs_from_adzuna(
     location: Optional[str] = None, 
     country: str = "gb", 
     max_pages: Optional[int] = None,
-    max_days_old: int = 30
+    max_days_old: int = 30,
+    remote_only: bool = False
 ) -> Dict[str, Any]:
     """
     Sync jobs from Adzuna API, with pagination and rate limiting

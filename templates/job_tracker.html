@@ -386,6 +386,26 @@
                             <input type="number" class="form-control" id="maxPages" placeholder="Leave empty for all pages">
                         </div>
                     </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="maxDaysOld" class="form-label">Max Days Old</label>
+                            <select class="form-select" id="maxDaysOld">
+                                <option value="1" {% if max_days_old == '1' %}selected{% endif %}>1 day</option>
+                                <option value="3" {% if max_days_old == '3' %}selected{% endif %}>3 days</option>
+                                <option value="7" {% if max_days_old == '7' %}selected{% endif %}>1 week</option>
+                                <option value="14" {% if max_days_old == '14' %}selected{% endif %}>2 weeks</option>
+                                <option value="30" {% if max_days_old == '30' or not max_days_old %}selected{% endif %}>30 days</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="remoteOnly" {% if remote_only %}checked{% endif %}>
+                                <label class="form-check-label" for="remoteOnly">
+                                    Remote Jobs Only
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                     <button type="button" class="btn btn-primary" onclick="startJobSync()">
                         <i class="fas fa-sync me-1"></i> Sync Jobs
                     </button>
@@ -536,7 +556,8 @@
             const location = $('#location').val();
             const country = $('#country').val();
             const maxPages = $('#maxPages').val() ? parseInt($('#maxPages').val()) : null;
-            const maxDaysOld = 30; // Default to 30 days
+            const maxDaysOld = parseInt($('#maxDaysOld').val());
+            const remoteOnly = $('#remoteOnly').is(':checked');
             
             // Show progress UI
             $('#syncProgressContainer').show();
@@ -564,7 +585,8 @@
                     location: location,
                     country: country,
                     max_pages: maxPages,
-                    max_days_old: maxDaysOld
+                    max_days_old: maxDaysOld,
+                    remote_only: remoteOnly
                 }),
                 timeout: 10000, // Short timeout - we're just initiating the sync
                 success: function(response) {
