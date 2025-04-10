@@ -145,11 +145,16 @@ def job_tracker():
         # Scheduler info
         scheduler_status = get_scheduler_status() if ADZUNA_SCHEDULER_AVAILABLE else {"is_running": False, "config": {}}
         
+        # Convert Job objects to dictionaries for JSON serialization
+        jobs_dict = {i: job.to_dict() for i, job in enumerate(jobs)}
+        recent_jobs_dict = {i: job.to_dict() for i, job in enumerate(recent_jobs_list)}
+        remote_jobs_dict = {i: job.to_dict() for i, job in enumerate(remote_jobs_list)}
+        
         status = {
             "storage_status": storage_status,
-            "jobs": jobs,
-            "recent_jobs_list": recent_jobs_list,
-            "remote_jobs_list": remote_jobs_list,
+            "jobs": jobs_dict,
+            "recent_jobs_list": recent_jobs_dict,
+            "remote_jobs_list": remote_jobs_dict,
             "total_jobs": len(jobs),
             "recent_jobs": len(recent_jobs_list),
             "last_sync": storage_status.get("last_sync", "Never"),
