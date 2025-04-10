@@ -108,6 +108,11 @@ def delete_resume(resume_id):
 
 @app.route('/job_tracker')
 def job_tracker():
+    # Get query parameters from settings page redirect
+    keywords = request.args.get('keywords', '')
+    location = request.args.get('location', '')
+    country = request.args.get('country', 'gb')
+    
     # Get Adzuna storage and scheduler status
     status = {}
     if ADZUNA_SCRAPER_AVAILABLE:
@@ -159,7 +164,11 @@ def job_tracker():
             "recent_jobs": len(recent_jobs_list),
             "last_sync": storage_status.get("last_sync", "Never"),
             "scheduler_status": scheduler_status,
-            "next_sync": scheduler_status.get("next_run", "Not scheduled")
+            "next_sync": scheduler_status.get("next_run", "Not scheduled"),
+            # Pass through the query parameters from settings
+            "keywords": keywords,
+            "location": location,
+            "country": country
         }
     
     return render_template('job_tracker.html', **status)
@@ -230,6 +239,9 @@ def save_settings():
         remote_only = request.form.get('remote_only') == '1'
         search_terms = request.form.getlist('search_terms')
         
+        # Check if "Sync Now" was requested
+        sync_now = request.form.get('sync_now') == '1'
+        
         # Scheduler settings
         scheduler_enabled = request.form.get('scheduler_enabled') == '1'
         daily_sync_time = request.form.get('daily_sync_time', '02:00')
@@ -260,7 +272,12 @@ def save_settings():
                 stop_scheduler()
         
         flash('Settings saved successfully!', 'success')
-        return redirect(url_for('settings'))
+        
+        # Redirect to job tracker page with sync form pre-filled if "Sync Now" was selected
+        if sync_now:
+            return redirect(url_for('job_tracker', keywords=keywords, location=location, country=country))
+        else:
+            return redirect(url_for('settings'))
         
     except Exception as e:
         logger.error(f"Error saving settings: {str(e)}")

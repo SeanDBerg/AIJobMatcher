@@ -362,23 +362,23 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="keywords" class="form-label">Keywords (optional)</label>
-                            <input type="text" class="form-control" id="keywords" placeholder="e.g., python developer">
+                            <input type="text" class="form-control" id="keywords" placeholder="e.g., python developer" value="{{ keywords }}">
                         </div>
                         <div class="col-md-6">
                             <label for="location" class="form-label">Location (optional)</label>
-                            <input type="text" class="form-control" id="location" placeholder="e.g., London">
+                            <input type="text" class="form-control" id="location" placeholder="e.g., London" value="{{ location }}">
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="country" class="form-label">Country</label>
                             <select class="form-select" id="country">
-                                <option value="gb" selected>United Kingdom</option>
-                                <option value="us">United States</option>
-                                <option value="ca">Canada</option>
-                                <option value="au">Australia</option>
-                                <option value="de">Germany</option>
-                                <option value="fr">France</option>
+                                <option value="gb" {% if country == 'gb' %}selected{% endif %}>United Kingdom</option>
+                                <option value="us" {% if country == 'us' %}selected{% endif %}>United States</option>
+                                <option value="ca" {% if country == 'ca' %}selected{% endif %}>Canada</option>
+                                <option value="au" {% if country == 'au' %}selected{% endif %}>Australia</option>
+                                <option value="de" {% if country == 'de' %}selected{% endif %}>Germany</option>
+                                <option value="fr" {% if country == 'fr' %}selected{% endif %}>France</option>
                             </select>
                         </div>
                         <div class="col-md-6">
