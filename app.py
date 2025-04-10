@@ -64,6 +64,140 @@ def allowed_file(filename):
 def index():
     return render_template('index.html')
 
+@app.route('/resume_manager')
+def resume_manager():
+    # Render the resume manager page
+    return render_template('resume_manager.html')
+
+@app.route('/job_tracker')
+def job_tracker():
+    # Get Adzuna storage and scheduler status
+    status = {}
+    if ADZUNA_SCRAPER_AVAILABLE:
+        storage_status = get_adzuna_storage_status()
+        jobs = get_adzuna_jobs(days=30)
+        
+        # Filter recent jobs (7 days)
+        recent_jobs_list = []
+        for job in jobs:
+            if job.posted_date:
+                try:
+                    # Try to parse the date in various formats
+                    if isinstance(job.posted_date, str):
+                        # ISO format with T separator
+                        if "T" in job.posted_date:
+                            job_date = datetime.fromisoformat(job.posted_date.split("T")[0])
+                        else:
+                            # Plain date string
+                            job_date = datetime.fromisoformat(job.posted_date)
+                        
+                        # Check if it's within 7 days
+                        if (datetime.now() - job_date).days <= 7:
+                            recent_jobs_list.append(job)
+                    elif isinstance(job.posted_date, datetime):
+                        # Already a datetime object
+                        if (datetime.now() - job.posted_date).days <= 7:
+                            recent_jobs_list.append(job)
+                except Exception:
+                    # If parsing fails, ignore this job for recent listing
+                    pass
+        
+        # Filter remote jobs
+        remote_jobs_list = [job for job in jobs if job.is_remote]
+        
+        # Scheduler info
+        scheduler_status = get_scheduler_status() if ADZUNA_SCHEDULER_AVAILABLE else {"is_running": False, "config": {}}
+        
+        status = {
+            "storage_status": storage_status,
+            "jobs": jobs,
+            "recent_jobs_list": recent_jobs_list,
+            "remote_jobs_list": remote_jobs_list,
+            "total_jobs": len(jobs),
+            "recent_jobs": len(recent_jobs_list),
+            "last_sync": storage_status.get("last_sync", "Never"),
+            "scheduler_status": scheduler_status,
+            "next_sync": scheduler_status.get("next_run", "Not scheduled")
+        }
+    
+    return render_template('job_tracker.html', **status)
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    # Get scheduler config if available
+    config = None
+    last_sync = "Never"
+    total_jobs = 0
+    next_sync = "Not scheduled"
+    
+    if ADZUNA_SCHEDULER_AVAILABLE:
+        config = get_scheduler_config()
+    
+    if ADZUNA_SCRAPER_AVAILABLE:
+        storage_status = get_adzuna_storage_status()
+        last_sync = storage_status.get("last_sync", "Never")
+        total_jobs = storage_status.get("total_jobs", 0)
+    
+    if ADZUNA_SCHEDULER_AVAILABLE:
+        scheduler_status = get_scheduler_status()
+        next_sync = scheduler_status.get("next_run", "Not scheduled")
+    
+    return render_template('settings.html', 
+                           config=config, 
+                           last_sync=last_sync, 
+                           total_jobs=total_jobs, 
+                           next_sync=next_sync)
+
+@app.route('/save_settings', methods=['POST'])
+def save_settings():
+    """Save user settings for job search and scheduler"""
+    try:
+        # Extract settings from form
+        job_sources = request.form.getlist('job_sources')
+        keywords = request.form.get('keywords', '')
+        location = request.form.get('location', '')
+        country = request.form.get('country', 'gb')
+        max_days_old = int(request.form.get('max_days_old', 30))
+        remote_only = request.form.get('remote_only') == '1'
+        search_terms = request.form.getlist('search_terms')
+        
+        # Scheduler settings
+        scheduler_enabled = request.form.get('scheduler_enabled') == '1'
+        daily_sync_time = request.form.get('daily_sync_time', '02:00')
+        cleanup_old_jobs = request.form.get('cleanup_old_jobs') == '1'
+        cleanup_days = int(request.form.get('cleanup_days', 90))
+        
+        # Update scheduler configuration if available
+        if ADZUNA_SCHEDULER_AVAILABLE:
+            config_updates = {
+                'enabled': scheduler_enabled,
+                'daily_sync_time': daily_sync_time,
+                'keywords': keywords,
+                'location': location,
+                'country': country,
+                'cleanup_old_jobs': cleanup_old_jobs,
+                'cleanup_days': cleanup_days,
+                'remote_only': remote_only,
+                'search_terms': search_terms
+            }
+            
+            update_scheduler_config(config_updates)
+            
+            if scheduler_enabled:
+                # Start or restart the scheduler if it's enabled
+                restart_scheduler()
+            else:
+                # Stop the scheduler if it's disabled
+                stop_scheduler()
+        
+        flash('Settings saved successfully!', 'success')
+        return redirect(url_for('settings'))
+        
+    except Exception as e:
+        logger.error(f"Error saving settings: {str(e)}")
+        flash(f'Error saving settings: {str(e)}', 'danger')
+        return redirect(url_for('settings'))
+
 @app.route('/upload_resume', methods=['POST'])
 def upload_resume():
     # Check if a file was uploaded
