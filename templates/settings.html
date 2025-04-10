@@ -191,6 +191,31 @@
                                 </div>
                             </div>
                             
+                            <h4 class="mb-3">API Sync Settings</h4>
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="call_delay" class="form-label">API Call Delay (seconds)</label>
+                                        <input type="number" class="form-control" id="call_delay" name="call_delay" min="0" max="60" value="{{ scraper_config.call_delay|default(3) }}">
+                                        <div class="form-text">Delay between API calls. Higher value reduces server load but slows sync.</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="rate_limit_calls" class="form-label">Max Calls Per Period</label>
+                                        <input type="number" class="form-control" id="rate_limit_calls" name="rate_limit_calls" min="1" max="100" value="{{ scraper_config.rate_limit_calls|default(20) }}">
+                                        <div class="form-text">Maximum number of API calls per period (default: 20 per minute)</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="rate_limit_period" class="form-label">Rate Limit Period (seconds)</label>
+                                        <input type="number" class="form-control" id="rate_limit_period" name="rate_limit_period" min="30" max="600" value="{{ scraper_config.rate_limit_period|default(60) }}">
+                                        <div class="form-text">Period for rate limiting in seconds (default: 60 seconds)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <h4 class="mb-3">Job Sync Schedule</h4>
                             <div class="row mb-4">
                                 <div class="col-md-6">
