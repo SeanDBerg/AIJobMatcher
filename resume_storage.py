@@ -54,6 +54,10 @@ class ResumeStorage:
             if "last_added" not in self._index:
                 self._index["last_added"] = None
                 
+            # Scan the resumes directory to find any resumes not in the index
+            # This helps recover from any previous index save failures
+            self._recover_missing_resumes()
+                
             return self._index
         except Exception as e:
             logger.error(f"Error loading resume index: {str(e)}")
@@ -63,14 +67,88 @@ class ResumeStorage:
                 "count": 0,
                 "last_added": None
             }
+            
+            # Scan the resumes directory to find and recover resumes
+            self._recover_missing_resumes()
+            
             self._save_index()
             return self._index
+            
+    def _recover_missing_resumes(self):
+        """Scan the resume directory to find any files not in the index"""
+        try:
+            # Get all content files in the resume directory
+            content_files = [f for f in os.listdir(RESUME_DIR) if f.endswith('_content.txt')]
+            
+            # Extract resume IDs from the content file names
+            for content_file in content_files:
+                resume_id = content_file.split('_')[0]
+                
+                # Check if this resume is already in the index
+                if resume_id in self._index["resumes"]:
+                    continue
+                    
+                # Find the corresponding resume file
+                resume_files = [f for f in os.listdir(RESUME_DIR) 
+                               if f.startswith(resume_id + '_') and not f.endswith('_content.txt')]
+                
+                if not resume_files:
+                    continue
+                    
+                # Get original filename (remove resume ID prefix)
+                original_filename = resume_files[0][len(resume_id) + 1:]
+                
+                # Read content
+                content_path = os.path.join(RESUME_DIR, content_file)
+                with open(content_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Create metadata
+                resume_metadata = {
+                    "id": resume_id,
+                    "original_filename": original_filename,
+                    "stored_filename": resume_files[0],
+                    "upload_date": datetime.fromtimestamp(os.path.getctime(content_path)).isoformat(),
+                    "content_preview": content[:200] + "..." if len(content) > 200 else content,
+                    "file_extension": os.path.splitext(original_filename)[1].lower(),
+                }
+                
+                # Add to index
+                self._index["resumes"][resume_id] = resume_metadata
+                self._index["count"] = len(self._index["resumes"])
+                if not self._index["last_added"] or os.path.getctime(content_path) > os.path.getctime(
+                    os.path.join(RESUME_DIR, f"{self._index['last_added']}_content.txt")):
+                    self._index["last_added"] = resume_id
+                
+                logger.info(f"Recovered resume {original_filename} with ID {resume_id}")
+                
+        except Exception as e:
+            logger.error(f"Error recovering missing resumes: {str(e)}")
     
     def _save_index(self):
         """Save the resume index to file"""
         try:
+            # Create a deep copy of the index to avoid modifying the original
+            index_copy = {
+                "resumes": {},
+                "count": self._index["count"],
+                "last_added": self._index["last_added"]
+            }
+            
+            # Convert any NumPy arrays to lists in the resume metadata
+            for resume_id, resume_data in self._index["resumes"].items():
+                resume_copy = resume_data.copy()
+                
+                # If there's an embedding, convert it to a list if it's a NumPy array
+                if "embedding" in resume_copy and hasattr(resume_copy["embedding"], "tolist"):
+                    resume_copy["embedding"] = resume_copy["embedding"].tolist()
+                
+                index_copy["resumes"][resume_id] = resume_copy
+            
+            # Save the processed index to file
             with open(RESUME_INDEX_FILE, 'w', encoding='utf-8') as f:
-                json.dump(self._index, f, indent=2)
+                json.dump(index_copy, f, indent=2)
+                
         except Exception as e:
             logger.error(f"Error saving resume index: {str(e)}")
     
