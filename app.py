@@ -72,19 +72,18 @@ def resume_manager():
     
     # Get active resume ID from query param if any
     active_resume_id = request.args.get('resume_id')
-    active_resume = None
-    resume_content = None
     
+    # If resume_id is provided, redirect to match_resume
     if active_resume_id:
         active_resume = resume_storage.get_resume(active_resume_id)
         if active_resume:
-            resume_content = resume_storage.get_resume_content(active_resume_id)
+            return redirect(url_for('match_resume', resume_id=active_resume_id))
     
-    # Render the resume manager page
+    # Render the resume manager page (upload form)
     return render_template('resume_manager.html', 
                           stored_resumes=stored_resumes,
-                          active_resume=active_resume,
-                          resume_content=resume_content)
+                          active_resume=None,
+                          resume_content=None)
                           
 @app.route('/resume_files/<resume_id>/<filename>')
 def resume_files(resume_id, filename):
