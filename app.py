@@ -289,9 +289,9 @@ def upload_resume():
             
             # Store resume in persistent storage
             try:
-                # Create metadata with embedding
+                # Create metadata with embedding (convert NumPy array to list for JSON serialization)
                 metadata = {
-                    "embedding": resume_embedding,
+                    "embedding": resume_embedding.tolist() if hasattr(resume_embedding, 'tolist') else resume_embedding,
                     "filters": filters
                 }
                 
@@ -410,7 +410,13 @@ def match_jobs():
                     
                     # Get embedding from metadata if available
                     if resume_metadata.get('embedding'):
-                        resume_embedding = resume_metadata['embedding']
+                        # Convert embedding from list back to numpy array if needed
+                        import numpy as np
+                        embedding_data = resume_metadata['embedding']
+                        if isinstance(embedding_data, list):
+                            resume_embedding = np.array(embedding_data)
+                        else:
+                            resume_embedding = embedding_data
                     else:
                         # Generate embedding if not in metadata
                         resume_embedding = generate_embedding(resume_text)
@@ -510,7 +516,13 @@ def match_resume(resume_id):
         
         # Get embedding from metadata if available
         if resume_metadata.get('embedding'):
-            resume_embedding = resume_metadata['embedding']
+            # Convert embedding from list back to numpy array if needed
+            import numpy as np
+            embedding_data = resume_metadata['embedding']
+            if isinstance(embedding_data, list):
+                resume_embedding = np.array(embedding_data)
+            else:
+                resume_embedding = embedding_data
         else:
             # Generate embedding if not in metadata
             resume_embedding = generate_embedding(resume_text)

@@ -1,5 +1,135 @@
 {
-  "last_sync": null,
+  "last_sync": "2025-04-10T03:02:39.823410",
   "total_jobs": 0,
-  "jobs": []
+  "jobs": [],
+  "batches": {
+    "92a83c45-e6be-4024-b745-45cdce8454cb": {
+      "id": "92a83c45-e6be-4024-b745-45cdce8454cb",
+      "timestamp": "2025-04-10T03:02:12.332379",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "9a2b2c23-78b3-4dfd-9a54-19260ac4ba72": {
+      "id": "9a2b2c23-78b3-4dfd-9a54-19260ac4ba72",
+      "timestamp": "2025-04-10T03:02:14.624504",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "dc912857-945f-4d41-ab70-6a082a29b603": {
+      "id": "dc912857-945f-4d41-ab70-6a082a29b603",
+      "timestamp": "2025-04-10T03:02:16.816642",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "0f683776-b304-46d3-9e78-5526cf3fdb9e": {
+      "id": "0f683776-b304-46d3-9e78-5526cf3fdb9e",
+      "timestamp": "2025-04-10T03:02:18.915481",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "962783dc-2812-4553-a83e-fffbd9815069": {
+      "id": "962783dc-2812-4553-a83e-fffbd9815069",
+      "timestamp": "2025-04-10T03:02:21.142162",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "954285b4-93d8-4158-b999-fef31ed547a4": {
+      "id": "954285b4-93d8-4158-b999-fef31ed547a4",
+      "timestamp": "2025-04-10T03:02:23.329132",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "ab59369e-e1c1-40ef-95dc-a973327ca977": {
+      "id": "ab59369e-e1c1-40ef-95dc-a973327ca977",
+      "timestamp": "2025-04-10T03:02:25.304999",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "2f3b0412-f68f-4a8a-9879-f7663e56e752": {
+      "id": "2f3b0412-f68f-4a8a-9879-f7663e56e752",
+      "timestamp": "2025-04-10T03:02:27.456229",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "62b5a4be-b00e-4547-9ff7-dbd896a320ea": {
+      "id": "62b5a4be-b00e-4547-9ff7-dbd896a320ea",
+      "timestamp": "2025-04-10T03:02:29.569206",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "31db5ec7-d7ef-4139-9473-3c3d98521447": {
+      "id": "31db5ec7-d7ef-4139-9473-3c3d98521447",
+      "timestamp": "2025-04-10T03:02:31.745374",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "107c452c-259c-40fd-96ac-96aaef61eda5": {
+      "id": "107c452c-259c-40fd-96ac-96aaef61eda5",
+      "timestamp": "2025-04-10T03:02:33.720032",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "003d282e-003c-404b-9657-bd7214d8988a": {
+      "id": "003d282e-003c-404b-9657-bd7214d8988a",
+      "timestamp": "2025-04-10T03:02:35.714668",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "71e456a5-d4da-4c7f-b444-cf794e32679a": {
+      "id": "71e456a5-d4da-4c7f-b444-cf794e32679a",
+      "timestamp": "2025-04-10T03:02:37.812357",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "a74b0bf3-aad5-4ef2-b7dd-23004e69fd38": {
+      "id": "a74b0bf3-aad5-4ef2-b7dd-23004e69fd38",
+      "timestamp": "2025-04-10T03:02:39.822032",
+      "keywords": "",
+      "location": "",
+      "country": "gb",
+      "job_count": 50,
+      "max_days_old": 1
+    }
+  },
+  "job_count": 700,
+  "last_batch": "a74b0bf3-aad5-4ef2-b7dd-23004e69fd38"
 }
