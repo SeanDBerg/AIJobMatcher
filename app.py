@@ -5,12 +5,6 @@ from werkzeug.utils import secure_filename
 import tempfile
 import json
 from datetime import datetime
-
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-# Import custom modules
 from resume_parser import parse_resume, FileParsingError
 from embedding_generator import generate_embedding
 from job_data import get_job_data, add_job
@@ -18,6 +12,10 @@ from matching_engine import find_matching_jobs
 from job_scraper import scrape_webpage_for_jobs, extract_skills_from_description, scrape_all_job_sources
 from models import Job
 from resume_storage import resume_storage
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Optional import for Adzuna functionality
 try:
