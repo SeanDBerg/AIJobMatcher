@@ -46,6 +46,17 @@ class AdzunaStorage:
         try:
             with open(ADZUNA_INDEX_FILE, 'r', encoding='utf-8') as f:
                 self._index = json.load(f)
+                
+            # Ensure the index has all required keys
+            if "batches" not in self._index:
+                self._index["batches"] = {}
+            if "job_count" not in self._index:
+                self._index["job_count"] = 0
+            if "last_sync" not in self._index:
+                self._index["last_sync"] = None
+            if "last_batch" not in self._index:
+                self._index["last_batch"] = None
+                
             return self._index
         except Exception as e:
             logger.error(f"Error loading Adzuna index: {str(e)}")
@@ -252,9 +263,13 @@ class AdzunaStorage:
                     job_date = job.posted_date  # Already a datetime or other type
                     
                 try:
+                    # Ensure both are strings for comparison
+                    job_date_str = job_date if isinstance(job_date, str) else str(job_date)
+                    cutoff_date_str = cutoff_date if isinstance(cutoff_date, str) else str(cutoff_date)
+                    
                     # Compare dates as strings (ISO format allows string comparison)
                     # This works because ISO format dates sort correctly as strings
-                    if job_date >= cutoff_date:
+                    if job_date_str >= cutoff_date_str:
                         recent_jobs.append(job)
                 except Exception as e:
                     logger.error(f"Error comparing dates: {str(e)}")

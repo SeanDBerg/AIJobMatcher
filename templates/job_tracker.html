@@ -376,7 +376,7 @@
                                         {% endif %}
                                     </p>
                                     <p class="mb-2">Enabled: 
-                                        {% if scheduler_status.config.enabled %}
+                                        {% if scheduler_status.get('config', {}).get('enabled', False) %}
                                             <span class="badge bg-success">Yes</span>
                                         {% else %}
                                             <span class="badge bg-danger">No</span>
@@ -384,8 +384,8 @@
                                     </p>
                                 </div>
                                 <div class="col-md-6">
-                                    <p class="mb-2">Sync Time: <strong>{{ scheduler_status.config.daily_sync_time|default('02:00') }}</strong></p>
-                                    <p class="mb-2">Next Run: <strong>{{ scheduler_status.next_run|default('Not scheduled') }}</strong></p>
+                                    <p class="mb-2">Sync Time: <strong>{{ scheduler_status.get('config', {}).get('daily_sync_time', '02:00') }}</strong></p>
+                                    <p class="mb-2">Next Run: <strong>{{ scheduler_status.get('next_run', 'Not scheduled') }}</strong></p>
                                 </div>
                             </div>
                         </div>
