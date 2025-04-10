@@ -140,29 +140,66 @@
         <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                 <h6 class="m-0 font-weight-bold">Job Listings</h6>
-                <div class="dropdown no-arrow">
-                    <button class="btn btn-primary dropdown-toggle" type="button" id="jobActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-ellipsis-v fa-sm fa-fw"></i> Actions
+                <div class="btn-group">
+                    <button type="button" class="btn btn-success" id="startSyncBtn" onclick="startJobSync()">
+                        <i class="fas fa-sync-alt me-1"></i> Sync Jobs
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="jobActionsDropdown">
-                        <li><a class="dropdown-item" href="#" onclick="syncJobsNow()">
-                            <i class="fas fa-sync fa-sm fa-fw me-2 text-gray-400"></i>
-                            Sync Jobs Now
-                        </a></li>
-                        <li><a class="dropdown-item" href="#" onclick="exportJobs()">
-                            <i class="fas fa-download fa-sm fa-fw me-2 text-gray-400"></i>
-                            Export Jobs
-                        </a></li>
-                        <li><a class="dropdown-item" href="#" onclick="importToMainStorage()">
-                            <i class="fas fa-database fa-sm fa-fw me-2 text-gray-400"></i>
-                            Import to Main Storage
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" onclick="cleanupOldJobs()">
-                            <i class="fas fa-trash fa-sm fa-fw me-2 text-gray-400"></i>
-                            Clean Up Old Jobs
-                        </a></li>
-                    </ul>
+                    <button type="button" class="btn btn-warning" id="pauseSyncBtn" onclick="pauseJobSync()" style="display:none;">
+                        <i class="fas fa-pause me-1"></i> Pause
+                    </button>
+                    <button type="button" class="btn btn-info" id="resumeSyncBtn" onclick="resumeJobSync()" style="display:none;">
+                        <i class="fas fa-play me-1"></i> Resume
+                    </button>
+                    <button type="button" class="btn btn-danger" id="stopSyncBtn" onclick="stopJobSync()" style="display:none;">
+                        <i class="fas fa-stop me-1"></i> Stop
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-primary dropdown-toggle" type="button" id="jobActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-ellipsis-v fa-sm fa-fw"></i> Actions
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="jobActionsDropdown">
+                            <li><a class="dropdown-item" href="#" onclick="exportJobs()">
+                                <i class="fas fa-download fa-sm fa-fw me-2 text-gray-400"></i>
+                                Export Jobs
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="importToMainStorage()">
+                                <i class="fas fa-database fa-sm fa-fw me-2 text-gray-400"></i>
+                                Import to Main Storage
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="cleanupOldJobs()">
+                                <i class="fas fa-trash fa-sm fa-fw me-2 text-gray-400"></i>
+                                Clean Up Old Jobs
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sync Progress Bar (initially hidden) -->
+            <div id="syncProgressContainer" class="card-body pb-0" style="display:none;">
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0" id="syncStatusText">Syncing jobs...</h6>
+                        <span class="text-muted" id="syncProgressPercent">0%</span>
+                    </div>
+                    <div class="progress">
+                        <div id="syncProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="row text-center mb-2 small">
+                    <div class="col">
+                        <span class="text-muted">Current Page: </span>
+                        <span id="currentPageValue">0</span>/<span id="totalPagesValue">0</span>
+                    </div>
+                    <div class="col">
+                        <span class="text-muted">Jobs Found: </span>
+                        <span id="jobsFoundValue">0</span>
+                    </div>
+                    <div class="col">
+                        <span class="text-muted">Estimated Completion: </span>
+                        <span id="estimatedTimeValue">Calculating...</span>
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -349,7 +386,7 @@
                             <input type="number" class="form-control" id="maxPages" placeholder="Leave empty for all pages">
                         </div>
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="bulkSync()">
+                    <button type="button" class="btn btn-primary" onclick="startJobSync()">
                         <i class="fas fa-sync me-1"></i> Sync Jobs
                     </button>
                 </form>
@@ -488,50 +525,278 @@
             $('#jobApplyLink').attr('href', job.url);
         }
         
-        // Sync jobs now
-        function syncJobsNow() {
-            $('#syncStatus').show();
-            $('#syncStatusText').text('Syncing jobs... This may take a few minutes.');
+        // Global variables for sync tracking
+        let syncProgressInterval;
+        let syncStartTime;
+        
+        // Start a new job sync
+        function startJobSync() {
+            // Get sync parameters from the form
+            const keywords = $('#keywords').val();
+            const location = $('#location').val();
+            const country = $('#country').val();
+            const maxPages = $('#maxPages').val() ? parseInt($('#maxPages').val()) : null;
+            const maxDaysOld = 30; // Default to 30 days
             
+            // Show progress UI
+            $('#syncProgressContainer').show();
+            $('#startSyncBtn').hide();
+            $('#pauseSyncBtn').show();
+            $('#stopSyncBtn').show();
+            $('#syncProgressBar').css('width', '0%');
+            $('#syncProgressPercent').text('0%');
+            $('#currentPageValue').text('0');
+            $('#totalPagesValue').text('...');
+            $('#jobsFoundValue').text('0');
+            $('#estimatedTimeValue').text('Calculating...');
+            $('#syncStatusText').text('Initializing job sync...');
+            
+            // Record start time
+            syncStartTime = new Date();
+            
+            // Start the sync
             $.ajax({
                 url: '/api/adzuna/bulk-sync',
                 method: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({}),
-                timeout: 300000, // 5-minute timeout for large syncs
+                data: JSON.stringify({
+                    keywords: keywords,
+                    location: location,
+                    country: country,
+                    max_pages: maxPages,
+                    max_days_old: maxDaysOld
+                }),
+                timeout: 10000, // Short timeout - we're just initiating the sync
                 success: function(response) {
-                    $('#syncStatus').removeClass('alert-info').addClass('alert-success');
-                    $('#syncStatusText').html(`<i class="fas fa-check-circle"></i> Sync completed: ${response.message}`);
+                    // Start polling for progress
+                    startSyncProgressPolling();
+                },
+                error: function(xhr, status, error) {
+                    showSyncError(xhr, status, error);
+                    resetSyncUI();
+                }
+            });
+        }
+        
+        // Pause the current job sync
+        function pauseJobSync() {
+            $.ajax({
+                url: '/api/adzuna/sync_control',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    action: 'pause'
+                }),
+                success: function(response) {
+                    // Update UI
+                    $('#pauseSyncBtn').hide();
+                    $('#resumeSyncBtn').show();
+                    $('#syncStatusText').text('Sync paused. Click Resume to continue.');
+                    $('#syncProgressBar').removeClass('progress-bar-animated');
+                },
+                error: function(xhr, status, error) {
+                    showSyncError(xhr, status, error);
+                }
+            });
+        }
+        
+        // Resume a paused job sync
+        function resumeJobSync() {
+            $.ajax({
+                url: '/api/adzuna/sync_control',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    action: 'resume'
+                }),
+                success: function(response) {
+                    // Update UI
+                    $('#resumeSyncBtn').hide();
+                    $('#pauseSyncBtn').show();
+                    $('#syncStatusText').text('Sync resumed...');
+                    $('#syncProgressBar').addClass('progress-bar-animated');
+                },
+                error: function(xhr, status, error) {
+                    showSyncError(xhr, status, error);
+                }
+            });
+        }
+        
+        // Stop the current job sync
+        function stopJobSync() {
+            $.ajax({
+                url: '/api/adzuna/sync_control',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    action: 'stop'
+                }),
+                success: function(response) {
+                    // Clear the progress polling interval
+                    if (syncProgressInterval) {
+                        clearInterval(syncProgressInterval);
+                    }
+                    
+                    // Show success message
+                    $('#syncStatus').show().removeClass('alert-info alert-danger').addClass('alert-warning');
+                    $('#syncStatusText').html(`<i class="fas fa-exclamation-triangle"></i> Sync stopped by user.`);
+                    
+                    // Reset UI
+                    resetSyncUI();
+                    
+                    // Reload after a delay to show the latest data
                     setTimeout(function() {
                         location.reload();
                     }, 2000);
                 },
                 error: function(xhr, status, error) {
-                    $('#syncStatus').removeClass('alert-info').addClass('alert-danger');
-                    let errorMsg = 'Unknown error';
-                    
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMsg = xhr.responseJSON.error;
-                    } else if (xhr.status === 0) {
-                        errorMsg = 'Network error. Request was not completed.';
-                    } else if (xhr.status === 408 || status === 'timeout') {
-                        errorMsg = 'Request timed out. This may happen during large synchronizations. Check the job tracker later.';
-                    } else if (xhr.status === 500) {
-                        errorMsg = 'Server error occurred. The job data may still have been partially synchronized.';
-                    } else if (error) {
-                        errorMsg = error;
-                    }
-                    
-                    console.log('Sync error details:', {xhr: xhr, status: status, error: error});
-                    
-                    $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${errorMsg}`);
-                    
-                    // Refresh page after a delay to check if jobs were still synced
-                    setTimeout(function() {
-                        location.reload();
-                    }, 3000);
+                    showSyncError(xhr, status, error);
+                    resetSyncUI();
                 }
             });
+        }
+        
+        // Start polling for sync progress
+        function startSyncProgressPolling() {
+            // Clear any existing interval
+            if (syncProgressInterval) {
+                clearInterval(syncProgressInterval);
+            }
+            
+            // Set up polling every 2 seconds
+            syncProgressInterval = setInterval(function() {
+                updateSyncProgress();
+            }, 2000);
+            
+            // Initial update
+            updateSyncProgress();
+        }
+        
+        // Update the sync progress UI
+        function updateSyncProgress() {
+            $.ajax({
+                url: '/api/adzuna/sync_status',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success && response.status) {
+                        const status = response.status;
+                        
+                        // Update progress bar
+                        const progressPercent = status.progress_percent || 0;
+                        $('#syncProgressBar').css('width', `${progressPercent}%`);
+                        $('#syncProgressPercent').text(`${progressPercent}%`);
+                        
+                        // Update status text
+                        $('#syncStatusText').text(status.status_message || 'Syncing jobs...');
+                        
+                        // Update counts
+                        $('#currentPageValue').text(status.current_page || 0);
+                        $('#totalPagesValue').text(status.total_pages || '...');
+                        $('#jobsFoundValue').text(status.jobs_found || 0);
+                        
+                        // Update estimated time
+                        if (status.estimated_completion) {
+                            $('#estimatedTimeValue').text(status.estimated_completion);
+                        } else if (syncStartTime) {
+                            // Calculate estimated time based on progress
+                            const elapsedTime = (new Date() - syncStartTime) / 1000; // seconds
+                            if (progressPercent > 0) {
+                                const totalEstimatedTime = (elapsedTime / progressPercent) * 100;
+                                const remainingTime = totalEstimatedTime - elapsedTime;
+                                
+                                if (remainingTime > 60) {
+                                    const mins = Math.floor(remainingTime / 60);
+                                    const secs = Math.floor(remainingTime % 60);
+                                    $('#estimatedTimeValue').text(`~${mins}m ${secs}s remaining`);
+                                } else {
+                                    $('#estimatedTimeValue').text(`~${Math.floor(remainingTime)}s remaining`);
+                                }
+                            }
+                        }
+                        
+                        // Check if sync is complete
+                        if (status.state === 'completed') {
+                            syncCompleted(status);
+                        } else if (status.state === 'error') {
+                            $('#syncStatus').show().removeClass('alert-info alert-success').addClass('alert-danger');
+                            $('#syncStatusText').html(`<i class="fas fa-exclamation-circle"></i> Error: ${status.error || 'Unknown error'}`);
+                            resetSyncUI();
+                            clearInterval(syncProgressInterval);
+                        } else if (status.state === 'paused') {
+                            // Ensure UI shows paused state
+                            $('#pauseSyncBtn').hide();
+                            $('#resumeSyncBtn').show();
+                            $('#syncProgressBar').removeClass('progress-bar-animated');
+                        } else if (status.state === 'running') {
+                            // Ensure UI shows running state
+                            $('#resumeSyncBtn').hide();
+                            $('#pauseSyncBtn').show();
+                            $('#syncProgressBar').addClass('progress-bar-animated');
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching sync status:', error);
+                }
+            });
+        }
+        
+        // Handle sync completion
+        function syncCompleted(status) {
+            // Clear the progress polling interval
+            if (syncProgressInterval) {
+                clearInterval(syncProgressInterval);
+            }
+            
+            // Show success message
+            $('#syncStatus').show().removeClass('alert-info alert-danger').addClass('alert-success');
+            $('#syncStatusText').html(`<i class="fas fa-check-circle"></i> Sync completed: ${status.jobs_found || 0} jobs found.`);
+            
+            // Reset UI
+            resetSyncUI();
+            
+            // Reload after a delay to show the new data
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        }
+        
+        // Reset the sync UI
+        function resetSyncUI() {
+            $('#syncProgressContainer').hide();
+            $('#startSyncBtn').show();
+            $('#pauseSyncBtn').hide();
+            $('#resumeSyncBtn').hide();
+            $('#stopSyncBtn').hide();
+        }
+        
+        // Display sync error
+        function showSyncError(xhr, status, error) {
+            $('#syncStatus').show().removeClass('alert-info alert-success').addClass('alert-danger');
+            let errorMsg = 'Unknown error';
+            
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            } else if (status === 'timeout') {
+                errorMsg = 'Request timed out. The sync may still be running in the background.';
+            } else if (xhr.status === 0) {
+                errorMsg = 'Network error. Request was not completed.';
+            } else if (xhr.status === 408 || status === 'timeout') {
+                errorMsg = 'Request timed out. This may happen during large synchronizations. Check the job tracker later.';
+            } else if (xhr.status === 500) {
+                errorMsg = 'Server error occurred. The job data may still have been partially synchronized.';
+            } else if (error) {
+                errorMsg = error;
+            }
+            
+            console.log('Sync error details:', {xhr: xhr, status: status, error: error});
+            
+            $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${errorMsg}`);
+        }
+        
+        // Legacy sync function for backward compatibility
+        function syncJobsNow() {
+            startJobSync();
         }
         
         // Bulk sync with parameters
