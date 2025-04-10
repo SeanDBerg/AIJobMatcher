@@ -308,107 +308,51 @@
                 </div>
             </div>
         </div>
-        
-        <div class="row">
-            <div class="col-lg-6">
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold">Adzuna Storage Status</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <h5>Storage Information</h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p class="mb-2">Total Jobs: <strong>{{ storage_status.total_jobs|default('0') }}</strong></p>
-                                    <p class="mb-2">Batch Count: <strong>{{ storage_status.batch_count|default('0') }}</strong></p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p class="mb-2">Last Sync: <strong>{{ storage_status.last_sync|default('Never') }}</strong></p>
-                                    <p class="mb-2">Last Batch: <strong>{{ storage_status.last_batch|default('None') }}</strong></p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <h5>Manual Sync</h5>
-                            <form id="bulkSyncForm" class="mb-3">
-                                <div class="row g-3 align-items-center">
-                                    <div class="col-auto">
-                                        <input type="text" class="form-control" id="keywords" name="keywords" placeholder="Keywords (e.g., Python Developer)">
-                                    </div>
-                                    <div class="col-auto">
-                                        <input type="text" class="form-control" id="location" name="location" placeholder="Location (e.g., London)">
-                                    </div>
-                                    <div class="col-auto">
-                                        <button type="button" class="btn btn-primary" onclick="bulkSync()">
-                                            <i class="fas fa-sync me-1"></i> Sync Jobs
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                            <div id="syncStatus" style="display: none;" class="alert alert-info">
-                                <div class="d-flex align-items-center">
-                                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                    <span id="syncStatusText">Syncing jobs...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
+        <!-- Sync Status Alert -->
+        <div class="alert alert-info alert-dismissible fade show mb-4" id="syncStatus" style="display: none;" role="alert">
+            <span id="syncStatusText">Syncing jobs...</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- Sync Jobs Form -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold">Bulk Sync Jobs</h6>
             </div>
-            
-            <div class="col-lg-6">
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold">Scheduler Status</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <h5>Scheduler Information</h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p class="mb-2">Status: 
-                                        {% if scheduler_status.is_running %}
-                                            <span class="badge bg-success">Running</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Stopped</span>
-                                        {% endif %}
-                                    </p>
-                                    <p class="mb-2">Enabled: 
-                                        {% if scheduler_status.get('config', {}).get('enabled', False) %}
-                                            <span class="badge bg-success">Yes</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">No</span>
-                                        {% endif %}
-                                    </p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p class="mb-2">Sync Time: <strong>{{ scheduler_status.get('config', {}).get('daily_sync_time', '02:00') }}</strong></p>
-                                    <p class="mb-2">Next Run: <strong>{{ scheduler_status.get('next_run', 'Not scheduled') }}</strong></p>
-                                </div>
-                            </div>
+            <div class="card-body">
+                <form id="bulkSyncForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="keywords" class="form-label">Keywords (optional)</label>
+                            <input type="text" class="form-control" id="keywords" placeholder="e.g., python developer">
                         </div>
-                        
-                        <div class="mb-4">
-                            <h5>Scheduler Control</h5>
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-success" onclick="startScheduler()">
-                                    <i class="fas fa-play me-1"></i> Start
-                                </button>
-                                <button type="button" class="btn btn-danger" onclick="stopScheduler()">
-                                    <i class="fas fa-stop me-1"></i> Stop
-                                </button>
-                                <button type="button" class="btn btn-warning" onclick="restartScheduler()">
-                                    <i class="fas fa-redo me-1"></i> Restart
-                                </button>
-                            </div>
-                            <p class="text-muted mt-2 small">
-                                <i class="fas fa-info-circle me-1"></i> Configure scheduler settings in the <a href="{{ url_for('settings') }}">Settings</a> page.
-                            </p>
+                        <div class="col-md-6">
+                            <label for="location" class="form-label">Location (optional)</label>
+                            <input type="text" class="form-control" id="location" placeholder="e.g., London">
                         </div>
                     </div>
-                </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="country" class="form-label">Country</label>
+                            <select class="form-select" id="country">
+                                <option value="gb" selected>United Kingdom</option>
+                                <option value="us">United States</option>
+                                <option value="ca">Canada</option>
+                                <option value="au">Australia</option>
+                                <option value="de">Germany</option>
+                                <option value="fr">France</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="maxPages" class="form-label">Max Pages (optional)</label>
+                            <input type="number" class="form-control" id="maxPages" placeholder="Leave empty for all pages">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="bulkSync()">
+                        <i class="fas fa-sync me-1"></i> Sync Jobs
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -422,15 +366,13 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="jobDetails">
-                        <!-- Job details will be loaded here -->
-                    </div>
+                    <div id="jobDetails"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <a id="jobApplyLink" href="#" target="_blank" class="btn btn-primary">
-                        <i class="fas fa-external-link-alt me-1"></i> Apply
+                    <a href="#" id="jobApplyLink" target="_blank" class="btn btn-success">
+                        <i class="fas fa-external-link-alt me-1"></i> View Job
                     </a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -449,113 +391,97 @@
     <!-- DataTables -->
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
-    
-    <!-- Custom JavaScript -->
+
     <script>
-        // Initialize DataTables
         $(document).ready(function() {
-            // Initialize DataTables with error handling
+            // Initialize DataTables
             try {
-                // Check if tables have data before initializing DataTables
-                if ($('#jobsTable tbody tr').length > 0 && $('#jobsTable tbody tr:first td').length > 1) {
+                if ($.fn.DataTable.isDataTable('#jobsTable')) {
+                    $('#jobsTable').DataTable().destroy();
+                }
+                
+                if ($('#jobsTable tbody tr').length > 1) {
                     $('#jobsTable').DataTable({
-                        "paging": true,
-                        "ordering": true,
-                        "info": true
+                        pageLength: 10,
+                        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                        order: [[4, 'desc']] // Sort by date posted column
                     });
                 }
                 
-                if ($('#recentJobsTable tbody tr').length > 0 && $('#recentJobsTable tbody tr:first td').length > 1) {
+                if ($.fn.DataTable.isDataTable('#recentJobsTable')) {
+                    $('#recentJobsTable').DataTable().destroy();
+                }
+                
+                if ($('#recentJobsTable tbody tr').length > 1) {
                     $('#recentJobsTable').DataTable({
-                        "paging": true,
-                        "ordering": true,
-                        "info": true
+                        pageLength: 10,
+                        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                        order: [[4, 'desc']] // Sort by date posted column
                     });
                 }
                 
-                if ($('#remoteJobsTable tbody tr').length > 0 && $('#remoteJobsTable tbody tr:first td').length > 1) {
+                if ($.fn.DataTable.isDataTable('#remoteJobsTable')) {
+                    $('#remoteJobsTable').DataTable().destroy();
+                }
+                
+                if ($('#remoteJobsTable tbody tr').length > 1) {
                     $('#remoteJobsTable').DataTable({
-                        "paging": true,
-                        "ordering": true,
-                        "info": true
+                        pageLength: 10,
+                        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                        order: [[3, 'desc']] // Sort by date posted column
                     });
                 }
             } catch (e) {
-                console.log("DataTables initialization error:", e);
+                console.error("Error initializing DataTables:", e);
             }
             
-            // Job details view
-            $('.view-job').on('click', function() {
+            // Job details modal
+            $('.view-job').click(function() {
                 const jobId = $(this).data('job-id');
-                loadJobDetails(jobId);
+                showJobDetails(jobId);
             });
         });
         
-        // Load job details into modal
-        function loadJobDetails(jobId) {
-            // In a real implementation, this would fetch the job details via AJAX
-            // For now, we'll use placeholder data
-            $('#jobDetailsModal').modal('show');
+        // Show job details in modal
+        function showJobDetails(jobId) {
+            // Get the job from the correct table
+            let job;
+            let activeTab = $('.nav-tabs .active').attr('id');
             
-            // This would be replaced with actual data from an API call
-            const placeholderHtml = `
-                <div class="job-detail-header">
-                    <h3 id="jobTitle">Loading job details...</h3>
-                    <p id="jobCompany" class="text-muted">Please wait...</p>
-                </div>
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            `;
+            if (activeTab === 'all-jobs-tab') {
+                job = {{ jobs|tojson }};
+            } else if (activeTab === 'recent-tab') {
+                job = {{ recent_jobs_list|tojson }};
+            } else if (activeTab === 'remote-tab') {
+                job = {{ remote_jobs_list|tojson }};
+            }
             
-            $('#jobDetails').html(placeholderHtml);
+            if (!job || !job[jobId]) {
+                $('#jobDetails').html('<div class="alert alert-danger">Job details not found.</div>');
+                return;
+            }
             
-            // Simulate AJAX call
-            setTimeout(function() {
-                $.ajax({
-                    url: '/api/jobs/' + jobId,
-                    method: 'GET',
-                    success: function(response) {
-                        // Update modal with job details
-                        displayJobDetails(response.job);
-                    },
-                    error: function() {
-                        $('#jobDetails').html('<div class="alert alert-danger">Error loading job details</div>');
-                    }
-                });
-            }, 500);
-        }
-        
-        // Display job details in modal
-        function displayJobDetails(job) {
-            // This function would populate the modal with actual job data
-            // Placeholder implementation
+            job = job[jobId];
+            
             const detailsHtml = `
-                <div class="job-detail-header mb-4">
+                <div class="mb-4">
                     <h3>${job.title}</h3>
-                    <p class="text-muted mb-0">${job.company} - ${job.location}</p>
-                    <p>
-                        ${job.is_remote ? '<span class="badge bg-success me-2">Remote</span>' : ''}
-                        <span class="badge bg-info me-2">Posted: ${job.posted_date}</span>
-                        ${job.salary_range ? '<span class="badge bg-secondary">' + job.salary_range + '</span>' : ''}
-                    </p>
+                    <p class="text-muted">${job.company} • ${job.location} • ${job.is_remote ? '<span class="badge bg-success">Remote</span>' : ''}</p>
+                    ${job.salary_range ? `<p class="badge bg-info">${job.salary_range}</p>` : ''}
+                    <p class="text-muted">Posted: ${job.posted_date}</p>
                 </div>
                 
-                <div class="job-description mb-4">
-                    <h5>Description</h5>
-                    <div class="card">
-                        <div class="card-body">
-                            ${job.description}
-                        </div>
-                    </div>
+                <h4>Job Description</h4>
+                <div class="mb-4 job-description">
+                    ${job.description || 'No description available.'}
                 </div>
                 
-                <div class="job-skills mb-4">
-                    <h5>Skills</h5>
-                    <div>
-                        ${job.skills.map(skill => `<span class="badge bg-primary me-2 mb-2">${skill}</span>`).join('')}
-                    </div>
+                ${job.skills && job.skills.length > 0 ? `
+                <h4>Skills</h4>
+                <div class="mb-4">
+                    ${job.skills.map(skill => `<span class="badge bg-secondary me-1">${skill}</span>`).join('')}
                 </div>
+                ` : ''}
             `;
             
             $('#jobDetails').html(detailsHtml);
@@ -572,6 +498,7 @@
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({}),
+                timeout: 300000, // 5-minute timeout for large syncs
                 success: function(response) {
                     $('#syncStatus').removeClass('alert-info').addClass('alert-success');
                     $('#syncStatusText').html(`<i class="fas fa-check-circle"></i> Sync completed: ${response.message}`);
@@ -579,9 +506,30 @@
                         location.reload();
                     }, 2000);
                 },
-                error: function(xhr) {
+                error: function(xhr, status, error) {
                     $('#syncStatus').removeClass('alert-info').addClass('alert-danger');
-                    $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${xhr.responseJSON?.error || 'Unknown error'}`);
+                    let errorMsg = 'Unknown error';
+                    
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    } else if (xhr.status === 0) {
+                        errorMsg = 'Network error. Request was not completed.';
+                    } else if (xhr.status === 408 || status === 'timeout') {
+                        errorMsg = 'Request timed out. This may happen during large synchronizations. Check the job tracker later.';
+                    } else if (xhr.status === 500) {
+                        errorMsg = 'Server error occurred. The job data may still have been partially synchronized.';
+                    } else if (error) {
+                        errorMsg = error;
+                    }
+                    
+                    console.log('Sync error details:', {xhr: xhr, status: status, error: error});
+                    
+                    $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${errorMsg}`);
+                    
+                    // Refresh page after a delay to check if jobs were still synced
+                    setTimeout(function() {
+                        location.reload();
+                    }, 3000);
                 }
             });
         }
@@ -590,6 +538,8 @@
         function bulkSync() {
             const keywords = $('#keywords').val();
             const location = $('#location').val();
+            const country = $('#country').val();
+            const maxPages = $('#maxPages').val() ? parseInt($('#maxPages').val()) : null;
             
             $('#syncStatus').show();
             $('#syncStatusText').text('Syncing jobs... This may take a few minutes.');
@@ -600,8 +550,11 @@
                 contentType: 'application/json',
                 data: JSON.stringify({
                     keywords: keywords,
-                    location: location
+                    location: location,
+                    country: country,
+                    max_pages: maxPages
                 }),
+                timeout: 300000, // 5-minute timeout for large syncs
                 success: function(response) {
                     $('#syncStatus').removeClass('alert-info').addClass('alert-success');
                     $('#syncStatusText').html(`<i class="fas fa-check-circle"></i> Sync completed: ${response.message}`);
@@ -609,9 +562,30 @@
                         location.reload();
                     }, 2000);
                 },
-                error: function(xhr) {
+                error: function(xhr, status, error) {
                     $('#syncStatus').removeClass('alert-info').addClass('alert-danger');
-                    $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${xhr.responseJSON?.error || 'Unknown error'}`);
+                    let errorMsg = 'Unknown error';
+                    
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    } else if (xhr.status === 0) {
+                        errorMsg = 'Network error. Request was not completed.';
+                    } else if (xhr.status === 408 || status === 'timeout') {
+                        errorMsg = 'Request timed out. This may happen during large synchronizations. Check the job tracker later.';
+                    } else if (xhr.status === 500) {
+                        errorMsg = 'Server error occurred. The job data may still have been partially synchronized.';
+                    } else if (error) {
+                        errorMsg = error;
+                    }
+                    
+                    console.log('Sync error details:', {xhr: xhr, status: status, error: error});
+                    
+                    $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${errorMsg}`);
+                    
+                    // Refresh page after a delay to check if jobs were still synced
+                    setTimeout(function() {
+                        location.reload();
+                    }, 3000);
                 }
             });
         }
@@ -632,8 +606,18 @@
                     success: function(response) {
                         alert(`Successfully imported ${response.imported_count} jobs`);
                     },
-                    error: function(xhr) {
-                        alert(`Error: ${xhr.responseJSON?.error || 'Unknown error'}`);
+                    error: function(xhr, status, error) {
+                        let errorMsg = 'Unknown error';
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        } else if (xhr.status === 0) {
+                            errorMsg = 'Network error. Request was not completed.';
+                        } else if (error) {
+                            errorMsg = error;
+                        }
+                        
+                        alert(`Error: ${errorMsg}`);
                     }
                 });
             }
@@ -651,8 +635,18 @@
                         alert(`Successfully removed ${response.removed_count} old jobs`);
                         location.reload();
                     },
-                    error: function(xhr) {
-                        alert(`Error: ${xhr.responseJSON?.error || 'Unknown error'}`);
+                    error: function(xhr, status, error) {
+                        let errorMsg = 'Unknown error';
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        } else if (xhr.status === 0) {
+                            errorMsg = 'Network error. Request was not completed.';
+                        } else if (error) {
+                            errorMsg = error;
+                        }
+                        
+                        alert(`Error: ${errorMsg}`);
                     }
                 });
             }
@@ -669,8 +663,18 @@
                     alert('Scheduler started successfully');
                     location.reload();
                 },
-                error: function(xhr) {
-                    alert(`Error: ${xhr.responseJSON?.error || 'Unknown error'}`);
+                error: function(xhr, status, error) {
+                    let errorMsg = 'Unknown error';
+                    
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    } else if (xhr.status === 0) {
+                        errorMsg = 'Network error. Request was not completed.';
+                    } else if (error) {
+                        errorMsg = error;
+                    }
+                    
+                    alert(`Error: ${errorMsg}`);
                 }
             });
         }
@@ -685,8 +689,18 @@
                     alert('Scheduler stopped successfully');
                     location.reload();
                 },
-                error: function(xhr) {
-                    alert(`Error: ${xhr.responseJSON?.error || 'Unknown error'}`);
+                error: function(xhr, status, error) {
+                    let errorMsg = 'Unknown error';
+                    
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    } else if (xhr.status === 0) {
+                        errorMsg = 'Network error. Request was not completed.';
+                    } else if (error) {
+                        errorMsg = error;
+                    }
+                    
+                    alert(`Error: ${errorMsg}`);
                 }
             });
         }
@@ -701,8 +715,18 @@
                     alert('Scheduler restarted successfully');
                     location.reload();
                 },
-                error: function(xhr) {
-                    alert(`Error: ${xhr.responseJSON?.error || 'Unknown error'}`);
+                error: function(xhr, status, error) {
+                    let errorMsg = 'Unknown error';
+                    
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    } else if (xhr.status === 0) {
+                        errorMsg = 'Network error. Request was not completed.';
+                    } else if (error) {
+                        errorMsg = error;
+                    }
+                    
+                    alert(`Error: ${errorMsg}`);
                 }
             });
         }

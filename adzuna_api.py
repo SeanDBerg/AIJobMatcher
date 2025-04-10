@@ -98,20 +98,28 @@ def search_jobs(
         if permanent is not None:
             params["permanent"] = 1 if permanent else 0
         
-        # Make API request
-        response = requests.get(url, params=params)
-        
-        # Check for API errors
-        if response.status_code != 200:
-            error_message = f"API request failed with status code {response.status_code}"
-            try:
-                error_data = response.json()
-                if "error" in error_data:
-                    error_message = f"API error: {error_data['error']}"
-            except:
-                pass
+        # Make API request with timeout
+        try:
+            response = requests.get(url, params=params, timeout=30)  # 30 second timeout
             
-            raise AdzunaAPIError(error_message)
+            # Check for API errors
+            if response.status_code != 200:
+                error_message = f"API request failed with status code {response.status_code}"
+                try:
+                    error_data = response.json()
+                    if "error" in error_data:
+                        error_message = f"API error: {error_data['error']}"
+                except:
+                    pass
+                
+                raise AdzunaAPIError(error_message)
+                
+        except requests.exceptions.Timeout:
+            raise AdzunaAPIError("API request timed out. This might be due to heavy traffic or a large result set.")
+        except requests.exceptions.ConnectionError:
+            raise AdzunaAPIError("Failed to connect to the Adzuna API. Please check your network connection and try again.")
+        except Exception as e:
+            raise AdzunaAPIError(f"Unexpected error during API request: {str(e)}")
         
         # Parse response
         data = response.json()
