@@ -58,6 +58,38 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
 TEMP_FOLDER = tempfile.gettempdir()
 
+# Helper functions for API endpoints
+def _adzuna_api_check():
+    """Check if Adzuna API is available and return error response if not"""
+    if not ADZUNA_SCRAPER_AVAILABLE:
+        return jsonify({
+            "success": False,
+            "error": "Adzuna scraper module is not available"
+        }), 500
+    return None
+
+def _adzuna_scheduler_check():
+    """Check if Adzuna scheduler is available and return error response if not"""
+    if not ADZUNA_SCHEDULER_AVAILABLE:
+        return jsonify({
+            "success": False,
+            "error": "Adzuna scheduler module is not available"
+        }), 500
+    return None
+
+def _handle_api_exception(e, operation_name):
+    """Log exception and return standardized error response"""
+    logger.error(f"Error {operation_name}: {str(e)}")
+    return jsonify({"success": False, "error": str(e)}), 500
+
+def _require_json_request():
+    """Check if request is JSON and return error response if not"""
+    if not request.is_json:
+        return jsonify({"success": False, "error": "Request must be JSON"}), 400
+    return None
+
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -834,11 +866,10 @@ def check_adzuna_status():
 def bulk_sync_adzuna_jobs():
     """API endpoint to perform a bulk job sync from Adzuna with rate limiting"""
     try:
-        if not ADZUNA_SCRAPER_AVAILABLE:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna bulk scraper is not available"
-            }), 500
+        # Check if Adzuna API is available
+        error_response = _adzuna_api_check()
+        if error_response:
+            return error_response
             
         if not request.is_json:
             return jsonify({"success": False, "error": "Request must be JSON"}), 400
@@ -873,18 +904,16 @@ def bulk_sync_adzuna_jobs():
         })
         
     except Exception as e:
-        logger.error(f"Error during Adzuna bulk sync: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _handle_api_exception(e, "during Adzuna bulk sync")
 
 @app.route('/api/adzuna/jobs', methods=['GET'])
 def get_adzuna_jobs_endpoint():
     """API endpoint to get Adzuna jobs from storage"""
     try:
-        if not ADZUNA_SCRAPER_AVAILABLE:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna bulk scraper is not available"
-            }), 500
+        # Check if Adzuna API is available
+        error_response = _adzuna_api_check()
+        if error_response:
+            return error_response
             
         days = request.args.get('days', 30, type=int)
         import_to_main = request.args.get('import_to_main', 'false').lower() == 'true'
@@ -903,21 +932,21 @@ def get_adzuna_jobs_endpoint():
         })
         
     except Exception as e:
-        logger.error(f"Error getting Adzuna jobs: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _handle_api_exception(e, "getting Adzuna jobs")
 
 @app.route('/api/adzuna/cleanup', methods=['POST'])
 def cleanup_adzuna_jobs_endpoint():
     """API endpoint to clean up old Adzuna jobs"""
     try:
-        if not ADZUNA_SCRAPER_AVAILABLE:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna bulk scraper is not available"
-            }), 500
-            
-        if not request.is_json:
-            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+        # Check if Adzuna API is available
+        error_response = _adzuna_api_check()
+        if error_response:
+            return error_response
+        
+        # Check if request is JSON
+        json_error = _require_json_request()
+        if json_error:
+            return json_error
             
         data = request.json
         max_age_days = data.get('max_age_days', 90)
@@ -932,18 +961,16 @@ def cleanup_adzuna_jobs_endpoint():
         })
         
     except Exception as e:
-        logger.error(f"Error cleaning up Adzuna jobs: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _handle_api_exception(e, "cleaning up Adzuna jobs")
 
 @app.route('/api/adzuna/sync_status', methods=['GET'])
 def get_adzuna_sync_status():
     """API endpoint to get the current status of Adzuna sync"""
     try:
-        if not ADZUNA_SCRAPER_AVAILABLE:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna bulk scraper is not available"
-            }), 500
+        # Check if Adzuna API is available
+        error_response = _adzuna_api_check()
+        if error_response:
+            return error_response
             
         # Import here to avoid circular imports
         from adzuna_scraper import get_sync_status
@@ -955,21 +982,21 @@ def get_adzuna_sync_status():
         })
         
     except Exception as e:
-        logger.error(f"Error getting sync status: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _handle_api_exception(e, "getting sync status")
 
 @app.route('/api/adzuna/sync_control', methods=['POST'])
 def control_adzuna_sync():
     """API endpoint to control the Adzuna sync (pause, resume, stop)"""
     try:
-        if not ADZUNA_SCRAPER_AVAILABLE:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna bulk scraper is not available"
-            }), 500
+        # Check if Adzuna API is available
+        error_response = _adzuna_api_check()
+        if error_response:
+            return error_response
             
-        if not request.is_json:
-            return jsonify({"success": False, "error": "Request must be JSON"}), 400
+        # Check if request is JSON
+        json_error = _require_json_request()
+        if json_error:
+            return json_error
             
         data = request.json
         action = data.get('action')
@@ -997,8 +1024,7 @@ def control_adzuna_sync():
         })
         
     except Exception as e:
-        logger.error(f"Error controlling sync: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _handle_api_exception(e, "controlling sync")
 
 @app.route('/api/adzuna/scraper_config', methods=['GET', 'POST'])
 def adzuna_scraper_config():
