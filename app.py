@@ -106,16 +106,17 @@ def delete_resume(resume_id):
 
 @app.route('/job_tracker')
 def job_tracker():
-    # Get query parameters from settings page redirect
-    keywords = request.args.get('keywords', '')
-    location = request.args.get('location', '')
-    country = request.args.get('country', 'gb')
-    max_days_old = request.args.get('max_days_old', '30')
-    remote_only = request.args.get('remote_only', '') == '1'
+    # Get parameters from session (if coming from settings) or from request args
+    keywords = session.get('job_search_keywords', request.args.get('keywords', ''))
+    location = session.get('job_search_location', request.args.get('location', ''))
+    country = session.get('job_search_country', request.args.get('country', 'gb'))
+    max_days_old = session.get('job_search_max_days_old', request.args.get('max_days_old', '30'))
+    remote_only = session.get('job_search_remote_only', request.args.get('remote_only', '')) == '1'
     
     # Debug log to see the actual values
     logger.debug(f"Job tracker parameters: keywords='{keywords}', location='{location}', country='{country}', max_days_old='{max_days_old}', remote_only='{remote_only}'")
-    logger.debug(f"All request args: {dict(request.args)}")
+    logger.debug(f"Session values: {dict([(k,v) for k,v in session.items() if k.startswith('job_search_')])}")
+    logger.debug(f"Request args: {dict(request.args)}")
     
     # Get Adzuna storage and scheduler status
     status = {}
@@ -281,12 +282,14 @@ def save_settings():
         
         # Redirect to job tracker page with sync form pre-filled if "Sync Now" was selected
         if sync_now:
-            return redirect(url_for('job_tracker', 
-                                    keywords=keywords, 
-                                    location=location, 
-                                    country=country,
-                                    max_days_old=max_days_old,
-                                    remote_only='1' if remote_only else ''))
+            # Store search parameters in session for persistence
+            session['job_search_keywords'] = keywords
+            session['job_search_location'] = location
+            session['job_search_country'] = country
+            session['job_search_max_days_old'] = str(max_days_old)
+            session['job_search_remote_only'] = '1' if remote_only else ''
+            
+            return redirect(url_for('job_tracker'))
         else:
             return redirect(url_for('settings'))
         
