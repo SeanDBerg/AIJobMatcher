@@ -343,6 +343,13 @@
     
     <!-- Custom JavaScript -->
     <script>
+        // Submit the sync now form when the button is clicked
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('syncNowBtn').addEventListener('click', function() {
+                document.getElementById('syncNowForm').submit();
+            });
+        });
+        
         // Add a search term
         function addSearchTerm() {
             const inputElem = document.getElementById('new_search_term');
