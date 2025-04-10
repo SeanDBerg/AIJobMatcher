@@ -36,7 +36,7 @@ SYNC_STATUS = {
     "error": None,
 }
 
-# Configurable settings
+# Configurable settings class
 class ScraperConfig:
     rate_limit_calls = DEFAULT_RATE_LIMIT_CALLS
     rate_limit_period = DEFAULT_RATE_LIMIT_PERIOD
@@ -44,6 +44,54 @@ class ScraperConfig:
     
 # Initialize config
 config = ScraperConfig()
+
+# Rate limiter class
+class RateLimiter:
+    """Manages API rate limiting with a sliding window approach"""
+    
+    def __init__(self, max_calls, period_seconds, call_delay):
+        self.max_calls = max_calls
+        self.period_seconds = period_seconds
+        self.call_delay = call_delay
+        self.call_timestamps = []
+    
+    def wait_if_needed(self):
+        """
+        Wait if rate limit would be exceeded
+        
+        Returns:
+            bool: True if we should continue, False if operation was interrupted
+        """
+        current_time = time.time()
+        
+        # Remove timestamps older than our period
+        self.call_timestamps = [ts for ts in self.call_timestamps 
+                              if current_time - ts <= self.period_seconds]
+        
+        # Check if we've reached the rate limit
+        if len(self.call_timestamps) >= self.max_calls:
+            # Calculate time to wait - until oldest timestamp expires from window
+            oldest_timestamp = min(self.call_timestamps)
+            wait_time = oldest_timestamp + self.period_seconds - current_time
+            
+            if wait_time > 0:
+                logger.info(f"Rate limit reached. Waiting {wait_time:.2f} seconds...")
+                # Wait with check for interruption
+                if not _wait_with_check(wait_time):
+                    return False
+        
+        # Add a small delay between calls anyway
+        if self.call_delay > 0:
+            if not _wait_with_check(self.call_delay):
+                return False
+        
+        # Record this call
+        self.call_timestamps.append(time.time())
+        return True
+        
+    def get_call_count(self):
+        """Get the total number of calls tracked"""
+        return len(self.call_timestamps)
 
 def update_scraper_config(new_config):
     """
@@ -176,11 +224,12 @@ def sync_jobs_from_adzuna(
                 "api_calls": 0
             }
         
-        # Prepare rate limiting
-        call_timestamps = []
-        max_calls_per_period = config.rate_limit_calls
-        period_seconds = config.rate_limit_period
-        call_delay = config.call_delay
+        # Initialize rate limiter
+        rate_limiter = RateLimiter(
+            max_calls=config.rate_limit_calls,
+            period_seconds=config.rate_limit_period,
+            call_delay=config.call_delay
+        )
         
         # Tracking variables
         page = 1
@@ -199,14 +248,13 @@ def sync_jobs_from_adzuna(
             if not _should_continue_sync():
                 break
             
-            # Apply rate limiting
-            if not _apply_rate_limiting(call_timestamps, max_calls_per_period, period_seconds, call_delay, api_calls):
+            # Apply rate limiting using our rate limiter class
+            if not rate_limiter.wait_if_needed():
                 break
             
-            # Record this API call
+            # Record API call information
+            api_calls = rate_limiter.get_call_count()
             current_time = time.time()
-            call_timestamps.append(current_time)
-            api_calls += 1
             SYNC_STATUS["last_call_time"] = current_time
             SYNC_STATUS["current_page"] = page
             
@@ -333,44 +381,37 @@ def _should_continue_sync():
     
     return SYNC_RUNNING
 
+# This function is now deprecated and replaced by the RateLimiter class
+# Keeping a stub for backward compatibility
 def _apply_rate_limiting(call_timestamps, max_calls_per_period, period_seconds, call_delay, api_calls):
     """
-    Apply rate limiting to API calls
+    Apply rate limiting to API calls (deprecated, use RateLimiter class instead)
     
     Returns:
         bool: True if operation should continue, False if stopped
     """
-    global SYNC_RUNNING, SYNC_PAUSED, SYNC_STATUS
+    logger.warning("_apply_rate_limiting is deprecated, use RateLimiter class instead")
     
-    current_time = time.time()
+    # Create a temporary rate limiter for backward compatibility
+    rate_limiter = RateLimiter(max_calls_per_period, period_seconds, call_delay)
     
-    # Remove timestamps older than the period
-    call_timestamps[:] = [ts for ts in call_timestamps if current_time - ts < period_seconds]
+    # Add existing timestamps to the rate limiter
+    rate_limiter.call_timestamps = call_timestamps.copy()
     
-    # If we're at the rate limit, wait
-    if len(call_timestamps) >= max_calls_per_period:
-        oldest_timestamp = min(call_timestamps)
-        wait_time = period_seconds - (current_time - oldest_timestamp) + 0.1  # Add a small buffer
-        
-        logger.info(f"Rate limit reached. Waiting {wait_time:.2f} seconds before next API call")
-        SYNC_STATUS["status"] = "waiting for rate limit"
-        
-        if not _wait_with_check(wait_time):
-            return False
-        
-        SYNC_STATUS["status"] = "running"
+    # Update the global status
+    global SYNC_STATUS
+    SYNC_STATUS["status"] = "waiting for rate limit"
     
-    # Add delay between calls if configured
-    if call_delay > 0 and api_calls > 0:
-        logger.info(f"Waiting {call_delay} seconds before next API call (configured delay)")
-        SYNC_STATUS["status"] = "waiting for delay"
-        
-        if not _wait_with_check(call_delay):
-            return False
-        
-        SYNC_STATUS["status"] = "running"
+    # Apply rate limiting
+    result = rate_limiter.wait_if_needed()
     
-    return True
+    # Update the call timestamps with the new values
+    call_timestamps[:] = rate_limiter.call_timestamps.copy()
+    
+    # Update status
+    SYNC_STATUS["status"] = "running"
+    
+    return result
 
 def _wait_with_check(seconds):
     """
