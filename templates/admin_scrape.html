@@ -192,6 +192,12 @@
                                                     Storage Status
                                                 </button>
                                             </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="scheduler-tab" data-bs-toggle="tab" data-bs-target="#scheduler-tab-pane" 
+                                                        type="button" role="tab" aria-controls="scheduler-tab-pane" aria-selected="false">
+                                                    Auto Scheduler
+                                                </button>
+                                            </li>
                                         </ul>
                                         
                                         <div class="tab-content p-3 border border-top-0 rounded-bottom" id="adzunaTabsContent">
@@ -378,6 +384,142 @@
                                                                 <p class="mt-2">Loading storage status...</p>
                                                             </div>
                                                         </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Scheduler Tab -->
+                                            <div class="tab-pane fade" id="scheduler-tab-pane" role="tabpanel" aria-labelledby="scheduler-tab" tabindex="0">
+                                                <h5>Automated Job Sync Scheduler</h5>
+                                                <p>Configure automated daily job synchronization to keep your job database up-to-date.</p>
+                                                
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle"></i> The scheduler automatically syncs jobs daily with <code>max_days_old=1</code> to avoid duplicate entries.
+                                                </div>
+                                                
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="card h-100 mb-4">
+                                                            <div class="card-header">
+                                                                <h6>Scheduler Controls</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div id="scheduler-status" class="mb-3">
+                                                                    <div class="text-center">
+                                                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                                            <span class="visually-hidden">Loading...</span>
+                                                                        </div>
+                                                                        <span class="ms-2">Loading scheduler status...</span>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div class="d-flex gap-2">
+                                                                    <button id="start-scheduler-btn" class="btn btn-success flex-fill">
+                                                                        <i class="fas fa-play"></i> Start
+                                                                    </button>
+                                                                    <button id="stop-scheduler-btn" class="btn btn-danger flex-fill">
+                                                                        <i class="fas fa-stop"></i> Stop
+                                                                    </button>
+                                                                    <button id="restart-scheduler-btn" class="btn btn-warning flex-fill">
+                                                                        <i class="fas fa-sync"></i> Restart
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="col-md-6">
+                                                        <div class="card h-100 mb-4">
+                                                            <div class="card-header">
+                                                                <h6>Scheduler Information</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div id="scheduler-info">
+                                                                    <div class="placeholder-glow">
+                                                                        <span class="placeholder col-12"></span>
+                                                                        <span class="placeholder col-10"></span>
+                                                                        <span class="placeholder col-8"></span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Scheduler Configuration</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <form id="scheduler-config-form">
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <div class="mb-3">
+                                                                        <div class="form-check form-switch">
+                                                                            <input class="form-check-input" type="checkbox" id="scheduler-enabled">
+                                                                            <label class="form-check-label" for="scheduler-enabled">Enable Daily Sync</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div class="mb-3">
+                                                                        <label for="sync-time" class="form-label">Daily Sync Time (24h format)</label>
+                                                                        <input type="time" class="form-control" id="sync-time" value="02:00">
+                                                                        <div class="form-text">Schedule sync at a time when server load is likely to be low.</div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div class="col-md-6">
+                                                                    <div class="mb-3">
+                                                                        <label for="scheduler-keywords" class="form-label">Keywords</label>
+                                                                        <input type="text" class="form-control" id="scheduler-keywords" placeholder="e.g. python developer">
+                                                                    </div>
+                                                                    
+                                                                    <div class="mb-3">
+                                                                        <label for="scheduler-location" class="form-label">Location</label>
+                                                                        <input type="text" class="form-control" id="scheduler-location" placeholder="e.g. london">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <div class="mb-3">
+                                                                        <label for="scheduler-country" class="form-label">Country</label>
+                                                                        <select class="form-select" id="scheduler-country">
+                                                                            <option value="gb" selected>United Kingdom (GB)</option>
+                                                                            <option value="us">United States (US)</option>
+                                                                            <option value="au">Australia (AU)</option>
+                                                                            <option value="ca">Canada (CA)</option>
+                                                                            <option value="de">Germany (DE)</option>
+                                                                            <option value="fr">France (FR)</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div class="col-md-6">
+                                                                    <div class="mb-3">
+                                                                        <div class="form-check form-switch">
+                                                                            <input class="form-check-input" type="checkbox" id="cleanup-enabled" checked>
+                                                                            <label class="form-check-label" for="cleanup-enabled">Clean up old jobs automatically</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div class="mb-3">
+                                                                        <label for="cleanup-age" class="form-label">Remove Jobs Older Than</label>
+                                                                        <div class="input-group">
+                                                                            <input type="number" class="form-control" id="cleanup-age" value="90" min="30">
+                                                                            <span class="input-group-text">days</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div class="text-end">
+                                                                <button type="submit" class="btn btn-primary" id="save-scheduler-config-btn">
+                                                                    <i class="fas fa-save"></i> Save Configuration
+                                                                </button>
+                                                            </div>
+                                                        </form>
                                                     </div>
                                                 </div>
                                             </div>
@@ -990,6 +1132,220 @@
                             <strong>Error:</strong> ${error.message}
                         </div>
                     `;
+                }
+            }
+            
+            // Scheduler Tab
+            const schedulerTab = document.getElementById('scheduler-tab');
+            if (schedulerTab) {
+                schedulerTab.addEventListener('shown.bs.tab', fetchSchedulerStatus);
+            }
+            
+            // Scheduler Control Buttons
+            const startSchedulerBtn = document.getElementById('start-scheduler-btn');
+            const stopSchedulerBtn = document.getElementById('stop-scheduler-btn');
+            const restartSchedulerBtn = document.getElementById('restart-scheduler-btn');
+            
+            if (startSchedulerBtn && stopSchedulerBtn && restartSchedulerBtn) {
+                startSchedulerBtn.addEventListener('click', () => controlScheduler('start'));
+                stopSchedulerBtn.addEventListener('click', () => controlScheduler('stop'));
+                restartSchedulerBtn.addEventListener('click', () => controlScheduler('restart'));
+            }
+            
+            // Scheduler Configuration Form
+            const schedulerConfigForm = document.getElementById('scheduler-config-form');
+            if (schedulerConfigForm) {
+                schedulerConfigForm.addEventListener('submit', saveSchedulerConfig);
+                
+                // Load current config when tab is shown
+                schedulerTab.addEventListener('shown.bs.tab', fetchSchedulerConfig);
+            }
+            
+            // Function to fetch and display scheduler status
+            async function fetchSchedulerStatus() {
+                const statusContainer = document.getElementById('scheduler-status');
+                const infoContainer = document.getElementById('scheduler-info');
+                
+                if (!statusContainer || !infoContainer) return;
+                
+                try {
+                    const response = await fetch('/api/adzuna/scheduler/status');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const status = data.status;
+                        
+                        // Update status badge
+                        let statusBadge = '';
+                        if (status.is_running) {
+                            statusBadge = `<span class="badge bg-success">Active</span>`;
+                        } else if (status.enabled) {
+                            statusBadge = `<span class="badge bg-warning">Enabled but not running</span>`;
+                        } else {
+                            statusBadge = `<span class="badge bg-secondary">Disabled</span>`;
+                        }
+                        
+                        statusContainer.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Scheduler Status:</span>
+                                ${statusBadge}
+                            </div>
+                        `;
+                        
+                        // Build info HTML
+                        let infoHtml = `
+                            <table class="table">
+                                <tr>
+                                    <th>Next Scheduled Run</th>
+                                    <td>${status.next_run_formatted || 'Not scheduled'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Last Run</th>
+                                    <td>${status.last_run_formatted || 'Never'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Daily Sync Time</th>
+                                    <td>${status.daily_sync_time}</td>
+                                </tr>
+                                <tr>
+                                    <th>Job Count</th>
+                                    <td>${status.job_count}</td>
+                                </tr>
+                            </table>
+                        `;
+                        
+                        infoContainer.innerHTML = infoHtml;
+                    } else {
+                        statusContainer.innerHTML = `
+                            <div class="alert alert-danger">
+                                <strong>Error:</strong> ${data.error}
+                            </div>
+                        `;
+                        infoContainer.innerHTML = '';
+                    }
+                } catch (error) {
+                    statusContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Error:</strong> ${error.message}
+                        </div>
+                    `;
+                    infoContainer.innerHTML = '';
+                }
+            }
+            
+            // Function to fetch and populate scheduler config form
+            async function fetchSchedulerConfig() {
+                try {
+                    const response = await fetch('/api/adzuna/scheduler/config');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const config = data.config;
+                        
+                        // Populate form fields
+                        document.getElementById('scheduler-enabled').checked = config.enabled;
+                        document.getElementById('sync-time').value = config.daily_sync_time;
+                        document.getElementById('scheduler-keywords').value = config.keywords || '';
+                        document.getElementById('scheduler-location').value = config.location || '';
+                        document.getElementById('scheduler-country').value = config.country || 'gb';
+                        document.getElementById('cleanup-enabled').checked = config.cleanup_old_jobs;
+                        document.getElementById('cleanup-age').value = config.cleanup_days || 90;
+                    } else {
+                        showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                    }
+                } catch (error) {
+                    showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                }
+            }
+            
+            // Function to save scheduler configuration
+            async function saveSchedulerConfig(e) {
+                e.preventDefault();
+                
+                const saveBtn = document.getElementById('save-scheduler-config-btn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                
+                try {
+                    const config = {
+                        enabled: document.getElementById('scheduler-enabled').checked,
+                        daily_sync_time: document.getElementById('sync-time').value,
+                        keywords: document.getElementById('scheduler-keywords').value.trim(),
+                        location: document.getElementById('scheduler-location').value.trim(),
+                        country: document.getElementById('scheduler-country').value,
+                        cleanup_old_jobs: document.getElementById('cleanup-enabled').checked,
+                        cleanup_days: parseInt(document.getElementById('cleanup-age').value)
+                    };
+                    
+                    const response = await fetch('/api/adzuna/scheduler/config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(config)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showAlert(`<strong>Success!</strong> Scheduler configuration updated`, 'success');
+                        
+                        // Refresh status
+                        fetchSchedulerStatus();
+                    } else {
+                        showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                    }
+                } catch (error) {
+                    showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Configuration';
+                }
+            }
+            
+            // Function to control the scheduler (start/stop/restart)
+            async function controlScheduler(action) {
+                // Get the button for the action
+                let actionBtn;
+                if (action === 'start') {
+                    actionBtn = document.getElementById('start-scheduler-btn');
+                } else if (action === 'stop') {
+                    actionBtn = document.getElementById('stop-scheduler-btn');
+                } else if (action === 'restart') {
+                    actionBtn = document.getElementById('restart-scheduler-btn');
+                }
+                
+                if (!actionBtn) return;
+                
+                // Disable button and show loading state
+                const originalText = actionBtn.innerHTML;
+                actionBtn.disabled = true;
+                actionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Working...';
+                
+                try {
+                    const response = await fetch('/api/adzuna/scheduler/control', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ action })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                        
+                        // Refresh status
+                        fetchSchedulerStatus();
+                    } else {
+                        showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                    }
+                } catch (error) {
+                    showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                } finally {
+                    actionBtn.disabled = false;
+                    actionBtn.innerHTML = originalText;
                 }
             }
         });
