@@ -105,6 +105,68 @@
                     </div>
                 </div>
             </div>
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Resume History</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if stored_resumes %}
+                            <div class="list-group mb-3">
+                                {% for resume in stored_resumes %}
+                                    <a href="{{ url_for('resume_manager', resume_id=resume.id) }}" 
+                                       class="list-group-item list-group-item-action {% if active_resume and active_resume.id == resume.id %}active{% endif %}">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ resume.original_filename }}</h5>
+                                            <small>{{ resume.upload_date.split('T')[0] if 'T' in resume.upload_date else resume.upload_date }}</small>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <a href="{{ url_for('match_resume', resume_id=resume.id) }}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-search me-1"></i> Match Jobs
+                                            </a>
+                                            <form action="{{ url_for('delete_resume', resume_id=resume.id) }}" 
+                                                  method="POST" class="d-inline"
+                                                  onsubmit="return confirm('Are you sure you want to delete this resume?');">
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-trash-alt me-1"></i> Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted">
+                                Your previously uploaded resumes will appear here.
+                            </p>
+                            
+                            <div class="list-group mb-3">
+                                <div class="list-group-item disabled">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">No resumes yet</h5>
+                                    </div>
+                                    <p class="mb-1">Upload a resume to get started</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h3 class="card-title">Tips</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">Ensure your resume is up-to-date</li>
+                            <li class="list-group-item">List your key skills and experience clearly</li>
+                            <li class="list-group-item">Use specific keywords relevant to your field</li>
+                            <li class="list-group-item">Include your education and certifications</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
             {% else %}
             <div class="col-lg-8">
                 <div class="card mb-4">
