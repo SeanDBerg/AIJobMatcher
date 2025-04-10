@@ -113,6 +113,10 @@ def job_tracker():
     max_days_old = request.args.get('max_days_old', '30')
     remote_only = request.args.get('remote_only', '') == '1'
     
+    # Debug log to see the actual values
+    logger.debug(f"Job tracker parameters: keywords='{keywords}', location='{location}', country='{country}', max_days_old='{max_days_old}', remote_only='{remote_only}'")
+    logger.debug(f"All request args: {dict(request.args)}")
+    
     # Get Adzuna storage and scheduler status
     status = {}
     if ADZUNA_SCRAPER_AVAILABLE:
