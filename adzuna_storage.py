@@ -148,7 +148,29 @@ class AdzunaStorage:
             except AdzunaAPIError as e:
                 logger.error(f"Adzuna API error: {str(e)}")
                 return 0
+            
+            # Store jobs from search results
+            return self.store_jobs(jobs, keywords, location, country, max_days_old)
                 
+        except Exception as e:
+            logger.error(f"Error syncing jobs: {str(e)}")
+            return 0
+            
+    def store_jobs(self, jobs, keywords=None, location=None, country="gb", max_days_old=30):
+        """
+        Store job objects in a new batch
+        
+        Args:
+            jobs: List of Job objects
+            keywords: Search keywords used
+            location: Location used
+            country: Country code
+            max_days_old: Maximum age of jobs in days
+            
+        Returns:
+            Number of jobs stored
+        """
+        try:
             # Convert Job objects to dictionaries
             job_dicts = [job.to_dict() for job in jobs]
             
@@ -180,9 +202,8 @@ class AdzunaStorage:
             else:
                 logger.error(f"Failed to save job batch {batch_id}")
                 return 0
-                
         except Exception as e:
-            logger.error(f"Error syncing jobs: {str(e)}")
+            logger.error(f"Error storing jobs: {str(e)}")
             return 0
     
     def get_all_jobs(self) -> List[Job]:
