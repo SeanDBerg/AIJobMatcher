@@ -1,81 +1,106 @@
-import json
-import logging
+"""
+Module for managing Adzuna job data storage in JSON format with batch organization
+"""
 import os
+import json
+import uuid
+import logging
 from datetime import datetime, timedelta
-import time
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional, Any, Union
 
 from models import Job
-from adzuna_api import search_jobs, AdzunaAPIError
 
 logger = logging.getLogger(__name__)
 
-# Path for Adzuna job data
+# Storage paths
 ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), 'static', 'job_data', 'adzuna')
 ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
-
-# Rate limiting
-RATE_LIMIT_CALLS = 20  # API calls per minute
-RATE_LIMIT_PERIOD = 60  # seconds
 
 class AdzunaStorage:
     """Class for managing Adzuna job data storage"""
     
     def __init__(self):
-        # Ensure directory exists
-        os.makedirs(ADZUNA_DATA_DIR, exist_ok=True)
-        
-        # Initialize index if it doesn't exist
-        if not os.path.exists(ADZUNA_INDEX_FILE):
-            self._initialize_index()
-        
-        # Load index
-        self.index = self._load_index()
+        """Initialize the storage"""
+        self._index = {}
+        self._initialize_index()
     
     def _initialize_index(self):
         """Initialize the job index file"""
-        index = {
-            "last_sync": None,
-            "total_jobs": 0,
-            "jobs": []
-        }
-        with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
-            json.dump(index, f, indent=2)
+        # Create directory if it doesn't exist
+        os.makedirs(ADZUNA_DATA_DIR, exist_ok=True)
+        
+        # Create index file if it doesn't exist
+        if not os.path.exists(ADZUNA_INDEX_FILE):
+            self._index = {
+                "batches": {},
+                "job_count": 0,
+                "last_sync": None,
+                "last_batch": None
+            }
+            self._save_index()
+        else:
+            self._load_index()
     
     def _load_index(self) -> Dict:
         """Load the job index from file"""
         try:
             with open(ADZUNA_INDEX_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            logger.error(f"Error loading index: {str(e)}")
-            self._initialize_index()
-            return self._load_index()
+                self._index = json.load(f)
+            return self._index
+        except Exception as e:
+            logger.error(f"Error loading Adzuna index: {str(e)}")
+            # If index file is corrupted, create a new one
+            self._index = {
+                "batches": {},
+                "job_count": 0,
+                "last_sync": None,
+                "last_batch": None
+            }
+            self._save_index()
+            return self._index
     
     def _save_index(self):
         """Save the job index to file"""
-        with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.index, f, indent=2)
+        try:
+            with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
+                json.dump(self._index, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving Adzuna index: {str(e)}")
     
     def _save_job_batch(self, jobs: List[Dict], batch_id: str):
         """Save a batch of jobs to a separate file"""
-        batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
-        with open(batch_file, 'w', encoding='utf-8') as f:
-            json.dump(jobs, f, indent=2)
-        return batch_file
+        try:
+            batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
+            with open(batch_file, 'w', encoding='utf-8') as f:
+                json.dump(jobs, f, indent=2)
+            return True
+        except Exception as e:
+            logger.error(f"Error saving job batch {batch_id}: {str(e)}")
+            return False
     
     def _load_job_batch(self, batch_id: str) -> List[Dict]:
         """Load a batch of jobs from a file"""
-        batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
         try:
+            batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
+            if not os.path.exists(batch_file):
+                logger.warning(f"Batch file {batch_id} not found")
+                return []
+                
             with open(batch_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            logger.error(f"Job batch file not found or invalid: {batch_id}")
+        except Exception as e:
+            logger.error(f"Error loading job batch {batch_id}: {str(e)}")
             return []
     
-    def sync_jobs(self, keywords=None, location=None, country="gb", 
-                  max_days_old=1, append=True, max_pages=None) -> Dict:
+    def sync_jobs(
+        self,
+        keywords: Optional[str] = None,
+        location: Optional[str] = None,
+        country: str = "gb",
+        max_days_old: int = 1,
+        append: bool = True,
+        max_pages: Optional[int] = None
+    ) -> int:
         """
         Sync jobs from Adzuna API and store them locally
         
@@ -88,133 +113,66 @@ class AdzunaStorage:
             max_pages: Maximum number of pages to fetch (default: None, fetch all)
             
         Returns:
-            Dict with sync results
+            Number of new jobs added
         """
-        results = {
-            "status": "success",
-            "total_jobs": 0,
-            "new_jobs": 0,
-            "pages_fetched": 0,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        # Rate limiting setup
-        call_count = 0
-        start_time = time.time()
-        
-        # Get existing job IDs if appending
-        existing_job_ids = set()
-        if append:
-            for job_entry in self.index.get("jobs", []):
-                job_id = job_entry.get("id")
-                if job_id:
-                    existing_job_ids.add(job_id)
-        
-        # Start with an empty job list if not appending
-        if not append:
-            self.index["jobs"] = []
-        
         try:
-            page = 1
-            total_new_jobs = 0
+            # Import here to avoid circular imports
+            from adzuna_api import search_jobs, AdzunaAPIError
             
-            while True:
-                # Rate limiting - enforce maximum 20 calls per minute
-                call_count += 1
-                if call_count >= RATE_LIMIT_CALLS:
-                    elapsed = time.time() - start_time
-                    if elapsed < RATE_LIMIT_PERIOD:
-                        sleep_time = RATE_LIMIT_PERIOD - elapsed
-                        logger.info(f"Rate limiting: sleeping for {sleep_time:.2f} seconds")
-                        time.sleep(sleep_time)
-                    call_count = 0
-                    start_time = time.time()
-                
-                # Fetch jobs for current page
-                logger.info(f"Fetching Adzuna jobs, page {page}")
+            # Fetch jobs from API
+            try:
                 jobs = search_jobs(
                     keywords=keywords,
                     location=location,
                     country=country,
                     max_days_old=max_days_old,
-                    page=page,
+                    page=1,
                     results_per_page=50
                 )
                 
-                # Break if no jobs found
                 if not jobs:
-                    logger.info(f"No more jobs found, stopping at page {page}")
-                    break
+                    logger.warning("No jobs returned from Adzuna API")
+                    return 0
+                    
+            except AdzunaAPIError as e:
+                logger.error(f"Adzuna API error: {str(e)}")
+                return 0
                 
-                # Get unique jobs
-                batch_jobs = []
-                for job in jobs:
-                    job_dict = job.to_dict()
-                    
-                    # Generate a unique ID based on title, company and URL
-                    job_id = f"{job.title}_{job.company}_{job.url}".replace(" ", "_")[:100]
-                    
-                    # Skip if job already exists and we're appending
-                    if append and job_id in existing_job_ids:
-                        continue
-                    
-                    # Add to batch and update existing set
-                    job_dict["id"] = job_id
-                    job_dict["fetched_date"] = datetime.now().isoformat()
-                    batch_jobs.append(job_dict)
-                    existing_job_ids.add(job_id)
-                
-                # If we have new jobs, save them to a batch file
-                if batch_jobs:
-                    batch_id = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{page}"
-                    batch_file = self._save_job_batch(batch_jobs, batch_id)
-                    
-                    # Add batch reference to index
-                    for job_dict in batch_jobs:
-                        self.index["jobs"].append({
-                            "id": job_dict["id"],
-                            "title": job_dict["title"],
-                            "company": job_dict["company"],
-                            "batch": batch_id,
-                            "posted_date": job_dict["posted_date"],
-                            "fetched_date": job_dict["fetched_date"]
-                        })
-                    
-                    total_new_jobs += len(batch_jobs)
-                
-                # Update index for each page
-                self.index["last_sync"] = datetime.now().isoformat()
-                self.index["total_jobs"] = len(self.index["jobs"])
+            # Convert Job objects to dictionaries
+            job_dicts = [job.to_dict() for job in jobs]
+            
+            # Generate batch ID
+            batch_id = str(uuid.uuid4())
+            
+            # Create batch info
+            batch_info = {
+                "id": batch_id,
+                "timestamp": datetime.now().isoformat(),
+                "keywords": keywords,
+                "location": location,
+                "country": country,
+                "job_count": len(job_dicts),
+                "max_days_old": max_days_old
+            }
+            
+            # Save batch of jobs
+            if self._save_job_batch(job_dicts, batch_id):
+                # Update index
+                self._index["batches"][batch_id] = batch_info
+                self._index["job_count"] += len(job_dicts)
+                self._index["last_sync"] = datetime.now().isoformat()
+                self._index["last_batch"] = batch_id
                 self._save_index()
                 
-                # Increment page and check limits
-                page += 1
-                results["pages_fetched"] = page - 1
+                logger.info(f"Saved {len(job_dicts)} jobs to batch {batch_id}")
+                return len(job_dicts)
+            else:
+                logger.error(f"Failed to save job batch {batch_id}")
+                return 0
                 
-                if max_pages and page > max_pages:
-                    logger.info(f"Reached maximum number of pages ({max_pages}), stopping")
-                    break
-            
-            # Final index update
-            self.index["last_sync"] = datetime.now().isoformat()
-            self.index["total_jobs"] = len(self.index["jobs"])
-            self._save_index()
-            
-            results["total_jobs"] = self.index["total_jobs"]
-            results["new_jobs"] = total_new_jobs
-            
-            return results
-            
-        except AdzunaAPIError as e:
-            logger.error(f"Adzuna API error during sync: {str(e)}")
-            results["status"] = "error"
-            results["error"] = str(e)
-            return results
         except Exception as e:
-            logger.error(f"Error during job sync: {str(e)}")
-            results["status"] = "error"
-            results["error"] = str(e)
-            return results
+            logger.error(f"Error syncing jobs: {str(e)}")
+            return 0
     
     def get_all_jobs(self) -> List[Job]:
         """
@@ -223,50 +181,40 @@ class AdzunaStorage:
         Returns:
             List of Job objects
         """
-        all_jobs = []
-        
-        # Process index entries
-        for job_entry in self.index.get("jobs", []):
-            batch_id = job_entry.get("batch")
-            if not batch_id:
-                continue
+        try:
+            all_jobs = []
             
-            # Get all jobs from the batch
-            batch_jobs = self._load_job_batch(batch_id)
-            if not batch_jobs:
-                continue
+            # Load index
+            self._load_index()
             
-            # Find the matching job in the batch
-            for job_dict in batch_jobs:
-                if job_dict.get("id") == job_entry.get("id"):
-                    # Convert to Job object
+            # Loop through batches
+            for batch_id in self._index["batches"]:
+                batch_jobs = self._load_job_batch(batch_id)
+                
+                # Convert dictionary to Job objects
+                for job_dict in batch_jobs:
                     try:
-                        # Parse the date
-                        posted_date = None
-                        if job_dict.get('posted_date'):
-                            try:
-                                posted_date = datetime.fromisoformat(job_dict['posted_date'])
-                            except (ValueError, TypeError):
-                                pass
-                        
                         job = Job(
-                            title=job_dict.get('title', ''),
-                            company=job_dict.get('company', ''),
-                            description=job_dict.get('description', ''),
-                            location=job_dict.get('location', ''),
-                            is_remote=job_dict.get('is_remote', False),
-                            posted_date=posted_date,
-                            url=job_dict.get('url', ''),
-                            skills=job_dict.get('skills', []),
-                            salary_range=job_dict.get('salary_range', '')
+                            title=job_dict["title"],
+                            company=job_dict["company"],
+                            description=job_dict["description"],
+                            location=job_dict["location"],
+                            is_remote=job_dict.get("is_remote", False),
+                            posted_date=job_dict.get("posted_date"),
+                            url=job_dict.get("url", ""),
+                            skills=job_dict.get("skills", []),
+                            salary_range=job_dict.get("salary_range")
                         )
                         all_jobs.append(job)
                     except Exception as e:
-                        logger.error(f"Error creating job object: {str(e)}")
-                    
-                    break
-        
-        return all_jobs
+                        logger.error(f"Error creating Job object: {str(e)}")
+                        continue
+            
+            return all_jobs
+            
+        except Exception as e:
+            logger.error(f"Error getting all jobs: {str(e)}")
+            return []
     
     def get_recent_jobs(self, days: int = 30) -> List[Job]:
         """
@@ -278,14 +226,46 @@ class AdzunaStorage:
         Returns:
             List of Job objects
         """
-        cutoff_date = datetime.now() - timedelta(days=days)
-        
-        recent_jobs = []
-        for job in self.get_all_jobs():
-            if job.posted_date and job.posted_date >= cutoff_date:
-                recent_jobs.append(job)
-        
-        return recent_jobs
+        try:
+            all_jobs = self.get_all_jobs()
+            
+            if not all_jobs:
+                return []
+                
+            # Calculate cutoff date
+            cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+            
+            # Filter by posted date
+            recent_jobs = []
+            for job in all_jobs:
+                if not job.posted_date:
+                    continue
+                    
+                # Convert string to datetime if needed
+                if isinstance(job.posted_date, str):
+                    try:
+                        job_date = job.posted_date
+                        # No need to convert back since we're just comparing
+                    except ValueError:
+                        continue
+                else:
+                    job_date = job.posted_date  # Already a datetime or other type
+                    
+                try:
+                    # Compare dates as strings (ISO format allows string comparison)
+                    # This works because ISO format dates sort correctly as strings
+                    if job_date >= cutoff_date:
+                        recent_jobs.append(job)
+                except Exception as e:
+                    logger.error(f"Error comparing dates: {str(e)}")
+                    # Include the job if comparison fails (better to include than exclude)
+                    recent_jobs.append(job)
+            
+            return recent_jobs
+            
+        except Exception as e:
+            logger.error(f"Error getting recent jobs: {str(e)}")
+            return []
     
     def cleanup_old_jobs(self, max_age_days: int = 90) -> int:
         """
@@ -297,25 +277,58 @@ class AdzunaStorage:
         Returns:
             Number of jobs removed
         """
-        cutoff_date = datetime.now() - timedelta(days=max_age_days)
-        cutoff_date_str = cutoff_date.isoformat()
-        
-        # Find entries to remove
-        entries_to_remove = []
-        for job_entry in self.index.get("jobs", []):
-            posted_date_str = job_entry.get("posted_date")
-            if posted_date_str and posted_date_str < cutoff_date_str:
-                entries_to_remove.append(job_entry)
-        
-        # Remove entries
-        for entry in entries_to_remove:
-            self.index["jobs"].remove(entry)
-        
-        # Update index
-        self.index["total_jobs"] = len(self.index["jobs"])
-        self._save_index()
-        
-        return len(entries_to_remove)
+        try:
+            # Load index
+            self._load_index()
+            
+            # Calculate cutoff date
+            cutoff_date = (datetime.now() - timedelta(days=max_age_days)).isoformat()
+            
+            # Track batches and jobs to remove
+            batches_to_remove = []
+            job_count_removed = 0
+            
+            # Check each batch
+            for batch_id, batch_info in self._index["batches"].items():
+                # If batch is older than cutoff, mark for removal
+                if batch_info["timestamp"] < cutoff_date:
+                    batches_to_remove.append(batch_id)
+                    job_count_removed += batch_info["job_count"]
+            
+            # Remove batches
+            for batch_id in batches_to_remove:
+                # Remove batch file
+                batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
+                if os.path.exists(batch_file):
+                    os.remove(batch_file)
+                
+                # Remove from index
+                del self._index["batches"][batch_id]
+            
+            # Update total job count
+            self._index["job_count"] -= job_count_removed
+            if self._index["job_count"] < 0:
+                self._index["job_count"] = 0
+            
+            # Update last batch
+            if self._index["last_batch"] in batches_to_remove:
+                self._index["last_batch"] = None
+                if self._index["batches"]:
+                    # Set to most recent remaining batch
+                    self._index["last_batch"] = max(
+                        self._index["batches"].items(),
+                        key=lambda x: x[1]["timestamp"]
+                    )[0]
+            
+            # Save index
+            self._save_index()
+            
+            logger.info(f"Removed {job_count_removed} jobs from {len(batches_to_remove)} batches")
+            return job_count_removed
+            
+        except Exception as e:
+            logger.error(f"Error cleaning up old jobs: {str(e)}")
+            return 0
     
     def get_sync_status(self) -> Dict:
         """
@@ -324,15 +337,35 @@ class AdzunaStorage:
         Returns:
             Dict with status information
         """
-        last_sync = None
-        if self.index.get("last_sync"):
-            try:
-                last_sync = datetime.fromisoformat(self.index["last_sync"])
-            except (ValueError, TypeError):
-                pass
-        
-        return {
-            "last_sync": last_sync,
-            "total_jobs": self.index.get("total_jobs", 0),
-            "last_batch": self.index.get("jobs", [])[-1]["batch"] if self.index.get("jobs") else None
-        }
+        try:
+            # Load index
+            self._load_index()
+            
+            # Get batch and job counts
+            batch_count = len(self._index["batches"])
+            job_count = self._index["job_count"]
+            
+            # Get last sync date
+            last_sync = self._index["last_sync"]
+            
+            # Get last batch info
+            last_batch = None
+            if self._index["last_batch"]:
+                last_batch = self._index["last_batch"]
+                
+            return {
+                "batch_count": batch_count,
+                "total_jobs": job_count,
+                "last_sync": last_sync,
+                "last_batch": last_batch
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting sync status: {str(e)}")
+            return {
+                "batch_count": 0,
+                "total_jobs": 0,
+                "last_sync": None,
+                "last_batch": None,
+                "error": str(e)
+            }

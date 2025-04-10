@@ -1,10 +1,18 @@
+"""
+Module for communicating with the Adzuna API
+"""
 import os
 import logging
 import requests
 from datetime import datetime, timedelta
+from typing import List, Dict, Optional, Any, Union
+
 from models import Job
 
 logger = logging.getLogger(__name__)
+
+# API settings
+ADZUNA_API_BASE_URL = "https://api.adzuna.com/v1/api"
 
 class AdzunaAPIError(Exception):
     """Custom exception for Adzuna API errors"""
@@ -24,11 +32,8 @@ def get_api_credentials():
     api_key = os.environ.get('ADZUNA_API_KEY')
     
     if not app_id or not api_key:
-        logger.error("Adzuna API credentials not found in environment variables")
-        raise AdzunaAPIError(
-            "Adzuna API credentials not configured. Please set ADZUNA_APP_ID and ADZUNA_API_KEY environment variables."
-        )
-    
+        raise AdzunaAPIError("Adzuna API credentials are not configured. Please set ADZUNA_APP_ID and ADZUNA_API_KEY environment variables.")
+        
     return app_id, api_key
 
 def search_jobs(
@@ -65,24 +70,26 @@ def search_jobs(
         AdzunaAPIError: If API request fails
     """
     try:
+        # Get API credentials
         app_id, api_key = get_api_credentials()
         
-        # Build base URL
-        base_url = f"https://api.adzuna.com/v1/api/jobs/{country}/search/{page}"
+        # Build API URL
+        url = f"{ADZUNA_API_BASE_URL}/jobs/{country}/search/{page}"
         
-        # Build query parameters
+        # Prepare query parameters
         params = {
             "app_id": app_id,
             "app_key": api_key,
             "results_per_page": results_per_page,
-            "content-type": "application/json"
+            "max_days_old": max_days_old
         }
         
-        # Add optional parameters
+        # Add optional filters
         if keywords:
             params["what"] = keywords
         if location:
             params["where"] = location
+        if distance:
             params["distance"] = distance
         if category:
             params["category"] = category
@@ -91,57 +98,101 @@ def search_jobs(
         if permanent is not None:
             params["permanent"] = 1 if permanent else 0
         
-        # Add date filter
-        if max_days_old:
-            date_from = (datetime.now() - timedelta(days=max_days_old)).strftime("%Y-%m-%d")
-            params["from_date"] = date_from
+        # Make API request
+        response = requests.get(url, params=params)
         
-        # Make request
-        logger.info(f"Making Adzuna API request: {base_url} with params: {params}")
-        response = requests.get(base_url, params=params)
-        
-        # Check for errors
+        # Check for API errors
         if response.status_code != 200:
-            logger.error(f"Adzuna API error: {response.status_code} - {response.text}")
-            raise AdzunaAPIError(f"Adzuna API error: {response.status_code} - {response.text}")
+            error_message = f"API request failed with status code {response.status_code}"
+            try:
+                error_data = response.json()
+                if "error" in error_data:
+                    error_message = f"API error: {error_data['error']}"
+            except:
+                pass
+            
+            raise AdzunaAPIError(error_message)
         
         # Parse response
         data = response.json()
         
-        # Check if we have results
-        if data.get("count", 0) == 0:
-            logger.info("No jobs found matching the criteria")
-            return []
+        # Get total counts for pagination
+        count = data.get("count", 0)
+        total_pages = (count // results_per_page) + (1 if count % results_per_page > 0 else 0)
         
-        # Extract jobs
+        # Process job listings
         jobs = []
         for job_data in data.get("results", []):
             try:
-                # Map Adzuna fields to our Job model
+                # Extract job attributes
+                company = job_data.get("company", {}).get("display_name", "Unknown Company")
+                title = job_data.get("title", "Unknown Position")
+                description = job_data.get("description", "")
+                location = job_data.get("location", {}).get("display_name", "")
+                
+                # Extract salary range
+                salary_min = job_data.get("salary_min")
+                salary_max = job_data.get("salary_max")
+                salary_range = format_salary_range(salary_min, salary_max)
+                
+                # Extract posting date
+                created = job_data.get("created")
+                if created:
+                    # Convert to ISO format
+                    created = datetime.strptime(created, "%Y-%m-%dT%H:%M:%SZ").isoformat()
+                
+                # Extract URL
+                redirect_url = job_data.get("redirect_url", "")
+                
+                # Check if job is remote
+                is_remote = False
+                if "remote" in job_data.get("category", {}).get("tag", "").lower() or "remote" in title.lower():
+                    is_remote = True
+                
+                # Extract skills from description
+                skills = extract_skills_from_adzuna(job_data)
+                
+                # Create Job object
                 job = Job(
-                    title=job_data.get("title", ""),
-                    company=job_data.get("company", {}).get("display_name", "Unknown"),
-                    description=job_data.get("description", ""),
-                    location=f"{job_data.get('location', {}).get('area', [''])[0]}, {job_data.get('location', {}).get('display_name', '')}".strip(", "),
-                    is_remote="remote" in job_data.get("title", "").lower() or "remote" in job_data.get("description", "").lower(),
-                    posted_date=datetime.strptime(job_data.get("created", "").split("T")[0], "%Y-%m-%d") if job_data.get("created") else None,
-                    url=job_data.get("redirect_url", ""),
-                    skills=extract_skills_from_adzuna(job_data),
-                    salary_range=format_salary_range(job_data.get("salary_min"), job_data.get("salary_max")) if job_data.get("salary_min") or job_data.get("salary_max") else ""
+                    title=title,
+                    company=company,
+                    description=description,
+                    location=location,
+                    is_remote=is_remote,
+                    posted_date=created,
+                    url=redirect_url,
+                    skills=skills,
+                    salary_range=salary_range
                 )
+                
                 jobs.append(job)
+                
             except Exception as e:
-                logger.warning(f"Error processing job listing: {str(e)}")
+                logger.error(f"Error processing job data: {str(e)}")
                 continue
         
-        logger.info(f"Found {len(jobs)} jobs from Adzuna")
-        return jobs
+        # Create a custom class to hold the list and metadata
+        class JobResults(list):
+            def __init__(self, jobs_list):
+                super().__init__(jobs_list)
+                self.total_count = 0
+                self.total_pages = 0
+                self.current_page = 0
         
+        # Create our custom list with metadata
+        job_results = JobResults(jobs)
+        job_results.total_count = count
+        job_results.total_pages = total_pages
+        job_results.current_page = page
+        
+        return job_results
+        
+    except AdzunaAPIError:
+        # Re-raise API errors
+        raise
     except Exception as e:
-        if isinstance(e, AdzunaAPIError):
-            raise
-        logger.error(f"Error searching Adzuna jobs: {str(e)}")
-        raise AdzunaAPIError(f"Error searching Adzuna jobs: {str(e)}")
+        logger.error(f"Error searching jobs: {str(e)}")
+        raise AdzunaAPIError(f"Error searching jobs: {str(e)}")
 
 def extract_skills_from_adzuna(job_data):
     """
@@ -155,30 +206,42 @@ def extract_skills_from_adzuna(job_data):
     """
     skills = []
     
-    # Check for category tags
-    category = job_data.get("category", {}).get("tag", "")
-    if category:
-        skills.append(category.replace("-", " ").title())
+    # Try to use the Adzuna Category Tag Skill list
+    if "category" in job_data and "tag" in job_data["category"]:
+        category = job_data["category"]["tag"].lower()
+        
+        # Extract programming languages and technologies from IT job categories
+        if "it" in category or "software" in category or "developer" in category:
+            tech_skills = [
+                "python", "java", "javascript", "typescript", "ruby", "php", "c#", "c++", 
+                "go", "rust", "swift", "kotlin", "react", "angular", "vue", "node.js",
+                "django", "flask", "spring", "aws", "azure", "gcp", "docker", "kubernetes",
+                "sql", "mongodb", "postgresql", "mysql", "oracle", "redis", "elasticsearch"
+            ]
+            
+            description = job_data.get("description", "").lower()
+            title = job_data.get("title", "").lower()
+            
+            # Check for skills in description
+            for skill in tech_skills:
+                if skill in description or skill in title:
+                    if skill not in skills:
+                        skills.append(skill)
     
-    # Extract from title and description
-    title = job_data.get("title", "")
-    description = job_data.get("description", "")
+    # Fall back to extracting from title and description if no skills found
+    if not skills:
+        try:
+            # Try to import the skill extractor from job_scraper
+            from job_scraper import extract_skills_from_description
+            
+            description = job_data.get("description", "")
+            extracted_skills = extract_skills_from_description(description)
+            skills.extend(extracted_skills)
+            
+        except ImportError:
+            logger.warning("Could not import extract_skills_from_description")
     
-    # Common programming languages and technologies
-    tech_keywords = [
-        "Python", "JavaScript", "Java", "C#", "C++", "Ruby", "PHP", "Swift", "Kotlin", 
-        "TypeScript", "SQL", "NoSQL", "React", "Angular", "Vue", "Node.js", "Django",
-        "Flask", "Spring", "ASP.NET", "Express", "TensorFlow", "PyTorch", "AWS", "Azure",
-        "GCP", "Docker", "Kubernetes", "Git", "CI/CD", "Agile", "Scrum", "DevOps", "ML",
-        "AI", "Data Science", "Big Data", "Hadoop", "Spark", "Scala", "Go", "Rust"
-    ]
-    
-    # Check for tech keywords in title and description
-    for keyword in tech_keywords:
-        if (keyword.lower() in title.lower() or keyword.lower() in description.lower()) and keyword not in skills:
-            skills.append(keyword)
-    
-    return skills[:10]  # Limit to 10 skills
+    return list(set(skills))  # Remove duplicates
 
 def format_salary_range(min_salary, max_salary):
     """
@@ -191,6 +254,10 @@ def format_salary_range(min_salary, max_salary):
     Returns:
         str: Formatted salary range
     """
+    if min_salary is None and max_salary is None:
+        return None
+    
+    # Format values
     if min_salary and max_salary:
         if min_salary == max_salary:
             return f"£{min_salary:,.0f}"
@@ -199,4 +266,28 @@ def format_salary_range(min_salary, max_salary):
         return f"£{min_salary:,.0f}+"
     elif max_salary:
         return f"Up to £{max_salary:,.0f}"
-    return ""
+    
+    return None
+
+if __name__ == "__main__":
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    
+    # Test the API
+    try:
+        jobs = search_jobs(
+            keywords="python developer",
+            location="London",
+            country="gb",
+            page=1,
+            results_per_page=10
+        )
+        
+        print(f"Found {len(jobs)} jobs")
+        for job in jobs:
+            print(f"- {job.title} at {job.company} ({job.location})")
+            
+    except AdzunaAPIError as e:
+        print(f"API Error: {str(e)}")
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")

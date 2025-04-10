@@ -1,39 +1,33 @@
-# Adzuna API Terms of Service
+# Adzuna API Terms of Service and Attribution
 
-This file contains important information about the Adzuna API, its usage, and terms of service that must be followed when integrating with Adzuna.
+This application uses the Adzuna API to fetch job listings. By using this application, you agree to Adzuna's Terms of Service.
 
-## API Usage Guidelines
+## Attribution
 
-When implementing the Adzuna API integration for job data, it's important to adhere to the following guidelines:
+Job listing data provided by [Adzuna](https://www.adzuna.com/).
 
-1. **Attribution**: Always include attribution to Adzuna as the source of job data in your application.
-2. **Rate Limiting**: Respect the API rate limits to avoid being throttled or banned.
-3. **Data Storage**: Follow Adzuna's guidelines regarding caching and storing job data.
-4. **Privacy**: Handle user data in accordance with privacy regulations and Adzuna's requirements.
+## Usage Restrictions
 
-## Implementation Notes
+1. API calls are subject to rate limiting (maximum 20 calls per minute).
+2. Job data retrieved from Adzuna is stored in a structured JSON format for caching purposes.
+3. Data cached from Adzuna should be refreshed regularly to ensure accuracy.
+4. The system is configured to respect Adzuna's terms of service by:
+   - Maintaining proper attribution
+   - Respecting rate limits
+   - Using data in accordance with their terms
 
-The Adzuna API provides access to millions of job listings across multiple countries. Key features include:
+## API Access
 
-- Full-text search
-- Location-based filtering
-- Category filtering
-- Company and salary filtering
-- Detailed job descriptions
-- Historical data
+To use the Adzuna integration, you need to obtain API credentials from [Adzuna's Developer Portal](https://developer.adzuna.com/).
 
-## API Keys and Authentication
+1. Register for an Adzuna developer account
+2. Create a new application to get your App ID and API Key
+3. Set the environment variables:
+   - `ADZUNA_APP_ID`
+   - `ADZUNA_API_KEY`
 
-To use the Adzuna API, you'll need to:
+## Legal
 
-1. Register for an Adzuna API account
-2. Obtain API credentials (App ID and API Key)
-3. Include these credentials in API requests
+This application does not claim ownership of job data provided by Adzuna and acknowledges Adzuna as the source of all job listings.
 
-## Resources
-
-- API Documentation: https://developer.adzuna.com/
-- API Explorer: https://developer.adzuna.com/explorer
-- Support: https://developer.adzuna.com/contact
-
-Never hardcode API credentials in the application code. Always use environment variables or other secure methods to store and retrieve credentials.
+For full terms of service, see the [Adzuna Terms](https://www.adzuna.com/terms-and-conditions) and [API Documentation](https://developer.adzuna.com/docs).
