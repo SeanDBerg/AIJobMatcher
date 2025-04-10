@@ -305,8 +305,8 @@
                         <p class="text-muted mb-2">Next Scheduled Sync: {{ next_sync|default('Not scheduled') }}</p>
                         
                         <div class="d-grid gap-2 mt-3">
-                            <button class="btn btn-outline-secondary btn-sm" onclick="window.location.href='{{ url_for('job_tracker') }}'">
-                                <i class="fas fa-sync me-1"></i> Sync Now
+                            <button class="btn btn-outline-secondary btn-sm" onclick="window.location.href='{{ url_for('job_tracker') }}#start-sync'">
+                                <i class="fas fa-sync me-1"></i> Sync Jobs Now
                             </button>
                         </div>
                     </div>
