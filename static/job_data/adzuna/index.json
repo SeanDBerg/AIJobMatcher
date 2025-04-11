@@ -1,5 +1,5 @@
 {
-  "last_sync": "2025-04-10T03:02:39.823410",
+  "last_sync": "2025-04-10T21:33:24.217007",
   "total_jobs": 0,
   "jobs": [],
   "batches": {
@@ -128,8 +128,116 @@
       "country": "gb",
       "job_count": 50,
       "max_days_old": 1
+    },
+    "26cc7079-1053-4054-8677-1d90795ccaf3": {
+      "id": "26cc7079-1053-4054-8677-1d90795ccaf3",
+      "timestamp": "2025-04-10T05:27:18.246035",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "e53c772f-23ba-406a-b939-f6858eef9b3b": {
+      "id": "e53c772f-23ba-406a-b939-f6858eef9b3b",
+      "timestamp": "2025-04-10T05:27:22.326098",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "2e02722b-6c65-4a7e-92e4-b948c32d5dd8": {
+      "id": "2e02722b-6c65-4a7e-92e4-b948c32d5dd8",
+      "timestamp": "2025-04-10T05:27:26.389433",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "536cef34-f23e-4698-b213-24a9dcddebd0": {
+      "id": "536cef34-f23e-4698-b213-24a9dcddebd0",
+      "timestamp": "2025-04-10T05:27:30.626291",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "4f10a060-e469-4880-ab88-f1da921ab72f": {
+      "id": "4f10a060-e469-4880-ab88-f1da921ab72f",
+      "timestamp": "2025-04-10T05:27:34.613984",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "efe7ed62-62f4-4bfe-9efa-17a9f28d817a": {
+      "id": "efe7ed62-62f4-4bfe-9efa-17a9f28d817a",
+      "timestamp": "2025-04-10T05:27:38.747725",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "f6d88272-40a7-457b-ba05-5db3ef79ab80": {
+      "id": "f6d88272-40a7-457b-ba05-5db3ef79ab80",
+      "timestamp": "2025-04-10T05:27:42.869111",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "1d6ad678-3ac4-4b3b-9434-ea6f880db174": {
+      "id": "1d6ad678-3ac4-4b3b-9434-ea6f880db174",
+      "timestamp": "2025-04-10T21:33:07.792641",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "13b5126b-755d-4a8d-b3cc-c12f3596475a": {
+      "id": "13b5126b-755d-4a8d-b3cc-c12f3596475a",
+      "timestamp": "2025-04-10T21:33:11.894678",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "9ee97004-23cb-4c40-98b0-3f1fe90f0dd7": {
+      "id": "9ee97004-23cb-4c40-98b0-3f1fe90f0dd7",
+      "timestamp": "2025-04-10T21:33:16.006783",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "f29803c8-b3c2-41a9-bb21-e4b1ae66a22c": {
+      "id": "f29803c8-b3c2-41a9-bb21-e4b1ae66a22c",
+      "timestamp": "2025-04-10T21:33:20.152394",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "67fa556e-7a39-4010-a174-3678350fcb82": {
+      "id": "67fa556e-7a39-4010-a174-3678350fcb82",
+      "timestamp": "2025-04-10T21:33:24.215715",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
     }
   },
-  "job_count": 700,
-  "last_batch": "a74b0bf3-aad5-4ef2-b7dd-23004e69fd38"
+  "job_count": 1300,
+  "last_batch": "67fa556e-7a39-4010-a174-3678350fcb82"
 }

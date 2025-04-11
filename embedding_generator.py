@@ -1,10 +1,32 @@
 import logging
 import os
-import random
-import hashlib
-import util_np as np
+from sklearn.feature_extraction.text import HashingVectorizer
+import numpy as np  # Use real numpy here unless you're simulating
+import re
+from scipy.sparse import csr_matrix  # for type hinting (optional)
 
 logger = logging.getLogger(__name__)
+
+# Set up the vectorizer once
+vectorizer = HashingVectorizer(
+    n_features=384,
+    alternate_sign=False,
+    norm='l2',
+    stop_words='english',
+    lowercase=True
+)
+
+def clean_text(text: str) -> str:
+    """
+    Normalize text for embedding:
+    - Lowercase
+    - Remove non-alphanumerics
+    - Collapse whitespace
+    """
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9\s]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 # Default embedding dimension for the all-MiniLM-L6-v2 model
 EMBEDDING_DIM = 384
@@ -15,33 +37,21 @@ def get_api_token():
         logger.warning("API_TOKEN environment variable not found")
         return None
     return api_token
+
+
 # Generate embedding vector for the input text using deterministic hashing
-def generate_embedding(text):
-    logger.debug("Generating embedding for text")
-    # Handle empty or very short text
-    if not text or len(text.strip()) < 10:
-        logger.warning("Text is empty or too short for meaningful embedding")
-        return np.zeros(EMBEDDING_DIM)
+def generate_embedding(text: str) -> np.ndarray:
+    cleaned = clean_text(text)
+    if not cleaned or len(cleaned) < 10:
+        return np.zeros(384)
+
     try:
-        # Create a deterministic embedding based on the content
-        # This ensures the same text always gets the same embedding
-        random.seed(hashlib.md5(text.encode('utf-8')).hexdigest())
-        # Generate random values for embedding vector
-        embedding_values = []
-        for _ in range(EMBEDDING_DIM):
-            embedding_values.append(random.uniform(-1, 1))
-        # Create embedding array    
-        embedding = np.NumpyArray(embedding_values)
-        # Normalize the vector to unit length (for cosine similarity)
-        norm = np.norm(embedding_values)
-        if norm > 0:
-            for i in range(len(embedding_values)):
-                embedding.data[i] = embedding.data[i] / norm
-        logger.debug(f"Generated embedding with shape: {embedding.shape}")
-        return embedding
+        embedding_sparse: csr_matrix = vectorizer.transform([cleaned])
+        return embedding_sparse.toarray()[0]
     except Exception as e:
-        logger.error(f"Error generating embedding: {str(e)}")
-        return np.zeros(EMBEDDING_DIM)
+        import logging
+        logging.getLogger(__name__).error(f"Embedding generation failed: {e}")
+        return np.zeros(384)
 
 def batch_generate_embeddings(texts):
     """
@@ -63,79 +73,53 @@ def batch_generate_embeddings(texts):
 
 def chunk_text(text, max_length=512, overlap=50):
     """
-    Split text into chunks for processing long documents
-    
-    Args:
-        text: Input text to split
-        max_length: Maximum number of characters per chunk
-        overlap: Overlap between chunks
-        
-    Returns:
-        List of text chunks
+    Sentence-aware chunking that splits text into chunks close to max_length.
     """
     logger.debug(f"Chunking text of length {len(text)}")
-    
-    # Split text into sentences or paragraphs
-    paragraphs = text.split('\n')
+
+    # Split into sentences using punctuation
+    sentences = re.split(r'(?<=[.!?]) +', text)
     chunks = []
     current_chunk = ""
-    
-    for paragraph in paragraphs:
-        # If adding this paragraph would exceed max_length
-        if len(current_chunk) + len(paragraph) > max_length:
-            # Add current chunk to list if it's not empty
+
+    for sentence in sentences:
+        if len(current_chunk) + len(sentence) + 1 > max_length:
             if current_chunk:
-                chunks.append(current_chunk)
-            
-            # Start a new chunk, potentially with some overlap from previous chunk
-            if overlap > 0 and current_chunk:
-                # Add overlap from the end of the previous chunk
+                chunks.append(current_chunk.strip())
+
+            if overlap > 0 and len(current_chunk) > overlap:
                 overlap_text = current_chunk[-overlap:]
-                current_chunk = overlap_text + paragraph
+                current_chunk = overlap_text + " " + sentence
             else:
-                current_chunk = paragraph
+                current_chunk = sentence
         else:
-            # Add paragraph to current chunk with a newline
-            if current_chunk:
-                current_chunk += "\n" + paragraph
-            else:
-                current_chunk = paragraph
-    
-    # Add the final chunk if it's not empty
+            current_chunk += " " + sentence
+
     if current_chunk:
-        chunks.append(current_chunk)
-    
-    logger.debug(f"Split text into {len(chunks)} chunks")
-    
+        chunks.append(current_chunk.strip())
+
+    logger.debug(f"Chunked text into {len(chunks)} chunks")
     return chunks
 
+
 def generate_embedding_for_long_text(text, max_length=512, overlap=50):
-    """
-    Generate embedding for long text by chunking and averaging embeddings
-    
-    Args:
-        text: Input text to embed
-        max_length: Maximum number of characters per chunk
-        overlap: Overlap between chunks
-        
-    Returns:
-        Numpy array containing the averaged embedding vector
-    """
-    logger.debug(f"Generating embedding for long text of length {len(text)}")
-    
-    # If text is short enough, don't chunk
-    if len(text) <= max_length:
-        return generate_embedding(text)
-    
-    # Split text into chunks
-    chunks = chunk_text(text, max_length, overlap)
-    
-    # Generate embeddings for each chunk
-    chunk_embeddings = batch_generate_embeddings(chunks)
-    
-    # Average the embeddings
-    avg_embedding = np.mean(chunk_embeddings, axis=0)
-    
-    logger.debug(f"Generated average embedding with shape: {avg_embedding.shape}")
-    
-    return avg_embedding
+    cleaned = clean_text(text)
+
+    if len(cleaned) <= max_length:
+        return generate_embedding(cleaned)
+
+    chunks = chunk_text(cleaned, max_length, overlap)
+    embeddings = []
+
+    for chunk in chunks:
+        if len(chunk.strip()) < 10:
+            continue  # skip meaningless or empty chunks
+        emb = generate_embedding(chunk)
+        if np.linalg.norm(emb) > 0:
+            embeddings.append(emb)
+
+    if not embeddings:
+        logger.warning("No valid chunks found for embedding")
+        return np.zeros(384)
+
+    return np.mean(embeddings, axis=0)

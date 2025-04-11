@@ -1,58 +1,29 @@
 import logging
 import math
-import util_np as np
+import numpy as np
 from models import JobMatch
 
 logger = logging.getLogger(__name__)
-
+# Calculate cosine similarity between resume and job embeddings
 def calculate_similarity(resume_embedding, job_embedding):
     """
     Calculate cosine similarity between resume and job embeddings
-    
-    Args:
-        resume_embedding: NumpyArray of resume embedding
-        job_embedding: NumpyArray of job embedding
-        
-    Returns:
-        Float representing similarity score (0-1)
     """
-    # Implement cosine similarity manually
-    # Formula: cos(θ) = (A·B) / (||A||·||B||)
-    
-    # Get the vectors from the NumpyArray objects
-    if hasattr(resume_embedding, 'data'):
-        resume_vec = resume_embedding.data
-    else:
-        resume_vec = resume_embedding
-        
-    if hasattr(job_embedding, 'data'):
-        job_vec = job_embedding.data
-    else:
-        job_vec = job_embedding
-    
-    # Calculate dot product A·B
-    dot_product = sum(a * b for a, b in zip(resume_vec, job_vec))
-    
-    # Calculate magnitudes
-    resume_magnitude = math.sqrt(sum(a * a for a in resume_vec))
-    job_magnitude = math.sqrt(sum(b * b for b in job_vec))
-    
-    # Avoid division by zero
-    if resume_magnitude == 0 or job_magnitude == 0:
+    # Convert to arrays if needed
+    resume_vec = np.array(resume_embedding)
+    job_vec = np.array(job_embedding)
+
+    # Compute cosine similarity
+    dot_product = np.dot(resume_vec, job_vec)
+    norm_a = np.linalg.norm(resume_vec)
+    norm_b = np.linalg.norm(job_vec)
+
+    if norm_a == 0 or norm_b == 0:
         return 0.0
-    
-    # Calculate cosine similarity
-    similarity = dot_product / (resume_magnitude * job_magnitude)
-    
-    # Ensure result is in range [-1, 1] and convert to [0, 1] range
-    similarity = max(min(similarity, 1.0), -1.0)
-    
-    # This will map from [-1, 1] to [0, 1]
-    # But for embeddings, the similarity is typically in [0, 1] already
-    # so this is just a safeguard
-    normalized_similarity = (similarity + 1) / 2
-    
-    return normalized_similarity
+
+    similarity = dot_product / (norm_a * norm_b)
+    return (similarity + 1) / 2  # normalize to [0, 1]
+
 
 def apply_filters(jobs, filters):
     """
