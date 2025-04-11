@@ -1,12 +1,13 @@
+# app.py
 import os
 import logging
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session, send_from_directory
 from werkzeug.utils import secure_filename
 import tempfile
-import json
+import numpy as np
 from datetime import datetime
 from resume_parser import parse_resume, FileParsingError
-from embedding_generator import generate_embedding
+from embedding_generator import generate_embedding, generate_dual_embeddings
 from job_data import get_job_data, add_job
 from matching_engine import find_matching_jobs
 from job_scraper import scrape_webpage_for_jobs, extract_skills_from_description, scrape_all_job_sources
@@ -413,7 +414,9 @@ def upload_resume():
             # Generate embedding
             logger.debug("Generating embedding for resume")
             try:
-                resume_embedding = generate_embedding(resume_text)
+                embeddings = generate_dual_embeddings(resume_text)
+                resume_embedding_narrative = embeddings["narrative"]
+                resume_embedding_skills = embeddings["skills"]
             except Exception as e:
                 logger.error(f"Error generating embedding: {str(e)}")
                 flash(f'Error analyzing resume content: {str(e)}', 'danger')
@@ -430,7 +433,8 @@ def upload_resume():
             try:
                 # Create metadata with embedding (convert NumPy array to list for JSON serialization)
                 metadata = {
-                    "embedding": resume_embedding.tolist() if hasattr(resume_embedding, 'tolist') else resume_embedding,
+                    "embedding_narrative": resume_embedding_narrative.tolist(),
+                    "embedding_skills": resume_embedding_skills.tolist(),
                     "filters": filters
                 }
                 
@@ -461,7 +465,11 @@ def upload_resume():
                     
                     # Find matching jobs
                     try:
-                        matching_jobs = find_matching_jobs(resume_embedding, jobs, filters)
+                        resume_embeddings = {
+                            "narrative": resume_embedding_narrative,
+                            "skills": resume_embedding_skills
+                        }
+                        matching_jobs = find_matching_jobs(resume_embeddings, jobs, filters, resume_text=resume_text)
                         
                         # Store resume text in session for display on results page
                         session['resume_text'] = resume_text
@@ -548,17 +556,13 @@ def match_jobs():
                     resume_text = resume_storage.get_resume_content(resume_id) or ''
                     
                     # Get embedding from metadata if available
-                    if resume_metadata.get('embedding'):
-                        # Convert embedding from list back to numpy array if needed
-                        import numpy as np
-                        embedding_data = resume_metadata['embedding']
-                        if isinstance(embedding_data, list):
-                            resume_embedding = np.array(embedding_data)
-                        else:
-                            resume_embedding = embedding_data
+                    if resume_metadata.get('embedding_narrative') and resume_metadata.get('embedding_skills'):
+                        resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
+                        resume_embedding_skills = np.array(resume_metadata['embedding_skills'])
                     else:
-                        # Generate embedding if not in metadata
-                        resume_embedding = generate_embedding(resume_text)
+                        embeddings = generate_dual_embeddings(resume_text)
+                        resume_embedding_narrative = embeddings['narrative']
+                        resume_embedding_skills = embeddings['skills']
                     
                     # Use filters from metadata if not provided in request
                     if not filters and resume_metadata.get('filters'):
@@ -580,7 +584,9 @@ def match_jobs():
                 
                 # Generate embedding
                 try:
-                    resume_embedding = generate_embedding(resume_text)
+                    embeddings = generate_dual_embeddings(resume_text)
+                    resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
+                    resume_embedding_skills = np.array(resume_metadata['embedding_skills'])
                 except Exception as e:
                     logger.error(f"Error generating embedding: {str(e)}")
                     return jsonify({
@@ -607,7 +613,11 @@ def match_jobs():
         
         # Find matching jobs
         try:
-            matching_jobs = find_matching_jobs(resume_embedding, jobs, filters)
+            resume_embeddings = {
+                "narrative": resume_embedding_narrative,
+                "skills": resume_embedding_skills
+            }
+            matching_jobs = find_matching_jobs(resume_embeddings, jobs, filters, resume_text=resume_text)
             if not matching_jobs:
                 return jsonify({
                     "success": True,
@@ -654,17 +664,14 @@ def match_resume(resume_id):
             return redirect(url_for('index', resume_id=resume_id))
         
         # Get embedding from metadata if available
-        if resume_metadata.get('embedding'):
-            # Convert embedding from list back to numpy array if needed
-            import numpy as np
-            embedding_data = resume_metadata['embedding']
-            if isinstance(embedding_data, list):
-                resume_embedding = np.array(embedding_data)
-            else:
-                resume_embedding = embedding_data
+        if resume_metadata.get('embedding_narrative') and resume_metadata.get('embedding_skills'):
+            resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
+            resume_embedding_skills = np.array(resume_metadata['embedding_skills'])
         else:
-            # Generate embedding if not in metadata
-            resume_embedding = generate_embedding(resume_text)
+            embeddings = generate_dual_embeddings(resume_text)
+            resume_embedding_narrative = embeddings['narrative']
+            resume_embedding_skills = embeddings['skills']
+
         
         # Get filters from metadata if available
         filters = resume_metadata.get('filters', {})
@@ -682,7 +689,11 @@ def match_resume(resume_id):
         
         # Find matching jobs
         try:
-            matching_jobs = find_matching_jobs(resume_embedding, jobs, filters)
+            resume_embeddings = {
+                "narrative": resume_embedding_narrative,
+                "skills": resume_embedding_skills
+            }
+            matching_jobs = find_matching_jobs(resume_embeddings, jobs, filters, resume_text=resume_text)
         except Exception as e:
             logger.error(f"Error matching jobs: {str(e)}")
             flash(f'Error matching jobs: {str(e)}', 'danger')

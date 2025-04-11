@@ -161,3 +161,31 @@ def boost_score_with_skills(similarity: float, resume_text: str, job_text: str, 
 
     boost = 0.05 * len(overlap)
     return min(similarity + boost, 1.0)
+
+# Generate two embeddings: one for the full narrative, one for just the skills section.
+def generate_dual_embeddings(text: str) -> dict:
+    cleaned = clean_text(text)
+
+    # Try to extract relevant "skills sections"
+    # This is heuristic-based: finds common headers like 'skills' or 'technologies'
+    skill_blocks = []
+    skill_keywords = ['skills', 'technologies', 'tools', 'languages', 'proficiencies']
+    lines = text.splitlines()
+    collecting = False
+
+    for line in lines:
+        line_lower = line.strip().lower()
+        if any(k in line_lower for k in skill_keywords):
+            collecting = True
+            continue
+        if collecting:
+            if line.strip() == "" or len(skill_blocks) > 5:
+                break
+            skill_blocks.append(line.strip())
+
+    skill_text = " ".join(skill_blocks) if skill_blocks else cleaned  # fallback to cleaned
+
+    return {
+        "narrative": generate_embedding(cleaned),
+        "skills": generate_embedding(clean_text(skill_text))
+    }

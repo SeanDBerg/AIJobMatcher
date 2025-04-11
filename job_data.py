@@ -1,9 +1,10 @@
+#job_data.py
 import json
 import logging
 import os
 from datetime import datetime
 from models import Job
-from embedding_generator import generate_embedding
+from embedding_generator import generate_dual_embeddings
 
 # Import Adzuna functions if available
 try:
@@ -86,28 +87,22 @@ def load_job_data():
         logger.error(f"Error loading job data: {str(e)}")
         return []
 
+
+# Generate narrative and skills embeddings for job descriptions
 def generate_job_embeddings(jobs):
-    """
-    Generate embeddings for job descriptions
-    
-    Args:
-        jobs: List of Job objects
-        
-    Returns:
-        List of Job objects with embeddings added
-    """
-    logger.debug(f"Generating embeddings for {len(jobs)} jobs")
-    
+    logger.debug(f"Generating dual embeddings for {len(jobs)} jobs")
+
     for job in jobs:
-        # Combine title, company, and description for better semantic matching
         job_text = f"{job.title}\n{job.company}\n{job.description}"
         if job.skills:
             job_text += "\nSkills: " + ", ".join(job.skills)
-        
-        # Generate embedding
-        job.embedding = generate_embedding(job_text)
-    
+
+        embeddings = generate_dual_embeddings(job_text)
+        job.embedding_narrative = embeddings["narrative"]
+        job.embedding_skills = embeddings["skills"]
+
     return jobs
+
 
 def get_job_data():
     """

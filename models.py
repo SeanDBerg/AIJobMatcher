@@ -1,3 +1,4 @@
+# model.py
 from datetime import datetime
 
 # This file would normally contain SQLAlchemy models
@@ -11,6 +12,8 @@ class Resume:
         self.filename = filename
         self.parsed_date = parsed_date or datetime.now()
         self.embedding = None
+        self.embedding_narrative = None
+        self.embedding_skills = None
     
     def to_dict(self):
         return {
@@ -19,9 +22,8 @@ class Resume:
             'parsed_date': self.parsed_date.isoformat(),
         }
 
-
+# Class representing a job listing
 class Job:
-    """Class representing a job listing"""
     def __init__(self, title, company, description, location, is_remote=False, 
                  posted_date=None, url="", skills=None, salary_range=None):
         self.title = title
@@ -34,9 +36,11 @@ class Job:
         self.skills = skills or []
         self.salary_range = salary_range or ""
         self.embedding = None
+        self.embedding_narrative = None
+        self.embedding_skills = None
     
-    def to_dict(self):
-        return {
+    def to_dict(self, include_embeddings=False):
+        job_dict = {
             'title': self.title,
             'company': self.company,
             'description': self.description,
@@ -47,6 +51,16 @@ class Job:
             'skills': self.skills,
             'salary_range': self.salary_range
         }
+
+        if include_embeddings:
+            job_dict['embedding_narrative'] = (
+                self.embedding_narrative.tolist() if self.embedding_narrative is not None else None
+            )
+            job_dict['embedding_skills'] = (
+                self.embedding_skills.tolist() if self.embedding_skills is not None else None
+            )
+
+        return job_dict
 
 
 class JobMatch:

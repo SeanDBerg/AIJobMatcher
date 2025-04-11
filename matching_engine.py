@@ -1,6 +1,5 @@
 # matching_engine.py
 import logging
-import math
 import numpy as np
 from models import JobMatch
 from embedding_generator import boost_score_with_skills, DEFAULT_SKILLS
@@ -71,33 +70,33 @@ def apply_filters(jobs, filters):
     logger.debug(f"Filtered jobs from {len(jobs)} to {len(filtered_jobs)}")
     
     return filtered_jobs
-# Find jobs that match a resume based on embedding similarity and filters
-def find_matching_jobs(resume_embedding, jobs, filters=None, resume_text=None):
-    logger.debug("Finding matching jobs")
+# Match jobs to resume using narrative + skill embeddings.
+def find_matching_jobs(resume_embeddings, jobs, filters=None, resume_text=None):
+    logger.debug("Finding matching jobs (dual embeddings)")
 
     if filters:
         filtered_jobs = apply_filters(jobs, filters)
     else:
         filtered_jobs = jobs
 
-    job_matches = []
+    matches = []
     for job in filtered_jobs:
-        if job.embedding is None:
-            logger.warning(f"Job '{job.title}' has no embedding")
+        if job.embedding_narrative is None or job.embedding_skills is None:
+            logger.warning(f"Job '{job.title}' missing dual embeddings")
             continue
 
-        similarity = calculate_similarity(resume_embedding, job.embedding)
+        sim_narrative = calculate_similarity(resume_embeddings["narrative"], job.embedding_narrative)
+        sim_skills = calculate_similarity(resume_embeddings["skills"], job.embedding_skills)
 
-        # ⬇️ BOOST: Apply skill overlap if resume_text is provided
+        similarity = (sim_narrative + sim_skills) / 2  # Weighted average
+        logger.debug(f"{job.title}: sim_narrative={sim_narrative:.3f}, sim_skills={sim_skills:.3f}, final={similarity:.3f}")
+
         if resume_text:
             job_text = f"{job.title} {job.description} {' '.join(job.skills)}"
             similarity = boost_score_with_skills(similarity, resume_text, job_text, DEFAULT_SKILLS)
 
-        job_match = JobMatch(job, similarity)
-        job_matches.append(job_match)
+        matches.append(JobMatch(job, similarity))
 
-    job_matches.sort(key=lambda x: x.similarity_score, reverse=True)
-    logger.debug(f"Found {len(job_matches)} matching jobs")
-
-    return job_matches
+    matches.sort(key=lambda m: m.similarity_score, reverse=True)
+    return matches
 
