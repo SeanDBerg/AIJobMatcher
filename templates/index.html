@@ -703,9 +703,10 @@
                         ];
                         
                         console.log("DataTables initialization complete:", results);
-                } catch (e) {
-                    console.error("Error initializing DataTables:", e);
-                }
+                    } catch (e) {
+                        console.error("Error initializing DataTables:", e);
+                    }
+                }, 500); // 500ms delay to ensure DOM is ready
                 
                 // Job details modal
                 $('.view-job').click(function() {
