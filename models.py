@@ -25,7 +25,7 @@ class Resume:
 # Class representing a job listing
 class Job:
     def __init__(self, title, company, description, location, is_remote=False, 
-                 posted_date=None, url="", skills=None, salary_range=None):
+                 posted_date=None, url="", skills=None, salary_range=None, match_percentage=None):
         self.title = title
         self.company = company
         self.description = description
@@ -38,6 +38,7 @@ class Job:
         self.embedding = None
         self.embedding_narrative = None
         self.embedding_skills = None
+        self.match_percentage = match_percentage
     
     def to_dict(self, include_embeddings=False):
         job_dict = {
@@ -49,7 +50,8 @@ class Job:
             'posted_date': self.posted_date.isoformat() if isinstance(self.posted_date, datetime) else self.posted_date,
             'url': self.url,
             'skills': self.skills,
-            'salary_range': self.salary_range
+            'salary_range': self.salary_range,
+            'match_percentage': self.match_percentage if hasattr(self, 'match_percentage') else None
         }
 
         if include_embeddings:
@@ -63,8 +65,8 @@ class Job:
         return job_dict
 
 
+# Class representing a match between a resume and job
 class JobMatch:
-    """Class representing a match between a resume and job"""
     def __init__(self, job, similarity_score):
         self.job = job
         self.similarity_score = similarity_score

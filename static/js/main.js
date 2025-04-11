@@ -1,35 +1,20 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize DataTables with proper configuration
-    $('.job-table').each(function() {
-        const tableId = $(this).attr('id');
-        if (!tableId) return;
-        
-        // Skip empty tables or tables with just "No jobs found" message
-        const rows = $(this).find('tbody tr');
-        if (rows.length === 0 || (rows.length === 1 && rows.find('td[colspan]').length > 0)) {
-            return;
-        }
-
-        try {
-            const table = $(this).DataTable({
-                pageLength: 10,
-                order: [[6, 'desc']], // Sort by match percentage
-                columnDefs: [
-                    {
-                        targets: 6, // Match percentage column
-                        type: 'numeric',
-                        render: function(data) {
-                            return data ? parseFloat(data) : 0;
-                        }
+    $(document).ready(function() {
+        $('.job-table').DataTable({
+            pageLength: 10,
+            order: [[6, 'desc']], // Match % column
+            columnDefs: [
+                {
+                    targets: 6, // Match percentage column
+                    render: function(data) {
+                        var num = parseFloat(data);
+                        return isNaN(num) ? 0 : num;
                     }
-                ],
-                initComplete: function() {
-                    // Ensure table cells are properly indexed
-                    this.api().cells().every(function() {
-                        $(this.node()).attr('data-dt-column', this.index().column);
-                    });
                 }
-            });
+            ]
+        });
+    });
             
             // Store table reference
             if (!window.jobTables) window.jobTables = {};

@@ -1,13 +1,8 @@
-"""
-Job scraper module for retrieving job listings from various job boards
-"""
+# job_scraper.py - Job scraper module for retrieving job listings from various job boards
 import logging
-import os
 import json
 import re
-import time
-from datetime import datetime, timedelta
-from urllib.parse import urlencode, quote_plus
+from datetime import datetime
 import trafilatura
 import requests
 from models import Job

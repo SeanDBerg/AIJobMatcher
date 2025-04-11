@@ -7,67 +7,42 @@ import tempfile
 import numpy as np
 from datetime import datetime
 from resume_parser import parse_resume, FileParsingError
-from embedding_generator import generate_embedding, generate_dual_embeddings
+from embedding_generator import generate_dual_embeddings
 from job_data import get_job_data, add_job
 from matching_engine import find_matching_jobs
 from job_scraper import scrape_webpage_for_jobs, extract_skills_from_description, scrape_all_job_sources
 from models import Job
 from resume_storage import resume_storage
-
+from adzuna_scraper import (
+    sync_jobs_from_adzuna, 
+    get_adzuna_jobs, 
+    import_adzuna_jobs_to_main_storage,
+    cleanup_old_adzuna_jobs,
+    get_adzuna_storage_status
+)
+from adzuna_scheduler import (
+    get_scheduler_config,
+    update_scheduler_config,
+    start_scheduler,
+    stop_scheduler,
+    restart_scheduler,
+    get_scheduler_status
+)
 # Set up logging
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-# Optional import for Adzuna functionality
-try:
-    from adzuna_scraper import (
-        sync_jobs_from_adzuna, 
-        get_adzuna_jobs, 
-        import_adzuna_jobs_to_main_storage,
-        cleanup_old_adzuna_jobs,
-        get_adzuna_storage_status
-    )
-    ADZUNA_SCRAPER_AVAILABLE = True
-except ImportError:
-    logger.warning("Adzuna scraper module not available")
-    ADZUNA_SCRAPER_AVAILABLE = False
-
-# Optional import for Adzuna scheduler
-try:
-    from adzuna_scheduler import (
-        get_scheduler_config,
-        update_scheduler_config,
-        start_scheduler,
-        stop_scheduler,
-        restart_scheduler,
-        get_scheduler_status
-    )
-    ADZUNA_SCHEDULER_AVAILABLE = True
-    # Start the scheduler automatically
-    start_scheduler()
-except ImportError:
-    logger.warning("Adzuna scheduler module not available")
-    ADZUNA_SCHEDULER_AVAILABLE = False
-
-# Initialize Flask app
-app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
-
+ADZUNA_SCRAPER_AVAILABLE = True
+ADZUNA_SCHEDULER_AVAILABLE = True
 # Configure upload settings
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
 TEMP_FOLDER = tempfile.gettempdir()
 
-# Helper functions for API endpoints
-def _adzuna_api_check():
-    """Check if Adzuna API is available and return error response if not"""
-    if not ADZUNA_SCRAPER_AVAILABLE:
-        return jsonify({
-            "success": False,
-            "error": "Adzuna scraper module is not available"
-        }), 500
-    return None
+# Initialize Flask app
+app = Flask(__name__)
+app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 
 def _adzuna_scheduler_check():
     """Check if Adzuna scheduler is available and return error response if not"""
@@ -96,12 +71,8 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
-    # Use scheduler config directly (most reliable source of settings)
-    scheduler_config = None
-    if ADZUNA_SCHEDULER_AVAILABLE:
-        scheduler_config = get_scheduler_config()
-    
-    # If config exists, use it as the source of truth
+    scheduler_config = get_scheduler_config() if ADZUNA_SCHEDULER_AVAILABLE else None
+
     if scheduler_config:
         keywords = scheduler_config.get('keywords', '')
         location = scheduler_config.get('location', '')
@@ -110,57 +81,28 @@ def index():
         remote_only = scheduler_config.get('remote_only', False)
         daily_sync_time = scheduler_config.get('daily_sync_time', '02:00')
     else:
-        # Fallback to request args only if no scheduler config
         keywords = request.args.get('keywords', '')
         location = request.args.get('location', '')
         country = request.args.get('country', 'gb')
         max_days_old = request.args.get('max_days_old', '30')
         remote_only = request.args.get('remote_only', '') == '1'
-        daily_sync_time = '02:00'  # Default
-    
-    # Debug log to see the actual values
+        daily_sync_time = '02:00'
     logger.debug(f"Job tracker parameters: keywords='{keywords}', location='{location}', country='{country}', max_days_old='{max_days_old}', remote_only='{remote_only}'")
-    logger.debug(f"Scheduler config: {scheduler_config}")
-    logger.debug(f"Request args: {dict(request.args)}")
-    
-    # Get Adzuna storage and scheduler status
     status = {}
     if ADZUNA_SCRAPER_AVAILABLE:
         storage_status = get_adzuna_storage_status()
         jobs = get_adzuna_jobs(days=30)
-        
-        # Filter recent jobs (7 days)
         recent_jobs_list = []
         for job in jobs:
             if job.posted_date:
                 try:
-                    # Try to parse the date in various formats
-                    if isinstance(job.posted_date, str):
-                        # ISO format with T separator
-                        if "T" in job.posted_date:
-                            job_date = datetime.fromisoformat(job.posted_date.split("T")[0])
-                        else:
-                            # Plain date string
-                            job_date = datetime.fromisoformat(job.posted_date)
-                        
-                        # Check if it's within 7 days
-                        if (datetime.now() - job_date).days <= 7:
-                            recent_jobs_list.append(job)
-                    elif isinstance(job.posted_date, datetime):
-                        # Already a datetime object
-                        if (datetime.now() - job.posted_date).days <= 7:
-                            recent_jobs_list.append(job)
+                    job_date = datetime.fromisoformat(job.posted_date.split("T")[0]) if isinstance(job.posted_date, str) else job.posted_date
+                    if (datetime.now() - job_date).days <= 7:
+                        recent_jobs_list.append(job)
                 except Exception:
-                    # If parsing fails, ignore this job for recent listing
                     pass
-        
-        # Filter remote jobs
         remote_jobs_list = [job for job in jobs if job.is_remote]
-        
-        # Scheduler info
         scheduler_status = get_scheduler_status() if ADZUNA_SCHEDULER_AVAILABLE else {"is_running": False, "config": {}}
-        
-        # Get scraper config for API delay settings
         try:
             from adzuna_scraper import config as adzuna_config
             scraper_config = {
@@ -169,19 +111,29 @@ def index():
                 "call_delay": adzuna_config.call_delay
             }
         except ImportError:
-            logger.warning("Couldn't import adzuna_scraper config")
-            scraper_config = {
-                "rate_limit_calls": 20,
-                "rate_limit_period": 60,
-                "call_delay": 3
-            }
-        
-        # Convert Job objects to dictionaries for JSON serialization
+            scraper_config = {"rate_limit_calls": 20, "rate_limit_period": 60, "call_delay": 3}
+
+        resume_id = session.get('resume_id')
+        resume_embeddings = None
+        if resume_id:
+            active_resume = resume_storage.get_resume(resume_id)
+            if active_resume and "metadata" in active_resume:
+                metadata = active_resume["metadata"]
+                resume_embeddings = {
+                    "narrative": np.array(metadata["embedding_narrative"]),
+                    "skills": np.array(metadata["embedding_skills"])
+                }
+        if resume_embeddings:
+            matches = find_matching_jobs(resume_embeddings, jobs)
+            for match in matches:
+                match.job.match_percentage = int(match.similarity_score * 100)
+        else:
+            for job in jobs:
+                job.match_percentage = None
         jobs_dict = {i: job.to_dict() for i, job in enumerate(jobs)}
         recent_jobs_dict = {i: job.to_dict() for i, job in enumerate(recent_jobs_list)}
         remote_jobs_dict = {i: job.to_dict() for i, job in enumerate(remote_jobs_list)}
-        
-        status = {
+        status.update({
             "storage_status": storage_status,
             "jobs": jobs_dict,
             "recent_jobs_list": recent_jobs_dict,
@@ -191,44 +143,18 @@ def index():
             "last_sync": storage_status.get("last_sync", "Never"),
             "scheduler_status": scheduler_status,
             "next_sync": scheduler_status.get("next_run", "Not scheduled"),
-            # Pass through the query parameters from settings
             "keywords": keywords,
             "location": location,
             "country": country,
             "max_days_old": max_days_old,
             "remote_only": remote_only,
             "daily_sync_time": daily_sync_time,
-            # Add scraper config
             "call_delay": scraper_config.get("call_delay", 3),
             "rate_limit_calls": scraper_config.get("rate_limit_calls", 20),
             "rate_limit_period": scraper_config.get("rate_limit_period", 60)
-        }
-    
-    # Get stored resumes for the Resume Manager section
-    stored_resumes = resume_storage.get_all_resumes()
-    status["stored_resumes"] = stored_resumes
-    
+        })
+    status["stored_resumes"] = resume_storage.get_all_resumes()
     return render_template('index.html', **status)
-
-@app.route('/resume_manager')
-def resume_manager():
-    # Get stored resumes
-    stored_resumes = resume_storage.get_all_resumes()
-    
-    # Get active resume ID from query param if any
-    active_resume_id = request.args.get('resume_id')
-    
-    # If resume_id is provided, redirect to match_resume
-    if active_resume_id:
-        active_resume = resume_storage.get_resume(active_resume_id)
-        if active_resume:
-            return redirect(url_for('match_resume', resume_id=active_resume_id))
-    
-    # Render the resume manager page (upload form)
-    return render_template('resume_manager.html', 
-                          stored_resumes=stored_resumes,
-                          active_resume=None,
-                          resume_content=None)
                           
 @app.route('/resume_files/<resume_id>/<filename>')
 def resume_files(resume_id, filename):
@@ -250,65 +176,6 @@ def delete_resume(resume_id):
         flash(f'Error deleting resume: {str(e)}', 'danger')
         
     return redirect(url_for('index'))
-
-@app.route('/job_tracker')
-def job_tracker():
-    """Redirect to index for backward compatibility"""
-    return redirect(url_for('index'))
-
-@app.route('/settings', methods=['GET', 'POST'])
-def settings():
-    # Get scheduler config if available
-    config = None
-    last_sync = "Never"
-    total_jobs = 0
-    next_sync = "Not scheduled"
-    scraper_config = None
-    
-    if ADZUNA_SCHEDULER_AVAILABLE:
-        config = get_scheduler_config()
-    
-    if ADZUNA_SCRAPER_AVAILABLE:
-        storage_status = get_adzuna_storage_status()
-        last_sync = storage_status.get("last_sync", "Never")
-        total_jobs = storage_status.get("total_jobs", 0)
-        
-        # Get scraper config for API delay settings
-        try:
-            from adzuna_scraper import config as adzuna_config
-            scraper_config = {
-                "rate_limit_calls": adzuna_config.rate_limit_calls,
-                "rate_limit_period": adzuna_config.rate_limit_period,
-                "call_delay": adzuna_config.call_delay
-            }
-        except ImportError:
-            logger.warning("Couldn't import adzuna_scraper config")
-    
-    if ADZUNA_SCHEDULER_AVAILABLE:
-        scheduler_status = get_scheduler_status()
-        next_sync = scheduler_status.get("next_run", "Not scheduled")
-    
-    # If config is None, initialize with defaults for the template
-    if config is None:
-        config = {
-            'enabled': False,
-            'daily_sync_time': '02:00',
-            'keywords': '',
-            'location': '',
-            'country': 'gb',
-            'max_days_old': 30,
-            'cleanup_old_jobs': True,
-            'cleanup_days': 90,
-            'remote_only': False,
-            'search_terms': []
-        }
-    
-    return render_template('settings.html', 
-                           config=config, 
-                           last_sync=last_sync, 
-                           total_jobs=total_jobs, 
-                           next_sync=next_sync,
-                           scraper_config=scraper_config)
 
 @app.route('/save_settings', methods=['POST'])
 def save_settings():
@@ -652,34 +519,7 @@ def match_jobs():
             "success": False, 
             "error": f"Unexpected error: {str(e)}"
         }), 500
-        
-# Keep the old endpoint for backward compatibility
-@app.route('/api/match', methods=['POST'])
-def match_jobs_legacy():
-    """Legacy API endpoint to match resume to jobs"""
-    return match_jobs()
-        
-@app.route('/match_resume/<resume_id>', methods=['GET'])
-def match_resume(resume_id):
-    """Redirect to index page with resume ID for client-side matching"""
-    try:
-        # Get resume from storage (just to check if it exists)
-        resume_metadata = resume_storage.get_resume(resume_id)
-        if not resume_metadata:
-            flash(f'Resume with ID {resume_id} not found', 'danger')
-            return redirect(url_for('index'))
-        
-        # Store resume ID in session
-        session['resume_id'] = resume_id
-        
-        # Redirect to index page - client-side JavaScript will handle the job matching
-        return redirect(url_for('index', active_resume_id=resume_id))
     
-    except Exception as e:
-        logger.error(f"Error processing resume {resume_id}: {str(e)}")
-        flash(f'Error processing resume: {str(e)}', 'danger')
-        return redirect(url_for('index'))
-
 @app.route('/api/scrape/url', methods=['POST'])
 def scrape_url():
     """API endpoint to scrape job information from a URL"""
@@ -826,60 +666,13 @@ def config_adzuna():
     except Exception as e:
         logger.error(f"Error configuring Adzuna API: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
-        
-@app.route('/api/config/adzuna/status', methods=['GET'])
-def check_adzuna_status():
-    """API endpoint to check Adzuna API status"""
-    try:
-        # Check if credentials are configured
-        app_id = os.environ.get('ADZUNA_APP_ID')
-        api_key = os.environ.get('ADZUNA_API_KEY')
-        
-        if not app_id or not api_key:
-            return jsonify({
-                "success": False,
-                "error": "Adzuna API credentials not configured"
-            }), 400
-            
-        # Make a test API call
-        try:
-            from adzuna_api import search_jobs
-            jobs = search_jobs(results_per_page=1)  # Just get 1 job to test
-            
-            if jobs is None:
-                return jsonify({
-                    "success": False,
-                    "error": "Adzuna API returned an invalid response"
-                }), 500
-                
-            return jsonify({
-                "success": True,
-                "message": "Adzuna API is properly configured and working"
-            })
-            
-        except Exception as e:
-            logger.error(f"Error testing Adzuna API: {str(e)}")
-            return jsonify({
-                "success": False,
-                "error": f"Adzuna API test failed: {str(e)}"
-            }), 500
-            
-    except Exception as e:
-        logger.error(f"Error checking Adzuna API status: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/adzuna/bulk-sync', methods=['POST'])
 def bulk_sync_adzuna_jobs():
     """API endpoint to perform a bulk job sync from Adzuna with rate limiting"""
     try:
-        # Check if Adzuna API is available
-        error_response = _adzuna_api_check()
-        if error_response:
-            return error_response
-            
         if not request.is_json:
             return jsonify({"success": False, "error": "Request must be JSON"}), 400
-            
         data = request.json
         keywords = data.get('keywords', '')
         location = data.get('location', '')
@@ -916,10 +709,6 @@ def bulk_sync_adzuna_jobs():
 def get_adzuna_jobs_endpoint():
     """API endpoint to get Adzuna jobs from storage"""
     try:
-        # Check if Adzuna API is available
-        error_response = _adzuna_api_check()
-        if error_response:
-            return error_response
             
         days = request.args.get('days', 30, type=int)
         import_to_main = request.args.get('import_to_main', 'false').lower() == 'true'
@@ -944,10 +733,6 @@ def get_adzuna_jobs_endpoint():
 def cleanup_adzuna_jobs_endpoint():
     """API endpoint to clean up old Adzuna jobs"""
     try:
-        # Check if Adzuna API is available
-        error_response = _adzuna_api_check()
-        if error_response:
-            return error_response
         
         # Check if request is JSON
         json_error = _require_json_request()
@@ -973,10 +758,6 @@ def cleanup_adzuna_jobs_endpoint():
 def get_adzuna_sync_status():
     """API endpoint to get the current status of Adzuna sync"""
     try:
-        # Check if Adzuna API is available
-        error_response = _adzuna_api_check()
-        if error_response:
-            return error_response
             
         # Import here to avoid circular imports
         from adzuna_scraper import get_sync_status
@@ -994,10 +775,6 @@ def get_adzuna_sync_status():
 def control_adzuna_sync():
     """API endpoint to control the Adzuna sync (pause, resume, stop)"""
     try:
-        # Check if Adzuna API is available
-        error_response = _adzuna_api_check()
-        if error_response:
-            return error_response
             
         # Check if request is JSON
         json_error = _require_json_request()
@@ -1036,10 +813,6 @@ def control_adzuna_sync():
 def adzuna_scraper_config():
     """API endpoint to get or update Adzuna scraper configuration"""
     try:
-        # Check if Adzuna API is available
-        error_response = _adzuna_api_check()
-        if error_response:
-            return error_response
             
         # Import here to avoid circular imports
         from adzuna_scraper import config, update_scraper_config
@@ -1081,10 +854,6 @@ def adzuna_scraper_config():
 def get_adzuna_storage_status_endpoint():
     """API endpoint to get Adzuna storage status"""
     try:
-        # Check if Adzuna API is available
-        error_response = _adzuna_api_check()
-        if error_response:
-            return error_response
             
         # Get status
         status = get_adzuna_storage_status()
@@ -1105,10 +874,6 @@ def get_adzuna_storage_status_endpoint():
 def import_adzuna_jobs_endpoint():
     """API endpoint to import Adzuna jobs to main storage"""
     try:
-        # Check if Adzuna API is available
-        error_response = _adzuna_api_check()
-        if error_response:
-            return error_response
             
         # Check if request is JSON
         json_error = _require_json_request()
@@ -1236,10 +1001,4 @@ def adzuna_scheduler_control():
     except Exception as e:
         return _handle_api_exception(e, "controlling Adzuna scheduler")
 
-@app.route('/admin/scrape', methods=['GET'])
-def admin_scrape_page():
-    """Admin page for job scraping"""
-    return render_template('admin_scrape.html')
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)

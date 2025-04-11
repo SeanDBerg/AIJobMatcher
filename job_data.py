@@ -56,9 +56,6 @@ def generate_job_embeddings(jobs):
 def get_job_data():
     """
     Get job data with embeddings, using cache if available
-    
-    Returns:
-        List of Job objects with embeddings
     """
     global _job_cache, _job_cache_last_updated
     
@@ -87,12 +84,6 @@ def get_job_data():
 def add_job(job_dict):
     """
     Add a new job to the job data file
-    
-    Args:
-        job_dict: Dictionary containing job details
-        
-    Returns:
-        Newly added Job object
     """
     logger.debug(f"Adding new job: {job_dict.get('title')}")
     

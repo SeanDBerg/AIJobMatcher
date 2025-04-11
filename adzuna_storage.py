@@ -1,6 +1,4 @@
-"""
-Module for managing Adzuna job data storage in JSON format with batch organization
-"""
+# adzuna_storage.py - Module for managing Adzuna job data storage in JSON format with batch organization
 import os
 import json
 import uuid
@@ -103,58 +101,7 @@ class AdzunaStorage:
             logger.error(f"Error loading job batch {batch_id}: {str(e)}")
             return []
     
-    def sync_jobs(
-        self,
-        keywords: Optional[str] = None,
-        location: Optional[str] = None,
-        country: str = "gb",
-        max_days_old: int = 1,
-        append: bool = True,
-        max_pages: Optional[int] = None
-    ) -> int:
-        """
-        Sync jobs from Adzuna API and store them locally
-        
-        Args:
-            keywords: Optional keywords to search for
-            location: Optional location to search in
-            country: Country code (default: 'gb')
-            max_days_old: Maximum age of job listings in days (default: 1)
-            append: Whether to append to existing jobs or replace (default: True)
-            max_pages: Maximum number of pages to fetch (default: None, fetch all)
-            
-        Returns:
-            Number of new jobs added
-        """
-        try:
-            # Import here to avoid circular imports
-            from adzuna_api import search_jobs, AdzunaAPIError
-            
-            # Fetch jobs from API
-            try:
-                jobs = search_jobs(
-                    keywords=keywords,
-                    location=location,
-                    country=country,
-                    max_days_old=max_days_old,
-                    page=1,
-                    results_per_page=50
-                )
-                
-                if not jobs:
-                    logger.warning("No jobs returned from Adzuna API")
-                    return 0
-                    
-            except AdzunaAPIError as e:
-                logger.error(f"Adzuna API error: {str(e)}")
-                return 0
-            
-            # Store jobs from search results
-            return self.store_jobs(jobs, keywords, location, country, max_days_old)
-                
-        except Exception as e:
-            logger.error(f"Error syncing jobs: {str(e)}")
-            return 0
+
             
     def store_jobs(self, jobs, keywords=None, location=None, country="gb", max_days_old=30):
         """

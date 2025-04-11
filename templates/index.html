@@ -219,7 +219,8 @@
                                                 <td>{{ 'Yes' if job.is_remote else 'No' }}</td>
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
-                                                <td>{{ job.match_percentage|default('N/A') }}</td>
+                                                <td>{{ job.match_percentage if job.match_percentage is not none else 0 }}</td>
+
                                                 <td>
                                                     <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="{{ job_id }}">
                                                         <i class="fas fa-eye"></i> View
@@ -293,7 +294,7 @@
                                                 <td>{{ 'Yes' if job.is_remote else 'No' }}</td>
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
-                                                <td>{{ job.match_percentage|default('N/A') }}</td>
+                                                <td>{{ job.match_percentage if job.match_percentage is not none else 0 }}</td>
                                                 <td>
                                                     <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="recent-{{ job_id }}">
                                                         <i class="fas fa-eye"></i> View
@@ -365,7 +366,7 @@
                                                 <td>{{ job.location }}</td>
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
-                                                <td>{{ job.match_percentage|default('N/A') }}</td>
+                                                <td>{{ job.match_percentage if job.match_percentage is not none else 0 }}</td>
                                                 <td>
                                                     <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="remote-{{ job_id }}">
                                                         <i class="fas fa-eye"></i> View
@@ -480,10 +481,10 @@
                             </div>
                         </div>
                         <div class="col-12 mt-2">
-                            <button type="button" class="btn btn-primary" onclick="saveJobSearchSettings()">
+                            <button type="button" class="btn btn-primary" onclick="saveJobSearch()">
                                 <i class="fas fa-save me-1"></i> Save Settings
                             </button>
-                            <button type="button" class="btn btn-success ms-2" onclick="startJobSyncWithSettings()">
+                            <button type="button" class="btn btn-success ms-2" onclick="startJobSync()">
                                 <i class="fas fa-sync-alt me-1"></i> Save & Sync Now
                             </button>
                         </div>
@@ -831,11 +832,6 @@
                 });
             }
             
-            // Legacy sync function for backward compatibility
-            function syncJobsNow() {
-                startJobSync();
-            }
-            
             // Import to main storage
             function importToMainStorage() {
                 $('#syncStatus').show().removeClass('alert-success alert-danger').addClass('alert-info');
@@ -1019,76 +1015,55 @@
             // Update job match percentages in tables
             function updateJobMatchPercentages(matches) {
                 console.log("Updating job match percentages with matches:", matches);
-                
-                // Loop through each table
+
                 $('.job-table').each(function() {
                     const tableId = '#' + $(this).attr('id');
-                    
-                    // Make sure table is initialized
+
                     if (!$.fn.DataTable.isDataTable(tableId)) {
                         console.log("Table not initialized:", tableId);
                         return;
                     }
-                    
+
                     const table = $(tableId).DataTable();
                     let updatedRows = 0;
-                    
-                    // Loop through all rows
+
                     $(tableId + ' tbody tr.job-row').each(function() {
                         const jobRow = $(this);
                         const jobId = jobRow.data('job-id');
-                        
-                        // For different table prefixes (recent-, remote-, etc.)
+
                         let matchFound = false;
                         let matchPercentage = 0;
-                        
-                        // Try the direct job ID
+
                         if (matches[jobId]) {
                             matchPercentage = matches[jobId];
                             matchFound = true;
-                        } 
-                        // Try without the prefix if it has one
-                        else if (jobId && typeof jobId === 'string' && jobId.includes('-')) {
+                        } else if (jobId && typeof jobId === 'string' && jobId.includes('-')) {
                             const baseJobId = jobId.split('-')[1];
                             if (matches[baseJobId]) {
                                 matchPercentage = matches[baseJobId];
                                 matchFound = true;
                             }
-                        }
-                        // Try converting number to string if needed
-                        else if (jobId && matches[String(jobId)]) {
+                        } else if (jobId && matches[String(jobId)]) {
                             matchPercentage = matches[String(jobId)];
                             matchFound = true;
                         }
-                        
+
                         if (matchFound) {
                             updatedRows++;
                             const formattedMatch = matchPercentage + '%';
-                            
-                            // Update the match percentage cell (7th column)
-                            const matchCell = jobRow.find('td:eq(6)');
-                            matchCell.text(formattedMatch);
-                            
-                            // Remove any existing classes first
-                            matchCell.removeClass('text-success text-primary text-warning fw-bold');
-                            
-                            // Apply color based on match percentage
-                            if (matchPercentage >= 80) {
-                                matchCell.addClass('text-success fw-bold');
-                            } else if (matchPercentage >= 60) {
-                                matchCell.addClass('text-primary fw-bold');
-                            } else if (matchPercentage >= 40) {
-                                matchCell.addClass('text-warning');
-                            }
+
+                            // Update match % explicitly using DataTables API
+                            const cell = table.cell(jobRow.find('td:eq(6)'));
+                            cell.data(formattedMatch);
                         }
                     });
-                    
+
                     console.log(`Updated ${updatedRows} rows in table ${tableId}`);
-                    
-                    // Re-sort the table by match percentage (if we have any matches)
+
+                    // Redraw explicitly after updating all rows
                     if (updatedRows > 0) {
                         try {
-                            table.order([6, 'desc']).draw();
+                            table.order([6, 'desc']).draw(false);
                         } catch (sortError) {
                             console.error("Error sorting table:", sortError);
                         }

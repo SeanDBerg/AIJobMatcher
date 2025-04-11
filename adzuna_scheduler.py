@@ -1,6 +1,4 @@
-"""
-Scheduling module for Adzuna job synchronization
-"""
+# adzuna_scheduler.py = Scheduling module for Adzuna job synchronization
 import logging
 import os
 import time

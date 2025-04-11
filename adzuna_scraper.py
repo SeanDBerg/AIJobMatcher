@@ -1,13 +1,9 @@
-"""
-Adzuna job scraping module for bulk job retrieval with rate limiting
-"""
+# adzuna_scraper.py - Adzuna job scraping module for bulk job retrieval with rate limiting
 import logging
-import os
 import time
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Union, Tuple, Any
-
-from adzuna_api import search_jobs, get_api_credentials, AdzunaAPIError, extract_skills_from_adzuna
+from datetime import datetime
+from typing import List, Dict, Optional, Any
+from adzuna_api import search_jobs, get_api_credentials, AdzunaAPIError
 from models import Job
 from adzuna_storage import AdzunaStorage
 
@@ -188,16 +184,6 @@ def sync_jobs_from_adzuna(
 ) -> Dict[str, Any]:
     """
     Sync jobs from Adzuna API, with pagination and rate limiting
-    
-    Args:
-        keywords: Search keywords (optional)
-        location: Location to search in (optional)
-        country: Country code (default: "gb")
-        max_pages: Maximum number of pages to fetch (default: None, fetch all)
-        max_days_old: Maximum age of job listings in days (default: 30)
-        
-    Returns:
-        dict: Results of the sync operation
     """
     global SYNC_RUNNING, SYNC_PAUSED, SYNC_STATUS
     
@@ -380,38 +366,6 @@ def _should_continue_sync():
         continue
     
     return SYNC_RUNNING
-
-# This function is now deprecated and replaced by the RateLimiter class
-# Keeping a stub for backward compatibility
-def _apply_rate_limiting(call_timestamps, max_calls_per_period, period_seconds, call_delay, api_calls):
-    """
-    Apply rate limiting to API calls (deprecated, use RateLimiter class instead)
-    
-    Returns:
-        bool: True if operation should continue, False if stopped
-    """
-    logger.warning("_apply_rate_limiting is deprecated, use RateLimiter class instead")
-    
-    # Create a temporary rate limiter for backward compatibility
-    rate_limiter = RateLimiter(max_calls_per_period, period_seconds, call_delay)
-    
-    # Add existing timestamps to the rate limiter
-    rate_limiter.call_timestamps = call_timestamps.copy()
-    
-    # Update the global status
-    global SYNC_STATUS
-    SYNC_STATUS["status"] = "waiting for rate limit"
-    
-    # Apply rate limiting
-    result = rate_limiter.wait_if_needed()
-    
-    # Update the call timestamps with the new values
-    call_timestamps[:] = rate_limiter.call_timestamps.copy()
-    
-    # Update status
-    SYNC_STATUS["status"] = "running"
-    
-    return result
 
 def _wait_with_check(seconds):
     """

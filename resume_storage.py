@@ -1,6 +1,4 @@
-"""
-Module for managing persistent resume storage
-"""
+# resume_storage.py - Module for managing persistent resume storage
 import os
 import json
 import uuid
@@ -15,10 +13,8 @@ logger = logging.getLogger(__name__)
 # Storage paths
 RESUME_DIR = os.path.join(os.path.dirname(__file__), 'static', 'resumes')
 RESUME_INDEX_FILE = os.path.join(RESUME_DIR, 'index.json')
-
+# Class for managing resume storage
 class ResumeStorage:
-    """Class for managing resume storage"""
-    
     def __init__(self):
         """Initialize the storage"""
         self._index = {}
@@ -155,15 +151,6 @@ class ResumeStorage:
     def store_resume(self, temp_filepath: str, filename: str, content: str, metadata: Optional[Dict] = None) -> str:
         """
         Store a resume file in the permanent storage
-        
-        Args:
-            temp_filepath: Temporary file path
-            filename: Original filename
-            content: Text content of the resume
-            metadata: Optional metadata dictionary
-            
-        Returns:
-            resume_id: Unique ID for the saved resume
         """
         try:
             # Generate unique ID
@@ -208,9 +195,6 @@ class ResumeStorage:
     def get_all_resumes(self) -> List[Dict]:
         """
         Get all stored resumes
-        
-        Returns:
-            List of resume metadata dictionaries
         """
         try:
             # Load index
@@ -229,12 +213,6 @@ class ResumeStorage:
     def get_resume(self, resume_id: str) -> Optional[Dict]:
         """
         Get a specific resume's metadata
-        
-        Args:
-            resume_id: Resume ID
-            
-        Returns:
-            Resume metadata dictionary or None if not found
         """
         try:
             # Load index
@@ -250,12 +228,6 @@ class ResumeStorage:
     def get_resume_content(self, resume_id: str) -> Optional[str]:
         """
         Get the content of a resume
-        
-        Args:
-            resume_id: Resume ID
-            
-        Returns:
-            Resume content or None if not found
         """
         try:
             # Get resume metadata
@@ -279,12 +251,6 @@ class ResumeStorage:
     def delete_resume(self, resume_id: str) -> bool:
         """
         Delete a resume
-        
-        Args:
-            resume_id: Resume ID
-            
-        Returns:
-            True if successful, False otherwise
         """
         try:
             # Load index
