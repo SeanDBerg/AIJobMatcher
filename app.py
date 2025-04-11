@@ -138,6 +138,7 @@ def delete_resume(resume_id):
         
     return redirect(url_for('resume_manager'))
 
+@app.route('/')
 @app.route('/job_tracker')
 def job_tracker():
     # Use scheduler config directly (most reliable source of settings)
@@ -152,6 +153,7 @@ def job_tracker():
         country = scheduler_config.get('country', 'gb')
         max_days_old = scheduler_config.get('max_days_old', 30)
         remote_only = scheduler_config.get('remote_only', False)
+        daily_sync_time = scheduler_config.get('daily_sync_time', '02:00')
     else:
         # Fallback to request args only if no scheduler config
         keywords = request.args.get('keywords', '')
@@ -159,6 +161,7 @@ def job_tracker():
         country = request.args.get('country', 'gb')
         max_days_old = request.args.get('max_days_old', '30')
         remote_only = request.args.get('remote_only', '') == '1'
+        daily_sync_time = '02:00'  # Default
     
     # Debug log to see the actual values
     logger.debug(f"Job tracker parameters: keywords='{keywords}', location='{location}', country='{country}', max_days_old='{max_days_old}', remote_only='{remote_only}'")
@@ -202,6 +205,22 @@ def job_tracker():
         # Scheduler info
         scheduler_status = get_scheduler_status() if ADZUNA_SCHEDULER_AVAILABLE else {"is_running": False, "config": {}}
         
+        # Get scraper config for API delay settings
+        try:
+            from adzuna_scraper import config as adzuna_config
+            scraper_config = {
+                "rate_limit_calls": adzuna_config.rate_limit_calls,
+                "rate_limit_period": adzuna_config.rate_limit_period,
+                "call_delay": adzuna_config.call_delay
+            }
+        except ImportError:
+            logger.warning("Couldn't import adzuna_scraper config")
+            scraper_config = {
+                "rate_limit_calls": 20,
+                "rate_limit_period": 60,
+                "call_delay": 3
+            }
+        
         # Convert Job objects to dictionaries for JSON serialization
         jobs_dict = {i: job.to_dict() for i, job in enumerate(jobs)}
         recent_jobs_dict = {i: job.to_dict() for i, job in enumerate(recent_jobs_list)}
@@ -222,8 +241,17 @@ def job_tracker():
             "location": location,
             "country": country,
             "max_days_old": max_days_old,
-            "remote_only": remote_only
+            "remote_only": remote_only,
+            "daily_sync_time": daily_sync_time,
+            # Add scraper config
+            "call_delay": scraper_config.get("call_delay", 3),
+            "rate_limit_calls": scraper_config.get("rate_limit_calls", 20),
+            "rate_limit_period": scraper_config.get("rate_limit_period", 60)
         }
+    
+    # Get stored resumes for the Resume Manager section
+    stored_resumes = resume_storage.get_all_resumes()
+    status["stored_resumes"] = stored_resumes
     
     return render_template('job_tracker.html', **status)
 
