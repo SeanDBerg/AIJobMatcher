@@ -4,8 +4,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const tableId = $(this).attr('id');
         if (!tableId) return;
         
-        // Skip empty tables
-        if ($(this).find('tbody tr').length <= 1 && $(this).find('tbody tr td').length <= 1) {
+        // Skip empty tables or tables with just "No jobs found" message
+        const rows = $(this).find('tbody tr');
+        if (rows.length === 0 || (rows.length === 1 && rows.find('td[colspan]').length > 0)) {
             return;
         }
 
@@ -21,7 +22,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             return data ? parseFloat(data) : 0;
                         }
                     }
-                ]
+                ],
+                initComplete: function() {
+                    // Ensure table cells are properly indexed
+                    this.api().cells().every(function() {
+                        $(this.node()).attr('data-dt-column', this.index().column);
+                    });
+                }
             });
             
             // Store table reference
