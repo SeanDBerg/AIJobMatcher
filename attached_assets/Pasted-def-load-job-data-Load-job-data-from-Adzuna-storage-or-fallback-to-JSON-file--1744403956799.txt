@@ -1,0 +1,64 @@
+def load_job_data():
+    """
+    Load job data from Adzuna storage or fallback to JSON file
+    
+    Returns:
+        List of Job objects
+    """
+    # First try to get jobs from Adzuna storage
+    if ADZUNA_AVAILABLE:
+        logger.debug("Loading job data from Adzuna storage")
+        try:
+            adzuna_jobs = get_adzuna_jobs(days=30)
+            if adzuna_jobs and len(adzuna_jobs) > 0:
+                logger.debug(f"Loaded {len(adzuna_jobs)} jobs from Adzuna storage")
+                return adzuna_jobs
+            else:
+                logger.warning("No Adzuna jobs available, will use fallback")
+        except Exception as e:
+            logger.error(f"Error loading Adzuna jobs: {str(e)}")
+    
+    # Fallback to sample job data file
+    logger.debug(f"Loading job data from {FALLBACK_JOB_DATA_FILE}")
+    try:
+        with open(FALLBACK_JOB_DATA_FILE, 'r', encoding='utf-8') as f:
+            job_data = json.load(f)
+        
+        jobs = []
+        for job_dict in job_data:
+            # Convert posted_date string to datetime if it exists
+            if 'posted_date' in job_dict and job_dict['posted_date']:
+                try:
+                    job_dict['posted_date'] = datetime.fromisoformat(job_dict['posted_date'])
+                except (ValueError, TypeError):
+                    job_dict['posted_date'] = datetime.now()
+            
+            # Create Job object
+            job = Job(
+                title=job_dict.get('title', ''),
+                company=job_dict.get('company', ''),
+                description=job_dict.get('description', ''),
+                location=job_dict.get('location', ''),
+                is_remote=job_dict.get('is_remote', False),
+                posted_date=job_dict.get('posted_date', datetime.now()),
+                url=job_dict.get('url', ''),
+                skills=job_dict.get('skills', []),
+                salary_range=job_dict.get('salary_range', '')
+            )
+            jobs.append(job)
+        
+        logger.debug(f"Loaded {len(jobs)} jobs")
+        return jobs
+    
+    except FileNotFoundError:
+        logger.warning(f"Job data file not found at {FALLBACK_JOB_DATA_FILE}")
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(FALLBACK_JOB_DATA_FILE), exist_ok=True)
+        # Create empty job data file
+        with open(FALLBACK_JOB_DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump([], f)
+        return []
+    
+    except Exception as e:
+        logger.error(f"Error loading job data: {str(e)}")
+        return []
