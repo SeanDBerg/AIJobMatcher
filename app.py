@@ -634,9 +634,9 @@ def match_jobs():
         # Create a dictionary with job IDs as keys and match percentages as values
         # This is the format needed by our JavaScript function
         matches_dict = {}
-        for job in matching_jobs:
-            job_id = job.id
-            match_percentage = int(job.match_percentage)
+        for job_match in matching_jobs:
+            job_id = job_match.job.id if hasattr(job_match.job, 'id') else str(id(job_match.job))
+            match_percentage = int(job_match.similarity_score * 100)
             matches_dict[job_id] = match_percentage
             
         return jsonify({
