@@ -64,22 +64,12 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
-    scheduler_config = get_scheduler_config() if ADZUNA_SCHEDULER_AVAILABLE else None
-
-    if scheduler_config:
-        keywords = scheduler_config.get('keywords', '')
-        location = scheduler_config.get('location', '')
-        country = scheduler_config.get('country', 'gb')
-        max_days_old = scheduler_config.get('max_days_old', 30)
-        remote_only = scheduler_config.get('remote_only', False)
-        daily_sync_time = scheduler_config.get('daily_sync_time', '02:00')
-    else:
-        keywords = request.args.get('keywords', '')
-        location = request.args.get('location', '')
-        country = request.args.get('country', 'gb')
-        max_days_old = request.args.get('max_days_old', '30')
-        remote_only = request.args.get('remote_only', '') == '1'
-        daily_sync_time = '02:00'
+    # Get parameters directly from request, scheduler functionality removed
+    keywords = request.args.get('keywords', '')
+    location = request.args.get('location', '')
+    country = request.args.get('country', 'gb')
+    max_days_old = request.args.get('max_days_old', '30')
+    remote_only = request.args.get('remote_only', '') == '1'
     logger.debug(f"Job tracker parameters: keywords='{keywords}', location='{location}', country='{country}', max_days_old='{max_days_old}', remote_only='{remote_only}'")
     status = {}
     if ADZUNA_SCRAPER_AVAILABLE:
@@ -95,7 +85,8 @@ def index():
                 except Exception:
                     pass
         remote_jobs_list = [job for job in jobs if job.is_remote]
-        scheduler_status = get_scheduler_status() if ADZUNA_SCHEDULER_AVAILABLE else {"is_running": False, "config": {}}
+        # Scheduler removed, use default empty status
+        scheduler_status = {"is_running": False, "config": {}}
         try:
             from adzuna_scraper import config as adzuna_config
             scraper_config = {
@@ -134,14 +125,13 @@ def index():
             "total_jobs": len(jobs),
             "recent_jobs": len(recent_jobs_list),
             "last_sync": storage_status.get("last_sync", "Never"),
-            "scheduler_status": scheduler_status,
-            "next_sync": scheduler_status.get("next_run", "Not scheduled"),
+            "scheduler_status": scheduler_status,  # Empty scheduler status
+            "next_sync": "Manual sync only",  # No scheduler, manual sync only
             "keywords": keywords,
             "location": location,
             "country": country,
             "max_days_old": max_days_old,
             "remote_only": remote_only,
-            "daily_sync_time": daily_sync_time,
             "call_delay": scraper_config.get("call_delay", 3),
             "rate_limit_calls": scraper_config.get("rate_limit_calls", 20),
             "rate_limit_period": scraper_config.get("rate_limit_period", 60)
@@ -172,7 +162,7 @@ def delete_resume(resume_id):
 
 @app.route('/save_settings', methods=['POST'])
 def save_settings():
-    """Save user settings for job search and scheduler"""
+    """Save user settings for job search (scheduler functionality removed)"""
     try:
         # Extract settings from form
         job_sources = request.form.getlist('job_sources')
@@ -185,37 +175,7 @@ def save_settings():
         
         # Check if "Sync Now" was requested
         sync_now = request.form.get('sync_now') == '1'
-        
-        # Scheduler settings
-        scheduler_enabled = request.form.get('scheduler_enabled') == '1'
-        daily_sync_time = request.form.get('daily_sync_time', '02:00')
-        cleanup_old_jobs = request.form.get('cleanup_old_jobs') == '1'
-        cleanup_days = int(request.form.get('cleanup_days', 90))
-        
-        # Update scheduler configuration if available
-        if ADZUNA_SCHEDULER_AVAILABLE:
-            config_updates = {
-                'enabled': scheduler_enabled,
-                'daily_sync_time': daily_sync_time,
-                'keywords': keywords,
-                'location': location,
-                'country': country,
-                'max_days_old': max_days_old,
-                'cleanup_old_jobs': cleanup_old_jobs,
-                'cleanup_days': cleanup_days,
-                'remote_only': remote_only,
-                'search_terms': search_terms
-            }
-            
-            update_scheduler_config(config_updates)
-            
-            if scheduler_enabled:
-                # Start or restart the scheduler if it's enabled
-                restart_scheduler()
-            else:
-                # Stop the scheduler if it's disabled
-                stop_scheduler()
-        
+                
         flash('Settings saved successfully!', 'success')
         
         # Redirect to job tracker page with sync form pre-filled if "Sync Now" was selected
@@ -888,110 +848,10 @@ def import_adzuna_jobs_endpoint():
     except Exception as e:
         return _handle_api_exception(e, "importing Adzuna jobs")
 
-@app.route('/api/adzuna/scheduler/config', methods=['GET', 'POST'])
-def adzuna_scheduler_config():
-    """API endpoint to get or update Adzuna scheduler configuration"""
-    try:
-        # Check if Adzuna scheduler is available
-        error_response = _adzuna_scheduler_check()
-        if error_response:
-            return error_response
-        
-        if request.method == 'GET':
-            # Get current configuration
-            config = get_scheduler_config()
-            return jsonify({
-                "success": True,
-                "config": config
-            })
-        else:
-            # Check if request is JSON
-            json_error = _require_json_request()
-            if json_error:
-                return json_error
-            
-            data = request.json
-            updated_config = update_scheduler_config(data)
-            
-            return jsonify({
-                "success": True,
-                "config": updated_config,
-                "message": "Scheduler configuration updated"
-            })
-    except Exception as e:
-        return _handle_api_exception(e, "configuring Adzuna scheduler")
+# Scheduler API endpoint removed
 
-@app.route('/api/adzuna/scheduler/status', methods=['GET'])
-def adzuna_scheduler_status():
-    """API endpoint to get Adzuna scheduler status"""
-    try:
-        # Check if Adzuna scheduler is available
-        error_response = _adzuna_scheduler_check()
-        if error_response:
-            return error_response
-        
-        status = get_scheduler_status()
-        
-        # Format datetimes for JSON
-        if status.get('last_run'):
-            try:
-                last_run = datetime.fromisoformat(status['last_run'])
-                status['last_run_formatted'] = last_run.strftime("%Y-%m-%d %H:%M:%S")
-            except (ValueError, TypeError):
-                status['last_run_formatted'] = status['last_run']
-        
-        if status.get('next_run'):
-            try:
-                next_run = datetime.fromisoformat(status['next_run'])
-                status['next_run_formatted'] = next_run.strftime("%Y-%m-%d %H:%M:%S")
-            except (ValueError, TypeError):
-                status['next_run_formatted'] = status['next_run']
-        
-        return jsonify({
-            "success": True,
-            "status": status
-        })
-    except Exception as e:
-        return _handle_api_exception(e, "getting Adzuna scheduler status")
+# Scheduler status API endpoint removed
 
-@app.route('/api/adzuna/scheduler/control', methods=['POST'])
-def adzuna_scheduler_control():
-    """API endpoint to control the Adzuna scheduler (start/stop/restart)"""
-    try:
-        # Check if Adzuna scheduler is available
-        error_response = _adzuna_scheduler_check()
-        if error_response:
-            return error_response
-        
-        # Check if request is JSON
-        json_error = _require_json_request()
-        if json_error:
-            return json_error
-        
-        data = request.json
-        action = data.get('action', '').lower()
-        
-        if action == 'start':
-            result = start_scheduler()
-            message = "Scheduler started" if result else "Scheduler was already running"
-        elif action == 'stop':
-            result = stop_scheduler()
-            message = "Scheduler stopped" if result else "Scheduler was not running"
-        elif action == 'restart':
-            result = restart_scheduler()
-            message = "Scheduler restarted"
-        else:
-            return jsonify({
-                "success": False,
-                "error": "Invalid action. Must be 'start', 'stop', or 'restart'."
-            }), 400
-        
-        return jsonify({
-            "success": True,
-            "result": result,
-            "message": message
-        })
-    except Exception as e:
-        return _handle_api_exception(e, "controlling Adzuna scheduler")
+# Scheduler control API endpoint removed
 
 
