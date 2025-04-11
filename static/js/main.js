@@ -1,4 +1,37 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize DataTables with proper configuration
+    $('.job-table').each(function() {
+        const tableId = $(this).attr('id');
+        if (!tableId) return;
+        
+        // Skip empty tables
+        if ($(this).find('tbody tr').length <= 1 && $(this).find('tbody tr td').length <= 1) {
+            return;
+        }
+
+        try {
+            const table = $(this).DataTable({
+                pageLength: 10,
+                order: [[6, 'desc']], // Sort by match percentage
+                columnDefs: [
+                    {
+                        targets: 6, // Match percentage column
+                        type: 'numeric',
+                        render: function(data) {
+                            return data ? parseFloat(data) : 0;
+                        }
+                    }
+                ]
+            });
+            
+            // Store table reference
+            if (!window.jobTables) window.jobTables = {};
+            window.jobTables[tableId] = table;
+        } catch (error) {
+            console.error(`Error initializing table ${tableId}:`, error);
+        }
+    });
+
     // Toggle buttons for job description details
     const toggleButtons = document.querySelectorAll('.toggle-details');
     

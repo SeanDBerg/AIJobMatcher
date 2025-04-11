@@ -1048,12 +1048,17 @@
                             matchFound = true;
                         } 
                         // Try without the prefix if it has one
-                        else if (jobId && jobId.includes('-')) {
+                        else if (jobId && typeof jobId === 'string' && jobId.includes('-')) {
                             const baseJobId = jobId.split('-')[1];
                             if (matches[baseJobId]) {
                                 matchPercentage = matches[baseJobId];
                                 matchFound = true;
                             }
+                        }
+                        // Try converting number to string if needed
+                        else if (jobId && matches[String(jobId)]) {
+                            matchPercentage = matches[String(jobId)];
+                            matchFound = true;
                         }
                         
                         if (matchFound) {
