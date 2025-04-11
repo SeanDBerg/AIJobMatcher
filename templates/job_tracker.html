@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Tracker - AI Job Matcher</title>
+    <title>AI Job Matcher Dashboard</title>
     <!-- Bootstrap CSS (Replit-themed) -->
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <!-- Custom CSS -->
@@ -17,7 +17,7 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
+            <a class="navbar-brand" href="{{ url_for('job_tracker') }}">
                 <i class="fas fa-briefcase"></i> AI Job Matcher
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
@@ -28,18 +28,14 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
-                            <i class="fas fa-home me-1"></i> Home
+                        <a class="nav-link active" href="{{ url_for('job_tracker') }}">
+                            <i class="fas fa-home me-1"></i> Dashboard
                         </a>
                     </li>
+                    <!-- Commented out old nav links as they will be consolidated
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('resume_manager') }}">
                             <i class="fas fa-file-alt me-1"></i> Resume Manager
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('job_tracker') }}">
-                            <i class="fas fa-search me-1"></i> Job Tracker
                         </a>
                     </li>
                     <li class="nav-item">
@@ -47,13 +43,14 @@
                             <i class="fas fa-cog me-1"></i> Settings
                         </a>
                     </li>
+                    -->
                 </ul>
             </div>
         </div>
     </nav>
 
     <div class="container-fluid mt-4">
-        <h1 class="mb-4"><i class="fas fa-search me-2"></i>Job Tracker</h1>
+        <h1 class="mb-4"><i class="fas fa-search me-2"></i>Job Tracker Dashboard</h1>
         
         <!-- Alert Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
