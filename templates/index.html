@@ -196,7 +196,7 @@
                 <div class="tab-content mt-4" id="jobsTabContent">
                     <div class="tab-pane fade show active" id="all-jobs" role="tabpanel" aria-labelledby="all-jobs-tab">
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="jobsTable" width="100%" cellspacing="0">
+                            <table class="table table-bordered job-table" id="jobsTable" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
                                         <th>Title</th>
@@ -270,7 +270,7 @@
                     </div>
                     <div class="tab-pane fade" id="recent" role="tabpanel" aria-labelledby="recent-tab">
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="recentJobsTable" width="100%" cellspacing="0">
+                            <table class="table table-bordered job-table" id="recentJobsTable" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
                                         <th>Title</th>
@@ -344,7 +344,7 @@
                     </div>
                     <div class="tab-pane fade" id="remote" role="tabpanel" aria-labelledby="remote-tab">
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="remoteJobsTable" width="100%" cellspacing="0">
+                            <table class="table table-bordered job-table" id="remoteJobsTable" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
                                         <th>Title</th>
@@ -632,52 +632,26 @@
         <script>
             $(document).ready(function() {
                 // Wait for DOM to be fully loaded before initializing tables
-                // Use a simpler approach for DataTables
-                try {
-                    // Define a basic DataTable configuration
-                    const basicConfig = {
-                        pageLength: 10,
-                        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                        responsive: true,
-                        language: {
-                            emptyTable: "No job listings available",
-                            search: "Filter jobs:"
-                        },
-                        order: [[6, 'desc']], // Sort by match percentage (7th column, 0-indexed)
-                        columnDefs: [
-                            {
-                                targets: 6, // Match % column
-                                type: 'num',
-                                render: function(data, type) {
-                                    // For sorting, extract number from string
-                                    if (type === 'sort' || type === 'type') {
-                                        if (!data || data === 'N/A') return 0;
-                                        const matches = data.toString().match(/\d+/);
-                                        return matches ? parseInt(matches[0]) : 0;
-                                    }
-                                    return data;
-                                }
+                // Ultra simple approach for DataTables with minimal configuration
+                setTimeout(function() {
+                    try {
+                        // Super basic config, just enable the features
+                        $('.job-table').each(function() {
+                            // Check if table has rows
+                            if ($(this).find('tbody tr').length) {
+                                $(this).DataTable({
+                                    pageLength: 10,
+                                    order: [[0, 'asc']] // Default sort by first column
+                                });
+                            } else {
+                                console.log("Skipping empty table:", $(this).attr('id'));
                             }
-                        ]
-                    };
-                    
-                    // Initialize tables with minimal options
-                    if ($('#jobsTable').length) {
-                        $('#jobsTable').DataTable(basicConfig);
+                        });
+                        console.log("DataTables successfully initialized");
+                    } catch (e) {
+                        console.error("Error initializing DataTables:", e);
                     }
-                    
-                    if ($('#recentJobsTable').length) {
-                        $('#recentJobsTable').DataTable(basicConfig);
-                    }
-                    
-                    if ($('#remoteJobsTable').length) {
-                        $('#remoteJobsTable').DataTable(basicConfig);
-                    }
-                    
-                    console.log("DataTables initialized with basic configuration");
-                } catch (e) {
-                    console.error("Error initializing DataTables:", e);
-                }
+                }, 500);
                 
                 // Job details modal
                 $('.view-job').click(function() {
