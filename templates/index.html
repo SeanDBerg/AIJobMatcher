@@ -633,45 +633,55 @@
             $(document).ready(function() {
                 // Initialize DataTables
                 try {
-                    // Configure DataTables options
-                    const dtOptions = {
-                        pageLength: 10,
-                        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                        order: [[6, 'desc']], // Sort by match percentage column (7th column, 0-indexed)
-                        columnDefs: [
-                            { targets: 6, type: 'num' } // Treat Match % column as numeric
-                        ],
-                        // Add responsive handling
-                        responsive: true,
-                        language: {
-                            emptyTable: "No job listings available"
+                    /* Simple DataTable initialization that handles empty tables gracefully */
+                    function initJobTable(tableId) {
+                        // Make sure the table exists
+                        if ($(tableId).length === 0) {
+                            console.log(tableId + " does not exist in the DOM");
+                            return;
                         }
-                    };
-                    
-                    // Function to safely initialize a DataTable
-                    function initDataTable(tableId) {
-                        // Check if table exists in DOM
-                        const table = $(tableId);
-                        if (table.length === 0) return;
                         
-                        // Destroy existing DataTable if it exists
+                        // Destroy any existing DataTable instance
                         if ($.fn.DataTable.isDataTable(tableId)) {
-                            table.DataTable().destroy();
+                            $(tableId).DataTable().destroy();
                         }
                         
-                        // Initialize DataTable (even for empty tables to show proper message)
-                        const dt = table.DataTable(dtOptions);
+                        // Count table rows to log info
+                        const rowCount = $(tableId + ' tbody tr').length;
+                        console.log(`Initializing ${tableId} with ${rowCount} rows`);
                         
-                        // Log initialization
-                        console.log(`${tableId} DataTable initialized with ${table.find('tbody tr').length} rows`);
-                        
-                        return dt;
+                        // Initialize with options
+                        $(tableId).DataTable({
+                            pageLength: 10,
+                            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                            order: [[6, 'desc']], // Sort by match percentage (7th column, 0-indexed)
+                            columnDefs: [
+                                { 
+                                    targets: 6, // Match % column
+                                    type: 'num', 
+                                    render: function(data, type, row) {
+                                        // For sorting and type detection, return numeric value
+                                        if (type === 'sort' || type === 'type') {
+                                            return data ? parseFloat(data.toString().replace(/[^\d.-]/g, '')) : 0;
+                                        }
+                                        // For display, return original
+                                        return data;
+                                    }
+                                }
+                            ],
+                            responsive: true,
+                            language: {
+                                emptyTable: "No job listings available",
+                                info: "Showing _START_ to _END_ of _TOTAL_ jobs",
+                                search: "Filter jobs:"
+                            }
+                        });
                     }
                     
-                    // Initialize all tables
-                    initDataTable('#jobsTable');
-                    initDataTable('#recentJobsTable');
-                    initDataTable('#remoteJobsTable');
+                    // Initialize each table
+                    initJobTable('#jobsTable');
+                    initJobTable('#recentJobsTable');
+                    initJobTable('#remoteJobsTable');
                 } catch (e) {
                     console.error("Error initializing DataTables:", e);
                 }
