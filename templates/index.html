@@ -110,11 +110,11 @@
                                 <div class="row no-gutters align-items-center">
                                     <div class="col mr-2">
                                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                            Next Sync</div>
-                                        <div class="h5 mb-0 font-weight-bold">{{ next_sync|default('Manual Only') }}</div>
+                                            Sync Method</div>
+                                        <div class="h5 mb-0 font-weight-bold">Manual Only</div>
                                     </div>
                                     <div class="col-auto">
-                                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                                        <i class="fas fa-sync fa-2x text-gray-300"></i>
                                     </div>
                                 </div>
                             </div>
@@ -469,17 +469,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mt-4">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="scheduler_enabled" name="scheduler_enabled" value="1" {% if scheduler_status and scheduler_status.is_running %}checked{% endif %}>
-                                    <label class="form-check-label" for="scheduler_enabled">
-                                        Enable Daily Job Sync at
-                                    </label>
-                                    <input type="time" class="form-control-sm ms-2 d-inline-block" style="width: 100px;" id="daily_sync_time" name="daily_sync_time" value="{{ daily_sync_time|default('02:00') }}">
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Scheduler UI elements removed -->
                         <div class="col-12 mt-2">
                             <button type="button" class="btn btn-primary" onclick="saveJobSearch()">
                                 <i class="fas fa-save me-1"></i> Save Settings
