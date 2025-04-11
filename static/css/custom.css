@@ -50,6 +50,7 @@
 html {
     position: relative;
     min-height: 100%;
+    font-size: 12px;
 }
 
 body {
