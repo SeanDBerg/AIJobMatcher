@@ -20,14 +20,7 @@ from adzuna_scraper import (
     cleanup_old_adzuna_jobs,
     get_adzuna_storage_status
 )
-from adzuna_scheduler import (
-    get_scheduler_config,
-    update_scheduler_config,
-    start_scheduler,
-    stop_scheduler,
-    restart_scheduler,
-    get_scheduler_status
-)
+# Scheduler imports removed
 # Set up logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -35,7 +28,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 ADZUNA_SCRAPER_AVAILABLE = True
-ADZUNA_SCHEDULER_AVAILABLE = True
+ADZUNA_SCHEDULER_AVAILABLE = False  # Scheduler functionality removed
 # Configure upload settings
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
 TEMP_FOLDER = tempfile.gettempdir()
