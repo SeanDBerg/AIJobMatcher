@@ -559,40 +559,58 @@
             $(document).ready(function() {
                 // Initialize DataTables
                 try {
-                    if ($.fn.DataTable.isDataTable('#jobsTable')) {
-                        $('#jobsTable').DataTable().destroy();
+                    // Initialize main jobs table
+                    if ($('#jobsTable').length > 0) {
+                        if ($.fn.DataTable.isDataTable('#jobsTable')) {
+                            $('#jobsTable').DataTable().destroy();
+                        }
+                        
+                        if ($('#jobsTable tbody tr').length > 0) {
+                            $('#jobsTable').DataTable({
+                                pageLength: 10,
+                                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                                order: [[6, 'desc']], // Sort by match percentage column
+                                columnDefs: [
+                                    { targets: 6, type: 'num' } // Treat Match % as numeric
+                                ]
+                            });
+                        }
                     }
                     
-                    if ($('#jobsTable tbody tr').length > 1) {
-                        $('#jobsTable').DataTable({
-                            pageLength: 10,
-                            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                            order: [[6, 'desc']] // Sort by match percentage column
-                        });
+                    // Initialize recent jobs table
+                    if ($('#recentJobsTable').length > 0) {
+                        if ($.fn.DataTable.isDataTable('#recentJobsTable')) {
+                            $('#recentJobsTable').DataTable().destroy();
+                        }
+                        
+                        if ($('#recentJobsTable tbody tr').length > 0) {
+                            $('#recentJobsTable').DataTable({
+                                pageLength: 10,
+                                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                                order: [[6, 'desc']], // Sort by match percentage column
+                                columnDefs: [
+                                    { targets: 6, type: 'num' } // Treat Match % as numeric
+                                ]
+                            });
+                        }
                     }
                     
-                    if ($.fn.DataTable.isDataTable('#recentJobsTable')) {
-                        $('#recentJobsTable').DataTable().destroy();
-                    }
-                    
-                    if ($('#recentJobsTable tbody tr').length > 1) {
-                        $('#recentJobsTable').DataTable({
-                            pageLength: 10,
-                            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                            order: [[6, 'desc']] // Sort by match percentage column
-                        });
-                    }
-                    
-                    if ($.fn.DataTable.isDataTable('#remoteJobsTable')) {
-                        $('#remoteJobsTable').DataTable().destroy();
-                    }
-                    
-                    if ($('#remoteJobsTable tbody tr').length > 1) {
-                        $('#remoteJobsTable').DataTable({
-                            pageLength: 10,
-                            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                            order: [[5, 'desc']] // Sort by match percentage column
-                        });
+                    // Initialize remote jobs table
+                    if ($('#remoteJobsTable').length > 0) {
+                        if ($.fn.DataTable.isDataTable('#remoteJobsTable')) {
+                            $('#remoteJobsTable').DataTable().destroy();
+                        }
+                        
+                        if ($('#remoteJobsTable tbody tr').length > 0) {
+                            $('#remoteJobsTable').DataTable({
+                                pageLength: 10,
+                                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                                order: [[6, 'desc']], // Sort by match percentage column
+                                columnDefs: [
+                                    { targets: 6, type: 'num' } // Treat Match % as numeric
+                                ]
+                            });
+                        }
                     }
                 } catch (e) {
                     console.error("Error initializing DataTables:", e);
@@ -630,12 +648,17 @@
                 let job;
                 let activeTab = $('.nav-tabs .active').attr('id');
                 
+                // Initialize global job data variables for each tab
+                var allJobs = {{ jobs|default({})|tojson }};
+                var recentJobs = {{ recent_jobs_list|default({})|tojson }};
+                var remoteJobs = {{ remote_jobs_list|default({})|tojson }};
+                
                 if (activeTab === 'all-jobs-tab') {
-                    job = {{ jobs|default({})|tojson }};
+                    job = allJobs;
                 } else if (activeTab === 'recent-tab') {
-                    job = {{ recent_jobs_list|default({})|tojson }};
+                    job = recentJobs;
                 } else if (activeTab === 'remote-tab') {
-                    job = {{ remote_jobs_list|default({})|tojson }};
+                    job = remoteJobs;
                 }
                 
                 if (!job || !job[jobId]) {
