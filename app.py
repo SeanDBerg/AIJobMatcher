@@ -93,9 +93,10 @@ def _require_json_request():
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+# Remove standalone index route as it's now covered by job_tracker route
+# @app.route('/')
+# def index():
+#     return render_template('index.html')
 
 @app.route('/resume_manager')
 def resume_manager():
@@ -136,7 +137,7 @@ def delete_resume(resume_id):
         logger.error(f"Error deleting resume: {str(e)}")
         flash(f'Error deleting resume: {str(e)}', 'danger')
         
-    return redirect(url_for('resume_manager'))
+    return redirect(url_for('job_tracker'))
 
 @app.route('/')
 @app.route('/job_tracker')
@@ -253,7 +254,7 @@ def job_tracker():
     stored_resumes = resume_storage.get_all_resumes()
     status["stored_resumes"] = stored_resumes
     
-    return render_template('job_tracker.html', **status)
+    return render_template('index.html', **status)
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
@@ -380,14 +381,14 @@ def upload_resume():
     # Check if a file was uploaded
     if 'resume' not in request.files:
         flash('No file part', 'danger')
-        return redirect(url_for('resume_manager'))
+        return redirect(url_for('job_tracker'))
     
     file = request.files['resume']
     
     # If user doesn't select a file
     if file.filename == '':
         flash('No file selected', 'danger')
-        return redirect(url_for('resume_manager'))
+        return redirect(url_for('job_tracker'))
     
     # Check if the file is allowed
     if file and allowed_file(file.filename):
@@ -404,11 +405,11 @@ def upload_resume():
             except FileParsingError as e:
                 logger.error(f"Resume parsing error: {str(e)}")
                 flash(f'Resume parsing error: {str(e)}', 'danger')
-                return redirect(url_for('resume_manager'))
+                return redirect(url_for('job_tracker'))
             except Exception as e:
                 logger.error(f"Unexpected error parsing resume: {str(e)}")
                 flash(f'Error parsing resume: {str(e)}', 'danger')
-                return redirect(url_for('resume_manager'))
+                return redirect(url_for('job_tracker'))
             
             # Generate embedding
             logger.debug("Generating embedding for resume")
@@ -417,7 +418,7 @@ def upload_resume():
             except Exception as e:
                 logger.error(f"Error generating embedding: {str(e)}")
                 flash(f'Error analyzing resume content: {str(e)}', 'danger')
-                return redirect(url_for('resume_manager'))
+                return redirect(url_for('job_tracker'))
             
             # Get filters from form
             filters = {
@@ -453,11 +454,11 @@ def upload_resume():
                         jobs = get_job_data()
                         if not jobs:
                             flash('No job data available to match against', 'warning')
-                            return redirect(url_for('resume_manager', resume_id=resume_id))
+                            return redirect(url_for('job_tracker', resume_id=resume_id))
                     except Exception as e:
                         logger.error(f"Error retrieving job data: {str(e)}")
                         flash(f'Error retrieving job data: {str(e)}', 'danger')
-                        return redirect(url_for('resume_manager', resume_id=resume_id))
+                        return redirect(url_for('job_tracker', resume_id=resume_id))
                     
                     # Find matching jobs
                     try:
@@ -478,14 +479,14 @@ def upload_resume():
                     except Exception as e:
                         logger.error(f"Error matching jobs: {str(e)}")
                         flash(f'Error matching jobs: {str(e)}', 'danger')
-                        return redirect(url_for('resume_manager', resume_id=resume_id))
+                        return redirect(url_for('job_tracker', resume_id=resume_id))
                 else:
                     # Clean up temp file
                     if os.path.exists(filepath):
                         os.remove(filepath)
                         
                     # Redirect to resume manager with this resume active
-                    return redirect(url_for('resume_manager', resume_id=resume_id))
+                    return redirect(url_for('job_tracker', resume_id=resume_id))
                 
             except Exception as e:
                 logger.error(f"Error storing resume: {str(e)}")
@@ -495,7 +496,7 @@ def upload_resume():
                 if os.path.exists(filepath):
                     os.remove(filepath)
                     
-                return redirect(url_for('resume_manager'))
+                return redirect(url_for('job_tracker'))
             
         except Exception as e:
             # Catch-all exception handler
@@ -509,10 +510,10 @@ def upload_resume():
             except Exception as cleanup_error:
                 logger.error(f"Error removing temporary file: {str(cleanup_error)}")
             
-            return redirect(url_for('resume_manager'))
+            return redirect(url_for('job_tracker'))
     else:
         flash('Invalid file type. Please upload a PDF, DOCX, or TXT file.', 'danger')
-        return redirect(url_for('resume_manager'))
+        return redirect(url_for('job_tracker'))
 
 @app.route('/api/jobs', methods=['GET'])
 def get_jobs():
@@ -646,12 +647,12 @@ def match_resume(resume_id):
         resume_metadata = resume_storage.get_resume(resume_id)
         if not resume_metadata:
             flash(f'Resume with ID {resume_id} not found', 'danger')
-            return redirect(url_for('resume_manager'))
+            return redirect(url_for('job_tracker'))
         
         resume_text = resume_storage.get_resume_content(resume_id)
         if not resume_text:
             flash('Resume content not found', 'danger')
-            return redirect(url_for('resume_manager', resume_id=resume_id))
+            return redirect(url_for('job_tracker', resume_id=resume_id))
         
         # Get embedding from metadata if available
         if resume_metadata.get('embedding'):
@@ -674,11 +675,11 @@ def match_resume(resume_id):
             jobs = get_job_data()
             if not jobs:
                 flash('No job data available to match against', 'warning')
-                return redirect(url_for('resume_manager', resume_id=resume_id))
+                return redirect(url_for('job_tracker', resume_id=resume_id))
         except Exception as e:
             logger.error(f"Error retrieving job data: {str(e)}")
             flash(f'Error retrieving job data: {str(e)}', 'danger')
-            return redirect(url_for('resume_manager', resume_id=resume_id))
+            return redirect(url_for('job_tracker', resume_id=resume_id))
         
         # Find matching jobs
         try:
@@ -686,7 +687,7 @@ def match_resume(resume_id):
         except Exception as e:
             logger.error(f"Error matching jobs: {str(e)}")
             flash(f'Error matching jobs: {str(e)}', 'danger')
-            return redirect(url_for('resume_manager', resume_id=resume_id))
+            return redirect(url_for('job_tracker', resume_id=resume_id))
         
         # Store resume text in session for display
         session['resume_text'] = resume_text
@@ -700,7 +701,7 @@ def match_resume(resume_id):
     except Exception as e:
         logger.error(f"Error matching resume {resume_id}: {str(e)}")
         flash(f'Error matching resume: {str(e)}', 'danger')
-        return redirect(url_for('resume_manager'))
+        return redirect(url_for('job_tracker'))
 
 @app.route('/api/scrape/url', methods=['POST'])
 def scrape_url():

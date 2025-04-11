@@ -1,3 +1,4 @@
+# embedding_generator.py
 import logging
 import os
 from sklearn.feature_extraction.text import HashingVectorizer
@@ -123,3 +124,40 @@ def generate_embedding_for_long_text(text, max_length=512, overlap=50):
         return np.zeros(384)
 
     return np.mean(embeddings, axis=0)
+
+def extract_skills(text: str, known_skills: set) -> set:
+    """
+    Extract matching skills from text using a known skills list.
+    Args:
+        text: Cleaned text input
+        known_skills: A set of lowercase skill keywords
+    Returns:
+        Set of skills found in the text
+    """
+    tokens = text.lower().split()
+    found = set()
+
+    for token in tokens:
+        if token in known_skills:
+            found.add(token)
+
+    return found
+
+DEFAULT_SKILLS = {
+    "python", "java", "c++", "c#", "javascript", "typescript",
+    "react", "node", "sql", "postgresql", "mysql", "mongodb",
+    "aws", "azure", "gcp", "docker", "kubernetes", "git",
+    "flask", "django", "linux", "pandas", "numpy", "tensorflow",
+    "scikit", "html", "css", "bash", "redis", "graphql"
+}
+
+def boost_score_with_skills(similarity: float, resume_text: str, job_text: str, known_skills=DEFAULT_SKILLS) -> float:
+    resume_skills = extract_skills(resume_text, known_skills)
+    job_skills = extract_skills(job_text, known_skills)
+    overlap = resume_skills & job_skills
+
+    if not overlap:
+        return similarity
+
+    boost = 0.05 * len(overlap)
+    return min(similarity + boost, 1.0)
