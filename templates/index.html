@@ -636,8 +636,27 @@
 
             // Initialize everything when document is ready
             $(document).ready(function() {
-                // Select first resume by default if available
-                if ($('.resume-select-link').length) {
+                // Check for active resume ID in URL query parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const activeResumeId = urlParams.get('active_resume_id');
+                
+                if (activeResumeId) {
+                    // Find and activate the resume with the matching ID
+                    const resumeLink = $(`.resume-select-link[data-resume-id="${activeResumeId}"]`);
+                    if (resumeLink.length) {
+                        // Update active class
+                        $('.resume-select-link').removeClass('active');
+                        resumeLink.addClass('active');
+                        currentResumeId = activeResumeId;
+                        
+                        // Wait for tables to initialize before matching
+                        setTimeout(function() {
+                            // Call API to match resume
+                            getJobMatchesForResume(activeResumeId);
+                        }, 1000);
+                    }
+                } else if ($('.resume-select-link').length) {
+                    // No active resume specified - select first resume by default if available
                     $('.resume-select-link').first().addClass('active');
                     currentResumeId = $('.resume-select-link').first().data('resume-id');
                 }
@@ -660,6 +679,12 @@
                     
                     // Call API to match resume
                     getJobMatchesForResume(resumeId);
+                    
+                    // Update URL without page reload to reflect the active resume
+                    // This allows for bookmarking/sharing
+                    const url = new URL(window.location);
+                    url.searchParams.set('active_resume_id', resumeId);
+                    window.history.pushState({}, '', url);
                 });
                 
                 // Wait for DOM to be fully loaded before initializing tables
@@ -901,50 +926,47 @@
             // Initialize job tables with proper configuration
             function initializeJobTables() {
                 try {
-                    // Basic configuration for all tables
+                    // Super basic configuration - minimum features to ensure it works
                     const tableConfig = {
                         pageLength: 10,
-                        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                        responsive: true,
-                        dom: 'Bfrtip',
-                        order: [[6, 'desc']], // Sort by match percentage column by default
-                        columnDefs: [{
-                            targets: 6, // Match % column
-                            type: 'num',
-                            render: function(data, type) {
-                                // For sorting, extract number from string
-                                if (type === 'sort' || type === 'type') {
-                                    if (!data || data === 'N/A') return 0;
-                                    const matches = data.toString().match(/\d+/);
-                                    return matches ? parseInt(matches[0]) : 0;
-                                }
-                                return data;
-                            }
-                        }]
+                        order: [[6, 'desc']] // Sort by match percentage column by default
                     };
                     
-                    // Initialize all tables
-                    $('.job-table').each(function() {
-                        const tableId = '#' + $(this).attr('id');
+                    // Initialize all tables with a delay
+                    setTimeout(function() {
+                        $('.job-table').each(function() {
+                            // Skip if table has no rows
+                            if ($(this).find('tbody tr').length <= 1 && $(this).find('tbody tr td').length <= 1) {
+                                console.log("Skipping empty table:", $(this).attr('id'));
+                                return;
+                            }
+                            
+                            try {
+                                const tableId = '#' + $(this).attr('id');
+                                
+                                // Destroy existing table if it exists
+                                if ($.fn.DataTable.isDataTable(tableId)) {
+                                    $(tableId).DataTable().destroy();
+                                }
+                                
+                                // Create new table with minimal configuration
+                                const table = $(tableId).DataTable(tableConfig);
+                                jobTables[tableId] = table;
+                                console.log("Table initialized:", tableId);
+                            } catch (tableError) {
+                                console.error("Error initializing table:", $(this).attr('id'), tableError);
+                            }
+                        });
                         
-                        // Destroy existing table if it exists
-                        if ($.fn.DataTable.isDataTable(tableId)) {
-                            $(tableId).DataTable().destroy();
+                        // If a resume is already selected, match jobs
+                        if (currentResumeId) {
+                            getJobMatchesForResume(currentResumeId);
                         }
                         
-                        // Create new table
-                        const table = $(tableId).DataTable(tableConfig);
-                        jobTables[tableId] = table;
-                    });
-                    
-                    // If a resume is already selected, match jobs
-                    if (currentResumeId) {
-                        getJobMatchesForResume(currentResumeId);
-                    }
-                    
-                    console.log("Tables initialized successfully");
+                        console.log("Tables initialization complete");
+                    }, 500);
                 } catch (error) {
-                    console.error("Error initializing tables:", error);
+                    console.error("Error in table initialization function:", error);
                 }
             }
             
@@ -996,23 +1018,54 @@
             
             // Update job match percentages in tables
             function updateJobMatchPercentages(matches) {
+                console.log("Updating job match percentages with matches:", matches);
+                
                 // Loop through each table
                 $('.job-table').each(function() {
                     const tableId = '#' + $(this).attr('id');
+                    
+                    // Make sure table is initialized
+                    if (!$.fn.DataTable.isDataTable(tableId)) {
+                        console.log("Table not initialized:", tableId);
+                        return;
+                    }
+                    
                     const table = $(tableId).DataTable();
+                    let updatedRows = 0;
                     
                     // Loop through all rows
                     $(tableId + ' tbody tr.job-row').each(function() {
-                        const jobId = $(this).data('job-id');
+                        const jobRow = $(this);
+                        const jobId = jobRow.data('job-id');
                         
-                        // Check if we have a match for this job
+                        // For different table prefixes (recent-, remote-, etc.)
+                        let matchFound = false;
+                        let matchPercentage = 0;
+                        
+                        // Try the direct job ID
                         if (matches[jobId]) {
-                            const matchPercentage = matches[jobId];
+                            matchPercentage = matches[jobId];
+                            matchFound = true;
+                        } 
+                        // Try without the prefix if it has one
+                        else if (jobId && jobId.includes('-')) {
+                            const baseJobId = jobId.split('-')[1];
+                            if (matches[baseJobId]) {
+                                matchPercentage = matches[baseJobId];
+                                matchFound = true;
+                            }
+                        }
+                        
+                        if (matchFound) {
+                            updatedRows++;
                             const formattedMatch = matchPercentage + '%';
                             
                             // Update the match percentage cell (7th column)
-                            const matchCell = $(this).find('td:eq(6)');
+                            const matchCell = jobRow.find('td:eq(6)');
                             matchCell.text(formattedMatch);
+                            
+                            // Remove any existing classes first
+                            matchCell.removeClass('text-success text-primary text-warning fw-bold');
                             
                             // Apply color based on match percentage
                             if (matchPercentage >= 80) {
@@ -1025,8 +1078,16 @@
                         }
                     });
                     
-                    // Re-sort the table by match percentage
-                    table.order([6, 'desc']).draw();
+                    console.log(`Updated ${updatedRows} rows in table ${tableId}`);
+                    
+                    // Re-sort the table by match percentage (if we have any matches)
+                    if (updatedRows > 0) {
+                        try {
+                            table.order([6, 'desc']).draw();
+                        } catch (sortError) {
+                            console.error("Error sorting table:", sortError);
+                        }
+                    }
                 });
             }
         </script>

@@ -532,7 +532,7 @@ def get_jobs():
         logger.error(f"Error fetching jobs: {str(e)}")
         return jsonify({"success": False, "error": str(e)})
 
-@app.route('/api/match', methods=['POST'])
+@app.route('/api/match-jobs', methods=['POST'])
 def match_jobs():
     """API endpoint to match resume to jobs"""
     try:
@@ -585,8 +585,8 @@ def match_jobs():
                 # Generate embedding
                 try:
                     embeddings = generate_dual_embeddings(resume_text)
-                    resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
-                    resume_embedding_skills = np.array(resume_metadata['embedding_skills'])
+                    resume_embedding_narrative = embeddings['narrative']
+                    resume_embedding_skills = embeddings['skills']
                 except Exception as e:
                     logger.error(f"Error generating embedding: {str(e)}")
                     return jsonify({
@@ -621,7 +621,7 @@ def match_jobs():
             if not matching_jobs:
                 return jsonify({
                     "success": True,
-                    "matches": [],
+                    "matches": {},
                     "message": "No matching jobs found based on your filters. Try adjusting your search criteria."
                 })
         except Exception as e:
@@ -631,12 +631,17 @@ def match_jobs():
                 "error": f"Error matching jobs: {str(e)}"
             }), 500
         
-        # Convert job matches to dictionaries
-        job_matches_dict = [job_match.to_dict() for job_match in matching_jobs]
-        
+        # Create a dictionary with job IDs as keys and match percentages as values
+        # This is the format needed by our JavaScript function
+        matches_dict = {}
+        for job in matching_jobs:
+            job_id = job.id
+            match_percentage = int(job.match_percentage)
+            matches_dict[job_id] = match_percentage
+            
         return jsonify({
             "success": True, 
-            "matches": job_matches_dict,
+            "matches": matches_dict,
             "count": len(matching_jobs),
             "resume_id": resume_id if resume_id else None
         })
@@ -648,69 +653,31 @@ def match_jobs():
             "error": f"Unexpected error: {str(e)}"
         }), 500
         
+# Keep the old endpoint for backward compatibility
+@app.route('/api/match', methods=['POST'])
+def match_jobs_legacy():
+    """Legacy API endpoint to match resume to jobs"""
+    return match_jobs()
+        
 @app.route('/match_resume/<resume_id>', methods=['GET'])
 def match_resume(resume_id):
-    """Match a stored resume to jobs and display results"""
+    """Redirect to index page with resume ID for client-side matching"""
     try:
-        # Get resume from storage
+        # Get resume from storage (just to check if it exists)
         resume_metadata = resume_storage.get_resume(resume_id)
         if not resume_metadata:
             flash(f'Resume with ID {resume_id} not found', 'danger')
             return redirect(url_for('index'))
         
-        resume_text = resume_storage.get_resume_content(resume_id)
-        if not resume_text:
-            flash('Resume content not found', 'danger')
-            return redirect(url_for('index', resume_id=resume_id))
-        
-        # Get embedding from metadata if available
-        if resume_metadata.get('embedding_narrative') and resume_metadata.get('embedding_skills'):
-            resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
-            resume_embedding_skills = np.array(resume_metadata['embedding_skills'])
-        else:
-            embeddings = generate_dual_embeddings(resume_text)
-            resume_embedding_narrative = embeddings['narrative']
-            resume_embedding_skills = embeddings['skills']
-
-        
-        # Get filters from metadata if available
-        filters = resume_metadata.get('filters', {})
-        
-        # Get all job data
-        try:
-            jobs = get_job_data()
-            if not jobs:
-                flash('No job data available to match against', 'warning')
-                return redirect(url_for('index', resume_id=resume_id))
-        except Exception as e:
-            logger.error(f"Error retrieving job data: {str(e)}")
-            flash(f'Error retrieving job data: {str(e)}', 'danger')
-            return redirect(url_for('index', resume_id=resume_id))
-        
-        # Find matching jobs
-        try:
-            resume_embeddings = {
-                "narrative": resume_embedding_narrative,
-                "skills": resume_embedding_skills
-            }
-            matching_jobs = find_matching_jobs(resume_embeddings, jobs, filters, resume_text=resume_text)
-        except Exception as e:
-            logger.error(f"Error matching jobs: {str(e)}")
-            flash(f'Error matching jobs: {str(e)}', 'danger')
-            return redirect(url_for('index', resume_id=resume_id))
-        
-        # Store resume text in session for display
-        session['resume_text'] = resume_text
+        # Store resume ID in session
         session['resume_id'] = resume_id
         
-        return render_template('results.html', 
-                            jobs=matching_jobs, 
-                            resume_text=resume_text,
-                            resume_id=resume_id)
+        # Redirect to index page - client-side JavaScript will handle the job matching
+        return redirect(url_for('index', active_resume_id=resume_id))
     
     except Exception as e:
-        logger.error(f"Error matching resume {resume_id}: {str(e)}")
-        flash(f'Error matching resume: {str(e)}', 'danger')
+        logger.error(f"Error processing resume {resume_id}: {str(e)}")
+        flash(f'Error processing resume: {str(e)}', 'danger')
         return redirect(url_for('index'))
 
 @app.route('/api/scrape/url', methods=['POST'])
