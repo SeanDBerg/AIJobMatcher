@@ -631,11 +631,11 @@
                 let activeTab = $('.nav-tabs .active').attr('id');
                 
                 if (activeTab === 'all-jobs-tab') {
-                    job = {{ jobs|tojson }};
+                    job = {{ jobs|default({})|tojson }};
                 } else if (activeTab === 'recent-tab') {
-                    job = {{ recent_jobs_list|tojson }};
+                    job = {{ recent_jobs_list|default({})|tojson }};
                 } else if (activeTab === 'remote-tab') {
-                    job = {{ remote_jobs_list|tojson }};
+                    job = {{ remote_jobs_list|default({})|tojson }};
                 }
                 
                 if (!job || !job[jobId]) {
