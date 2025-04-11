@@ -1,0 +1,22 @@
+Error initializing table: jobsTable 
+TypeError {}
+message: "Cannot set properties of undefined (setting '_DT_CellIndex')"
+stack: "TypeError: Cannot set properties of undefined (setting '_DT_CellIndex')↵ at ab (https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js:37:499)↵ at ia (https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js:32:467)↵ at HTMLTableRowElement.<anonymous> (https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js:33:79)↵ at https://code.jquery.com/jquery-3.6.0.min.js:2:1567↵ at S.map (https://code.jquery.com/jquery-3.6.0.min.js:2:3536)↵ at S.fn.init.map (https://code.jquery.com/jquery-3.6.0.min.js:2:1535)↵ at Ja (https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js:33:44)↵ at f (https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js:108:1)↵ at HTMLTableElement.<anonymous> (https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js:108:184)↵ at S.each (https://code.jquery.com/jquery-3.6.0.min.js:2:3003)"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object
+
+Error initializing table: recentJobsTable 
+TypeError {}
+
+at t.value (https://2c1e8b0c-f3bb-4d76-9632-87a6f1a2e6dd-00-36jqhp5ode9no.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://2c1e8b0c-f3bb-4d76-9632-87a6f1a2e6dd-00-36jqhp5ode9no.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://2c1e8b0c-f3bb-4d76-9632-87a6f1a2e6dd-00-36jqhp5ode9no.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://2c1e8b0c-f3bb-4d76-9632-87a6f1a2e6dd-00-36jqhp5ode9no.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Error initializing table: remoteJobsTable 
+TypeError {}
+
+at t.value (https://2c1e8b0c-f3bb-4d76-9632-87a6f1a2e6dd-00-36jqhp5ode9no.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://2c1e8b0c-f3bb-4d76-9632-87a6f1a2e6dd-00-36jqhp5ode9no.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://2c1e8b0c-f3bb-4d76-9632-87a6f1a2e6dd-00-36jqhp5ode9no.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://2c1e8b0c-f3bb-4d76-9632-87a6f1a2e6dd-00-36jqhp5ode9no.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
