@@ -10,6 +10,7 @@ from resume_parser import parse_resume, FileParsingError
 from matching_engine import generate_dual_embeddings, get_job_data, find_matching_jobs
 from resume_storage import resume_storage
 from adzuna_scraper import (get_adzuna_jobs, import_adzuna_jobs_to_main_storage, cleanup_old_adzuna_jobs, get_adzuna_storage_status, search_jobs)
+from adzuna_storage import AdzunaStorage
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -443,6 +444,61 @@ def get_adzuna_storage_status_endpoint():
   except Exception as e:
     logger.info("get_adzuna_storage_status_endpoint returning with no parameters")
     return _handle_api_exception(e, "getting Adzuna storage status")
+    
+@app.route('/api/adzuna/batch/<batch_id>', methods=['DELETE'])
+def delete_adzuna_batch(batch_id):
+  """API endpoint to delete a specific Adzuna batch"""
+  try:
+    # Initialize storage
+    adzuna_storage = AdzunaStorage()
+    
+    # Load index
+    adzuna_storage._load_index()
+    
+    # Check if batch exists
+    if batch_id not in adzuna_storage._index["batches"]:
+      logger.info(f"Batch {batch_id} not found in index")
+      return jsonify({"success": False, "error": f"Batch {batch_id} not found"}), 404
+    
+    # Get job count before deletion
+    job_count_before = adzuna_storage._index["job_count"]
+    batch_job_count = adzuna_storage._index["batches"][batch_id]["job_count"]
+    
+    # Remove batch file
+    import os
+    from adzuna_storage import ADZUNA_DATA_DIR
+    batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
+    if os.path.exists(batch_file):
+      os.remove(batch_file)
+    
+    # Remove from index
+    del adzuna_storage._index["batches"][batch_id]
+    
+    # Update total job count
+    adzuna_storage._index["job_count"] -= batch_job_count
+    if adzuna_storage._index["job_count"] < 0:
+      adzuna_storage._index["job_count"] = 0
+    
+    # Update last batch if this was the last batch
+    if adzuna_storage._index["last_batch"] == batch_id:
+      adzuna_storage._index["last_batch"] = None
+      if adzuna_storage._index["batches"]:
+        # Set to most recent remaining batch
+        adzuna_storage._index["last_batch"] = max(adzuna_storage._index["batches"].items(), key=lambda x: x[1]["timestamp"])[0]
+    
+    # Save updated index
+    adzuna_storage._save_index()
+    
+    logger.info(f"Successfully deleted batch {batch_id} containing {batch_job_count} jobs")
+    return jsonify({
+      "success": True, 
+      "batch_id": batch_id,
+      "removed_jobs": batch_job_count,
+      "new_total": adzuna_storage._index["job_count"]
+    })
+  except Exception as e:
+    logger.error(f"Error deleting batch {batch_id}: {str(e)}")
+    return _handle_api_exception(e, f"deleting batch {batch_id}")
 @app.route('/api/adzuna/import', methods=['POST'])
 def import_adzuna_jobs_endpoint():
   """API endpoint to import Adzuna jobs to main storage"""
