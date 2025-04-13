@@ -476,9 +476,10 @@
                             <button type="button" class="btn btn-primary" onclick="saveJobSearch()">
                                 <i class="fas fa-save me-1"></i> Save Settings
                             </button>
-                            <button type="button" class="btn btn-success ms-2" onclick="startJobSync()">
+                            <!-- Bulk Sync button removed in favor of the Save Settings functionality -->
+                            <!-- <button type="button" class="btn btn-success ms-2" onclick="startJobSync()">
                                 <i class="fas fa-sync-alt me-1"></i> Save & Sync Now
-                            </button>
+                            </button> -->
                         </div>
                     </form>
                 </div>
@@ -683,7 +684,8 @@
             let syncProgressInterval;
             let syncStartTime;
             
-            // Start a new job sync
+            // Start a new job sync - REMOVED (commented out - duplicate functionality)
+            /* 
             function startJobSync() {
                 // Get sync parameters from the Job Search Parameters form
                 const keywords = $('#keywords').val();
@@ -741,6 +743,7 @@
                     }
                 });
             }
+            */
             
             // Import to main storage
             function importToMainStorage() {
