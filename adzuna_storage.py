@@ -76,22 +76,18 @@ class AdzunaStorage:
       logger.error(f"Error saving job batch {batch_id}: {str(e)}")
       logger.info("_save_job_batch returning with self=%s, jobs=%s, batch_id=%s", self, jobs, batch_id)
       return False
-
+  """Load a batch of jobs from a file"""
   def _load_job_batch(self, batch_id: str) -> List[Dict]:
-    """Load a batch of jobs from a file"""
     try:
       batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
       if not os.path.exists(batch_file):
         logger.warning(f"Batch file {batch_id} not found")
-        logger.info("_load_job_batch returning with self=%s, batch_id=%s", self, batch_id)
         return []
 
       with open(batch_file, 'r', encoding='utf-8') as f:
-        logger.info("_load_job_batch returning with self=%s, batch_id=%s", self, batch_id)
         return json.load(f)
     except Exception as e:
       logger.error(f"Error loading job batch {batch_id}: {str(e)}")
-      logger.info("_load_job_batch returning with self=%s, batch_id=%s", self, batch_id)
       return []
 
   def store_jobs(self, jobs, keywords=None, location=None, country="gb", max_days_old=30):
