@@ -42,7 +42,6 @@ class Job:
     if include_embeddings:
       job_dict['embedding_narrative'] = (self.embedding_narrative.tolist() if self.embedding_narrative is not None else None)
       job_dict['embedding_skills'] = (self.embedding_skills.tolist() if self.embedding_skills is not None else None)
-    logger.info("to_dict ran")
 
     return job_dict
 # Class representing a match between a resume and job
