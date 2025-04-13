@@ -9,7 +9,8 @@ from datetime import datetime
 from resume_parser import parse_resume, FileParsingError
 from matching_engine import generate_dual_embeddings
 from resume_storage import resume_storage
-from job_manager import job_manager, AdzunaAPIError
+from job_manager import JobManager, AdzunaAPIError
+job_manager = JobManager()
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)

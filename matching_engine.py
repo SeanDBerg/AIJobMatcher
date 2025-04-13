@@ -207,17 +207,15 @@ def generate_dual_embeddings(text: str) -> dict:
 # JOB DATA & MATCHING ENGINE SECTION (simplified)
 ################################################################################
 
-# Import Adzuna storage for direct access
-from adzuna_storage import AdzunaStorage
-
 # Cache for job data with embeddings
 _job_cache = None
 _job_cache_last_updated = None
+_job_manager = None
 
 # Get job data with embeddings, using cache if available
 def get_job_data(days=30, refresh=False):
     """
-    Get job data with embeddings from Adzuna storage.
+    Get job data with embeddings from storage.
     
     Args:
         days: Number of days to look back for recent jobs
@@ -226,7 +224,7 @@ def get_job_data(days=30, refresh=False):
     Returns:
         List of Job objects with embeddings
     """
-    global _job_cache, _job_cache_last_updated
+    global _job_cache, _job_cache_last_updated, _job_manager
     
     # Check if we need to refresh the cache
     current_time = datetime.now()
@@ -235,12 +233,15 @@ def get_job_data(days=30, refresh=False):
     if refresh or _job_cache is None or cache_age is None or cache_age > 3600:  # Refresh if forced or cache older than 1 hour
         logger.debug("Refreshing job data cache")
         
-        # Get jobs directly from Adzuna storage
-        adzuna_storage = AdzunaStorage()
-        jobs = adzuna_storage.get_recent_jobs(days=days)
+        # Get jobs from JobManager
+        if _job_manager is None:
+            from job_manager import JobManager
+            _job_manager = JobManager()
+            
+        jobs = _job_manager.get_recent_jobs(days=days)
         
         if not jobs:
-            logger.warning("No jobs available from Adzuna storage")
+            logger.warning("No jobs available from storage")
             return []
         
         # Generate embeddings for jobs
@@ -343,72 +344,17 @@ def find_matching_jobs(resume_embeddings, jobs=None, filters=None, resume_text=N
     """
     logger.debug("Finding matching jobs (dual embeddings)")
     
-    # Validate resume_embeddings
-    if resume_embeddings is None or not isinstance(resume_embeddings, dict):
-        logger.error("Invalid resume_embeddings - must be a dictionary")
-        return []
+    # Use the JobManager directly for matching
+    global _job_manager
+    if _job_manager is None:
+        from job_manager import JobManager
+        _job_manager = JobManager()
         
-    if "narrative" not in resume_embeddings or "skills" not in resume_embeddings:
-        logger.error("Missing required keys in resume_embeddings ('narrative' and/or 'skills')")
-        return []
-
-    # Get jobs if not provided
-    if jobs is None:
-        jobs = get_job_data(days=days)
-        
-    if not jobs:
-        logger.warning("No jobs available for matching")
-        return []
-
-    # Apply filters if specified
-    try:
-        if filters:
-            filtered_jobs = apply_filters(jobs, filters)
-        else:
-            filtered_jobs = jobs
-    except Exception as e:
-        logger.error(f"Error applying filters: {str(e)}")
-        filtered_jobs = jobs
-
-    # Match jobs to resume
-    matches = []
-    for job in filtered_jobs:
-        try:
-            # Skip jobs without embeddings
-            if not hasattr(job, 'embedding_narrative') or not hasattr(job, 'embedding_skills'):
-                logger.warning(f"Job '{job.title}' missing embeddings, generating now")
-                # Generate embeddings for this job
-                job_text = f"{job.title}\n{job.company}\n{job.description}"
-                if job.skills:
-                    job_text += "\nSkills: " + ", ".join(job.skills)
-                
-                embeddings = generate_dual_embeddings(job_text)
-                job.embedding_narrative = embeddings["narrative"]
-                job.embedding_skills = embeddings["skills"]
-
-            # Calculate similarity scores
-            sim_narrative = calculate_similarity(resume_embeddings["narrative"], job.embedding_narrative)
-            sim_skills = calculate_similarity(resume_embeddings["skills"], job.embedding_skills)
-
-            # Weighted average of narrative and skills similarity
-            similarity = (sim_narrative + sim_skills) / 2
-            
-            # Apply skill boost if resume text provided
-            if resume_text:
-                job_text = f"{job.title} {job.description} {' '.join(job.skills)}"
-                similarity = boost_score_with_skills(similarity, resume_text, job_text, DEFAULT_SKILLS)
-
-            matches.append(JobMatch(job, similarity))
-        except Exception as e:
-            # Log and continue with next job if there's an error with this one
-            logger.error(f"Error matching job '{job.title}': {str(e)}")
-            continue
-
-    # Sort by similarity score (descending)
-    try:
-        matches.sort(key=lambda m: m.similarity_score, reverse=True)
-    except Exception as e:
-        logger.error(f"Error sorting matches: {str(e)}")
-    
-    logger.debug(f"Found {len(matches)} matching jobs")
-    return matches
+    # Use the consolidated matching function in JobManager
+    return _job_manager.match_jobs_to_resume(
+        resume_embeddings=resume_embeddings,
+        jobs=jobs,
+        filters=filters,
+        resume_text=resume_text,
+        days=days
+    )

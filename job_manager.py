@@ -8,7 +8,6 @@ import logging
 import uuid
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime, timedelta
-import time
 import requests
 import numpy as np
 
@@ -25,14 +24,8 @@ ADZUNA_API_BASE_URL = "https://api.adzuna.com/v1/api"
 # Custom exception for Adzuna API errors
 class AdzunaAPIError(Exception):
     pass
-
-class JobManager:
-    """
-    Unified manager for job data - single interface to access all job data
-    throughout the application, reducing redundancy and improving performance
-    through caching.
-    """
-    
+# Unified manager for job data
+class JobManager:    
     # Singleton instance
     _instance = None
     
