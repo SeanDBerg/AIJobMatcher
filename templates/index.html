@@ -868,67 +868,75 @@
             // Initialize job tables with proper configuration
             function initializeJobTables() {
                 try {
-                    // Super basic configuration - minimum features to ensure it works
-                    const tableConfig = {
-                        pageLength: 10,
-                        order: [[6, 'desc']], // Sort by match percentage column by default
-                        columnDefs: [
-                            {
-                                targets: 6, // Match percentage column
-                                type: 'string',
-                                render: function(data, type, row) {
-                                    if (type === 'sort' || type === 'type') {
-                                        // Extract numeric part for sorting
-                                        return parseFloat(data) || 0;
+                    // Wait for the DOM to be fully ready
+                    $(document).ready(function() {
+                        // Super basic configuration - minimum features to ensure it works
+                        const tableConfig = {
+                            pageLength: 10,
+                            order: [[6, 'desc']], // Sort by match percentage column by default
+                            processing: true,
+                            retrieve: true, // Allow the table to be retrieved again
+                            columnDefs: [
+                                {
+                                    targets: 6, // Match percentage column
+                                    render: function(data, type, row) {
+                                        if (type === 'sort' || type === 'type') {
+                                            // Extract numeric part for sorting
+                                            return parseFloat(data) || 0;
+                                        }
+                                        return data;
                                     }
-                                    return data;
                                 }
-                            }
-                        ]
-                    };
-                    
-                    // Initialize all tables with a delay
-                    setTimeout(function() {
-                        $('.job-table').each(function() {
-                            // Skip if table has no rows or is empty
-                            if ($(this).find('tbody tr').length === 0 || 
-                                ($(this).find('tbody tr').length === 1 && $(this).find('tbody tr:first td').length === 1) ||
-                                ($(this).find('tbody tr').length >= 1 && $(this).find('tbody tr:first td:first').text().trim() === 'No data available')) {
-                                console.log("Skipping empty table:", $(this).attr('id'));
-                                return;
-                            }
-                            
-                            try {
-                                const tableId = '#' + $(this).attr('id');
-                                
-                                // Destroy existing table if it exists
-                                if ($.fn.DataTable.isDataTable(tableId)) {
-                                    $(tableId).DataTable().destroy();
-                                }
-                                
-                                // Check if table has a header row
-                                if ($(tableId + ' thead tr th').length === 0) {
-                                    console.log("Table has no header row:", tableId);
+                            ]
+                        };
+                        
+                        // Initialize all tables with a delay to ensure DOM is ready
+                        setTimeout(function() {
+                            $('.job-table').each(function() {
+                                // Skip if table has no rows besides the empty message
+                                if ($(this).find('tbody tr').length === 0 || 
+                                    ($(this).find('tbody tr').length === 1 && 
+                                     $(this).find('tbody tr:first td').length === 1) ||
+                                    ($(this).find('tbody tr:first td:first').text().trim() === 'No jobs found' ||
+                                     $(this).find('tbody tr:first td:first').text().trim() === 'No recent jobs found' ||
+                                     $(this).find('tbody tr:first td:first').text().trim() === 'No remote jobs found' ||
+                                     $(this).find('tbody tr:first td:first').text().trim() === 'No data available')) {
+                                    console.log("Skipping empty table:", $(this).attr('id'));
                                     return;
                                 }
                                 
-                                // Create new table with minimal configuration and error handling
                                 try {
-                                    const table = $(tableId).DataTable({
-                                        ...tableConfig,
-                                        // Handle errors gracefully
-                                        language: {
-                                            emptyTable: "No job data available"
-                                        }
-                                    });
-                                    jobTables[tableId] = table;
-                                    console.log("Table initialized:", tableId);
-                                } catch (dtError) {
-                                    console.error("DataTables initialization error:", dtError);
+                                    const tableId = '#' + $(this).attr('id');
+                                    
+                                    // Destroy existing table if it exists
+                                    if ($.fn.DataTable.isDataTable(tableId)) {
+                                        $(tableId).DataTable().destroy();
+                                    }
+                                    
+                                    // Check if table has a header row
+                                    if ($(tableId + ' thead tr th').length === 0) {
+                                        console.log("Table has no header row:", tableId);
+                                        return;
+                                    }
+                                    
+                                    // Create new table with safer configuration and error handling
+                                    try {
+                                        const table = $(tableId).DataTable({
+                                            ...tableConfig,
+                                            // Handle errors gracefully
+                                            language: {
+                                                emptyTable: "No job data available"
+                                            }
+                                        });
+                                        jobTables[tableId] = table;
+                                        console.log("Table initialized:", tableId);
+                                    } catch (dtError) {
+                                        console.error("DataTables initialization error:", dtError);
+                                    }
+                                } catch (tableError) {
+                                    console.error("Error initializing table:", $(this).attr('id'), tableError);
                                 }
-                            } catch (tableError) {
-                                console.error("Error initializing table:", $(this).attr('id'), tableError);
-                            }
+                            });
                         });
                         
                         // If a resume is already selected, match jobs
