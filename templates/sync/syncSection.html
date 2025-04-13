@@ -1,0 +1,75 @@
+<!-- Sync Status Alert -->
+<div class="alert alert-info alert-dismissible fade show mb-4" id="syncStatus" style="display: none;" role="alert">
+    <span id="syncStatusText">Syncing jobs...</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<!-- Job Source Settings (moved from Settings page) -->
+<div id="jobSourceSettings" class="card-body pb-0 border-bottom">
+    <div class="row">
+        <div class="col-lg-9">
+            <h6 class="mb-3">Job Sync</h6>
+            <form id="jobSearchForm" class="row g-3">
+                <div class="col-md-4">
+                    <label for="country" class="form-label">Country</label>
+                    <select class="form-select" id="country" name="country">
+                        <option value="gb" {% if not country or country == 'gb' %}selected{% endif %}>United Kingdom (gb)</option>
+                        <option value="us" {% if country == 'us' %}selected{% endif %}>United States (us)</option>
+                        <option value="ca" {% if country == 'ca' %}selected{% endif %}>Canada (ca)</option>
+                        <option value="de" {% if country == 'de' %}selected{% endif %}>Germany (de)</option>
+                        <option value="fr" {% if country == 'fr' %}selected{% endif %}>France (fr)</option>
+                        <option value="au" {% if country == 'au' %}selected{% endif %}>Australia (au)</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="location" class="form-label">Location</label>
+                    <input type="text" class="form-control" id="location" name="location" value="{{ location|default('') }}" placeholder="e.g., London, New York">
+                </div>
+                <div class="col-md-4">
+                    <label for="keywords" class="form-label">Keywords</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="keywords" name="keywords" value="" placeholder="e.g., Python Developer">
+                        <button class="btn btn-outline-secondary" type="button" id="addKeywordBtn">Add</button>
+                    </div>
+                    <div id="keywordsList" class="mt-2">
+                        <!-- Keywords will be displayed here -->
+                    </div>
+                    <input type="hidden" id="keywordsListData" name="keywordsListData" value='{{ keywords_list|default("[]")|tojson }}'>
+                </div>
+                <div class="col-md-3">
+                    <label for="max_days_old" class="form-label">Max Days Old</label>
+                    <select class="form-select" id="max_days_old" name="max_days_old">
+                        <option value="1" {% if max_days_old == 1 %}selected{% endif %}>1 day</option>
+                        <option value="3" {% if max_days_old == 3 %}selected{% endif %}>3 days</option>
+                        <option value="7" {% if max_days_old == 7 %}selected{% endif %}>1 week</option>
+                        <option value="14" {% if max_days_old == 14 %}selected{% endif %}>2 weeks</option>
+                        <option value="30" {% if not max_days_old or max_days_old == 30 %}selected{% endif %}>30 days</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="maxPages" class="form-label">Max Pages</label>
+                    <input type="number" class="form-control" id="maxPages" name="max_pages" value="{{ max_pages|default('5') }}" min="1" max="20">
+                    <small class="text-muted">1-20 pages (50 jobs per page)</small>
+                </div>
+                <div class="col-md-3">
+                    <div class="mt-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="remote_only" name="remote_only" value="1" {% if remote_only %}checked{% endif %}>
+                            <label class="form-check-label" for="remote_only">
+                                Remote Jobs Only
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <!-- Scheduler UI elements removed -->
+                <div class="col-12 mt-2">
+                    <button type="button" class="btn btn-primary" onclick="saveJobSearch()">
+                        <i class="fas fa-save me-1"></i> Save Settings
+                    </button>
+                    <button type="button" class="btn btn-success ms-2" onclick="syncJobs()">
+                        <i class="fas fa-sync-alt me-1"></i> Sync Jobs
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
