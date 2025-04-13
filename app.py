@@ -7,9 +7,7 @@ import tempfile
 import numpy as np
 from datetime import datetime
 from resume_parser import parse_resume, FileParsingError
-from embedding_generator import generate_dual_embeddings
-from job_data import get_job_data
-from matching_engine import find_matching_jobs
+from matching_engine import generate_dual_embeddings, get_job_data, find_matching_jobs
 from resume_storage import resume_storage
 from adzuna_scraper import (get_adzuna_jobs, import_adzuna_jobs_to_main_storage, cleanup_old_adzuna_jobs, get_adzuna_storage_status, search_jobs)
 # Set up logging

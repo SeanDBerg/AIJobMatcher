@@ -6,7 +6,7 @@ import requests
 from datetime import datetime
 import time
 from adzuna_storage import AdzunaStorage
-from job_data import add_job
+from matching_engine import add_job
 from models import Job
 
 logger = logging.getLogger(__name__)
@@ -234,14 +234,14 @@ def extract_skills_from_adzuna(job_data):
             skills.append(skill)
   # Fall back to extracting from title and description if no skills found
   if not skills:
+    # This functionality has been moved to matching_engine.py
     try:
-      # Try to import the skill extractor from job_scraper
-      from job_scraper import extract_skills_from_description
+      from matching_engine import extract_skills
       description = job_data.get("description", "")
-      extracted_skills = extract_skills_from_description(description)
+      extracted_skills = extract_skills(description, set())
       skills.extend(extracted_skills)
     except ImportError:
-      logger.warning("Could not import extract_skills_from_description")
+      logger.warning("Could not import extract_skills from matching_engine")
   logger.info("extract_skills_from_adzuna returning with job_data=%s", job_data)
   return list(set(skills)) # Remove duplicates
 
