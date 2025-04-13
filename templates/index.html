@@ -920,7 +920,7 @@
                 $('#syncStatusText').text('Deleting batch...');
                 
                 $.ajax({
-                    url: `/api/adzuna/batches/${batchId}`,
+                    url: `/api/adzuna/batch/${batchId}`,
                     method: 'DELETE',
                     success: function(response) {
                         if (response.success) {

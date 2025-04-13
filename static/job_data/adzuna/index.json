@@ -3,24 +3,6 @@
   "total_jobs": 0,
   "jobs": [],
   "batches": {
-    "26cc7079-1053-4054-8677-1d90795ccaf3": {
-      "id": "26cc7079-1053-4054-8677-1d90795ccaf3",
-      "timestamp": "2025-04-10T05:27:18.246035",
-      "keywords": "",
-      "location": "Northampton, PA",
-      "country": "us",
-      "job_count": 50,
-      "max_days_old": 1
-    },
-    "e53c772f-23ba-406a-b939-f6858eef9b3b": {
-      "id": "e53c772f-23ba-406a-b939-f6858eef9b3b",
-      "timestamp": "2025-04-10T05:27:22.326098",
-      "keywords": "",
-      "location": "Northampton, PA",
-      "country": "us",
-      "job_count": 50,
-      "max_days_old": 1
-    },
     "2e02722b-6c65-4a7e-92e4-b948c32d5dd8": {
       "id": "2e02722b-6c65-4a7e-92e4-b948c32d5dd8",
       "timestamp": "2025-04-10T05:27:26.389433",
@@ -210,7 +192,7 @@
       "job_count": 47,
       "max_days_old": 1
     }
-    },
-    "job_count": 1847,
-    "last_batch": "038723da-13ab-4be0-953e-2dff881a6cd8"
+  },
+  "job_count": 1747,
+  "last_batch": "038723da-13ab-4be0-953e-2dff881a6cd8"
 }
