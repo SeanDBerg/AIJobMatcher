@@ -87,74 +87,11 @@
                         deleteBatch(batchId);
                     }
                 });
-                // Load saved job search parameters if available
-                if (localStorage.getItem('job_search_keywords')) {
-                    $('#keywords').val(localStorage.getItem('job_search_keywords'));
-                }
-                if (localStorage.getItem('job_search_location')) {
-                    $('#location').val(localStorage.getItem('job_search_location'));
-                }
-                if (localStorage.getItem('job_search_country')) {
-                    $('#country').val(localStorage.getItem('job_search_country'));
-                }
-                if (localStorage.getItem('job_search_max_days_old')) {
-                    $('#max_days_old').val(localStorage.getItem('job_search_max_days_old'));
-                }
-                if (localStorage.getItem('job_search_remote_only') === '1') {
-                    $('#remote_only').prop('checked', true);
-                }
-                if (localStorage.getItem('job_search_max_pages')) {
-                    $('#maxPages').val(localStorage.getItem('job_search_max_pages'));
-                }
-                
-                
+                loadSavedSearch();
                 // Wait for DOM to be fully loaded before initializing tables
                 initializeJobTables();
-                
-                
             });
-              
-            // Save job search parameters
-            function saveJobSearch() {
-                // Get form values
-                const keywords = $('#keywords').val();
-                const location = $('#location').val();
-                const country = $('#country').val();
-                const maxDaysOld = $('#max_days_old').val();
-                const remoteOnly = $('#remote_only').is(':checked') ? '1' : '';
-                const maxPages = $('#maxPages').val();
-                
-                // Get keywords list from hidden input
-                let keywordsList = [];
-                try {
-                    const keywordsListData = $('#keywordsListData').val();
-                    if (keywordsListData) {
-                        keywordsList = JSON.parse(keywordsListData);
-                    }
-                } catch (e) {
-                    console.error("Error parsing keywords list in saveJobSearch:", e);
-                }
-                
-                // Store values in session/browser storage for persistence
-                localStorage.setItem('job_search_keywords', keywords);
-                localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
-                localStorage.setItem('job_search_location', location);
-                localStorage.setItem('job_search_country', country);
-                localStorage.setItem('job_search_max_days_old', maxDaysOld);
-                localStorage.setItem('job_search_remote_only', remoteOnly);
-                localStorage.setItem('job_search_max_pages', maxPages);
-                
-                // Show confirmation message
-                $('#syncStatus').show().removeClass('alert-info alert-danger').addClass('alert-success');
-                $('#syncStatusText').html('<i class="fas fa-check-circle"></i> Settings saved successfully.');
-                
-                // Auto-hide after a few seconds
-                setTimeout(function() {
-                    $('#syncStatus').fadeOut();
-                }, 3000);
-            }
-        
-            
+                      
             // Initialize job tables with proper configuration
             // Function to delete a batch
             function deleteBatch(batchId) {

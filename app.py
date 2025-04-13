@@ -1,7 +1,7 @@
 # app.py
 import os
 import logging
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session, send_from_directory
+from flask import Flask, render_template, request, jsonify, session, send_from_directory
 import numpy as np
 from datetime import datetime
 from matching_engine import generate_dual_embeddings
@@ -10,6 +10,7 @@ from client.resume.uploadResume import upload_resume_bp
 from client.resume.resumeHistory import resume_history_bp, get_all_resumes
 from resume_storage import resume_storage
 from templates.jobs.jobHeading import job_heading_bp
+from logic.jobSync import job_sync_bp
 
 job_manager = JobManager()
 # Set up logging
@@ -23,6 +24,7 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 app.register_blueprint(upload_resume_bp)
 app.register_blueprint(resume_history_bp)
 app.register_blueprint(job_heading_bp)
+app.register_blueprint(job_sync_bp)
 #"""Log exception and return standardized error response"""
 def _handle_api_exception(e, operation_name):
   logger.error(f"Error {operation_name}: {str(e)}")
@@ -122,54 +124,9 @@ def resume_files(resume_id, filename):
   from resume_storage import RESUME_DIR
   logger.info("resume_files returning with resume_id=%s, filename=%s", resume_id, filename)
   return send_from_directory(RESUME_DIR, f"{resume_id}_{filename}")
-#"""Save user settings for job search"""
-@app.route('/save_settings', methods=['POST'])
-def save_settings():
-  try:
-    # Extract settings from form
-    job_sources = request.form.getlist('job_sources')
-    keywords = request.form.get('keywords', '')
-    keywords_list_data = request.form.get('keywordsListData', '[]')
-    try:
-      import json
-      keywords_list = json.loads(keywords_list_data)
-      session['keywords_list'] = keywords_list
-    except Exception as e:
-      logger.error(f"Error parsing keywords list: {str(e)}")
-      keywords_list = []
-      
-    location = request.form.get('location', '')
-    country = request.form.get('country', 'gb')
-    max_days_old = int(request.form.get('max_days_old', 30))
-    remote_only = request.form.get('remote_only') == '1'
-    search_terms = request.form.getlist('search_terms')
-    # Check if "Sync Now" was requested
-    sync_now = request.form.get('sync_now') == '1'
-    flash('Settings saved successfully!', 'success')
-    # Redirect to job tracker page with sync form pre-filled if "Sync Now" was selected
-    if sync_now:
-      # Store search parameters in session for persistence
-      session['job_search_keywords'] = keywords
-      session['job_search_location'] = location
-      session['job_search_country'] = country
-      session['job_search_max_days_old'] = str(max_days_old)
-      session['job_search_remote_only'] = '1' if remote_only else ''
-      logger.info("save_settings returning with no parameters")
-
-      return redirect(url_for('index'))
-    else:
-      logger.info("save_settings returning with no parameters")
-      return redirect(url_for('settings'))
-
-  except Exception as e:
-    logger.error(f"Error saving settings: {str(e)}")
-    flash(f'Error saving settings: {str(e)}', 'danger')
-    logger.info("save_settings returning with no parameters")
-    return redirect(url_for('settings'))
-
+"""API endpoint to get job listings"""
 @app.route('/api/jobs', methods=['GET'])
 def get_jobs():
-  """API endpoint to get job listings"""
   try:
     days = request.args.get('days', 30, type=int)
     jobs = job_manager.get_recent_jobs(days=days)
@@ -262,49 +219,10 @@ def match_jobs():
   except Exception as e:
     logger.error(f"Unexpected error in API: {str(e)}")
     logger.info("match_jobs returning with no parameters")
-    return jsonify({"success": False, "error": f"Unexpected error: {str(e)}"}), 500
-# API endpoint to configure Adzuna API credentials
-@app.route('/api/config/adzuna', methods=['POST'])
-def config_adzuna():
-  try:
-    if not request.is_json:
-      logger.info("config_adzuna returning with no parameters")
-      return jsonify({"success": False, "error": "Request must be JSON"}), 400
-    data = request.json
-    app_id = data.get('app_id')
-    api_key = data.get('api_key')
-    # Here we would normally save these to environment variables or a secure storage
-    # For this example, we'll just set them in the current process environment
-    if app_id:
-      os.environ['ADZUNA_APP_ID'] = app_id
-      logger.info("Adzuna App ID configured")
-    if api_key:
-      os.environ['ADZUNA_API_KEY'] = api_key
-      logger.info("Adzuna API Key configured")
-    logger.info("config_adzuna returning with no parameters")
-    return jsonify({"success": True})
-  except Exception as e:
-    logger.error(f"Error configuring Adzuna API: {str(e)}")
-    logger.info("config_adzuna returning with no parameters")
-    return jsonify({"success": False, "error": str(e)}), 500    
-"""API endpoint to get jobs from storage"""
-@app.route('/api/adzuna/jobs', methods=['GET'])
-def get_adzuna_jobs_endpoint():
-  try:
-    days = request.args.get('days', 30, type=int)
-    # Get jobs using JobManager
-    jobs = job_manager.get_recent_jobs(days=days)
-    # Convert to dictionaries for JSON response
-    job_dicts = [job.to_dict() for job in jobs]
-    logger.debug("Retrieved %d jobs for API", len(jobs))
-    return jsonify({"success": True, "jobs": job_dicts, "count": len(job_dicts)})
-  except Exception as e:
-    logger.error(f"Error getting jobs: {str(e)}")
-    return _handle_api_exception(e, "getting jobs")
-
+    return jsonify({"success": False, "error": f"Unexpected error: {str(e)}"}), 500 
+"""API endpoint to delete a specific batch"""
 @app.route('/api/adzuna/batch/<batch_id>', methods=['DELETE'])
 def delete_adzuna_batch(batch_id):
-  """API endpoint to delete a specific batch"""
   try:
     # Use JobManager to delete the batch
     success = job_manager.delete_batch(batch_id)

@@ -1,4 +1,4 @@
-// jobHeading.js - Handles job header interactions (sync, cleanup, keyword list)
+// syncSection.js
 
 // Stores the current list of keywords
 let keywordsList = [];
@@ -105,3 +105,57 @@ function syncJobs() {
   });
 }
 
+// Save job search parameters
+function saveJobSearch() {
+    // Get form values
+    const keywords = $('#keywords').val();
+    const location = $('#location').val();
+    const country = $('#country').val();
+    const maxDaysOld = $('#max_days_old').val();
+    const remoteOnly = $('#remote_only').is(':checked') ? '1' : '';
+    const maxPages = $('#maxPages').val();
+
+    // Get keywords list from hidden input
+    let keywordsList = [];
+    try {
+        const keywordsListData = $('#keywordsListData').val();
+        if (keywordsListData) {
+            keywordsList = JSON.parse(keywordsListData);
+        }
+    } catch (e) {
+        console.error("Error parsing keywords list in saveJobSearch:", e);
+    }
+
+    // Store values in session/browser storage for persistence
+    localStorage.setItem('job_search_keywords', keywords);
+    localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
+    localStorage.setItem('job_search_location', location);
+    localStorage.setItem('job_search_country', country);
+    localStorage.setItem('job_search_max_days_old', maxDaysOld);
+    localStorage.setItem('job_search_remote_only', remoteOnly);
+    localStorage.setItem('job_search_max_pages', maxPages);
+
+    // Show confirmation message
+    $('#syncStatus').show().removeClass('alert-info alert-danger').addClass('alert-success');
+    $('#syncStatusText').html('<i class="fas fa-check-circle"></i> Settings saved successfully.');
+
+    // Auto-hide after a few seconds
+    setTimeout(function() {
+        $('#syncStatus').fadeOut();
+    }, 3000);
+}
+
+function loadSavedSearch() {
+    $('#keywords').val(localStorage.getItem('job_search_keywords') || '');
+    $('#location').val(localStorage.getItem('job_search_location') || '');
+    $('#country').val(localStorage.getItem('job_search_country') || '');
+    $('#max_days_old').val(localStorage.getItem('job_search_max_days_old') || '');
+    $('#remote_only').prop('checked', localStorage.getItem('job_search_remote_only') === '1');
+    $('#maxPages').val(localStorage.getItem('job_search_max_pages') || '');
+}
+
+$(document).ready(function () {
+  tryLoadKeywords();
+  attachEventHandlers();
+  renderKeywords(); // ensure visibility
+});
