@@ -225,19 +225,15 @@ def load_job_data():
             adzuna_jobs = get_adzuna_jobs(days=30)
             if adzuna_jobs and len(adzuna_jobs) > 0:
                 logger.debug(f"Loaded {len(adzuna_jobs)} jobs from Adzuna storage")
-                logger.info("load_job_data returning with no parameters")
                 return adzuna_jobs
             else:
                 logger.warning("No Adzuna jobs available")
-                logger.info("load_job_data returning with no parameters")
                 return []
         except Exception as e:
             logger.error(f"Error loading Adzuna jobs: {str(e)}")
-            logger.info("load_job_data returning with no parameters")
             return []
     else:
         logger.warning("Adzuna API not available")
-        logger.info("load_job_data returning with no parameters")
         return []
 
 # Generate narrative and skills embeddings for job descriptions
@@ -255,62 +251,44 @@ def generate_job_embeddings(jobs):
     logger.info("generate_job_embeddings returning with jobs=%s", jobs)
 
     return jobs
-
+# Get job data with embeddings, using cache if available
 def get_job_data():
-    """
-    Get job data with embeddings, using cache if available
-    """
     global _job_cache, _job_cache_last_updated
-
     # Check if we need to refresh the cache
     current_time = datetime.now()
     cache_age = (current_time - _job_cache_last_updated).total_seconds() if _job_cache_last_updated else None
-
     if _job_cache is None or cache_age is None or cache_age > 3600: # Refresh cache if older than 1 hour
         logger.debug("Refreshing job data cache")
-
         # Load job data
         jobs = load_job_data()
-
         # Generate embeddings
         jobs_with_embeddings = generate_job_embeddings(jobs)
-
         # Update cache
         _job_cache = jobs_with_embeddings
         _job_cache_last_updated = current_time
-        logger.info("get_job_data returning with no parameters")
-
+        logger.info(f"get_job_data returned {_job_cache}")
         return jobs_with_embeddings
     else:
         logger.debug("Using cached job data")
-        logger.info("get_job_data returning with no parameters")
         return _job_cache
-
+# Add a new job to the job data file
 def add_job(job_dict):
-    """
-    Add a new job to the job data file
-    """
     logger.debug(f"Adding new job: {job_dict.get('title')}")
-
     # Load existing jobs
     jobs = load_job_data()
-
     # Create new Job object
     new_job = Job(title=job_dict.get('title', ''), company=job_dict.get('company', ''), 
                  description=job_dict.get('description', ''), location=job_dict.get('location', ''), 
                  is_remote=job_dict.get('is_remote', False), posted_date=datetime.now(), 
                  url=job_dict.get('url', ''), skills=job_dict.get('skills', []), 
                  salary_range=job_dict.get('salary_range', ''))
-
     # Add to list
     jobs.append(new_job)
-
     # Invalidate cache
     global _job_cache, _job_cache_last_updated
     _job_cache = None
     _job_cache_last_updated = None
     logger.info("add_job returning with job_dict=%s", job_dict)
-
     return new_job
 
 ################################################################################

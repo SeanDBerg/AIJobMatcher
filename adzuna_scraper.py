@@ -106,7 +106,7 @@ def cleanup_old_adzuna_jobs(max_age_days: int = 10) -> int:
   return _adzuna_storage.cleanup_old_jobs(max_age_days=max_age_days)
 # Get status of Adzuna job storage
 def get_adzuna_storage_status() -> Dict[str, Any]:
-  logger.info("get_adzuna_storage_status ran")
+  logger.info("ran")
   return _adzuna_storage.get_sync_status()
 
 # Search for jobs using the Adzuna API

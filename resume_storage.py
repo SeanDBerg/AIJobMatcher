@@ -31,13 +31,11 @@ class ResumeStorage:
       self._save_index()
     else:
       self._load_index()
-
+  """Load the resume index from file"""
   def _load_index(self) -> Dict:
-    """Load the resume index from file"""
     try:
       with open(RESUME_INDEX_FILE, 'r', encoding='utf-8') as f:
         self._index = json.load(f)
-
       # Ensure the index has all required keys
       if "resumes" not in self._index:
         self._index["resumes"] = {}
@@ -45,23 +43,18 @@ class ResumeStorage:
         self._index["count"] = 0
       if "last_added" not in self._index:
         self._index["last_added"] = None
-
       # Scan the resumes directory to find any resumes not in the index
       # This helps recover from any previous index save failures
       self._recover_missing_resumes()
-      logger.info("_load_index returning with self=%s", self)
-
       return self._index
     except Exception as e:
       logger.error(f"Error loading resume index: {str(e)}")
       # If index file is corrupted, create a new one
       self._index = {"resumes": {}, "count": 0, "last_added": None}
-
       # Scan the resumes directory to find and recover resumes
       self._recover_missing_resumes()
-
       self._save_index()
-      logger.info("_load_index returning with self=%s", self)
+      logger.info("Resumes loaded from index")
       return self._index
 
   def _recover_missing_resumes(self):

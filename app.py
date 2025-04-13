@@ -36,10 +36,9 @@ def _require_json_request():
 def index():
   keywords = request.args.get('keywords', '')
   location = request.args.get('location', '')
-  country = request.args.get('country', 'gb')
-  max_days_old = request.args.get('max_days_old', '30')
+  country = request.args.get('country', 'us')
+  max_days_old = request.args.get('max_days_old', '1')
   remote_only = request.args.get('remote_only', '') == '1'
-  logger.debug(f"Job tracker parameters: keywords='{keywords}', location='{location}', country='{country}', max_days_old='{max_days_old}', remote_only='{remote_only}'")
   status = {}
   if ADZUNA_SCRAPER_AVAILABLE:
     storage_status = get_adzuna_storage_status()
@@ -69,11 +68,13 @@ def index():
         resume_embeddings = {"narrative": np.array(metadata["embedding_narrative"]), "skills": np.array(metadata["embedding_skills"])}
     if resume_embeddings:
       matches = find_matching_jobs(resume_embeddings, jobs)
-      for match in matches:
-        match.job.match_percentage = int(match.similarity_score * 100)
+      job_id_to_match = {match.job.url: match for match in matches}
+      for job in jobs:
+          match = job_id_to_match.get(job.url)
+          job.match_percentage = int(match.similarity_score * 100) if match else 0
     else:
       for job in jobs:
-        job.match_percentage = None
+          job.match_percentage = 0  # Ensure numeric zero
     jobs_dict = {i: job.to_dict() for i, job in enumerate(jobs)}
     recent_jobs_dict = {i: job.to_dict() for i, job in enumerate(recent_jobs_list)}
     remote_jobs_dict = {i: job.to_dict() for i, job in enumerate(remote_jobs_list)}
@@ -445,10 +446,8 @@ def get_adzuna_storage_status_endpoint():
     # Format datetime for JSON
     if status.get('last_sync'):
       status['last_sync'] = status['last_sync'].isoformat()
-    logger.info("get_adzuna_storage_status_endpoint returning with no parameters")
     return jsonify({"success": True, "status": status})
   except Exception as e:
-    logger.info("get_adzuna_storage_status_endpoint returning with no parameters")
     return _handle_api_exception(e, "getting Adzuna storage status")
     
 @app.route('/api/adzuna/batch/<batch_id>', methods=['DELETE'])

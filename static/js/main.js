@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     targets: 6, // Match percentage column
                     render: function(data) {
                         var num = parseFloat(data);
-                        return isNaN(num) ? 0 : num;
+                        return isNaN(num) ? '0%' : num + '%';
                     }
                 }
             ]

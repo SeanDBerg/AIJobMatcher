@@ -29,13 +29,11 @@ class AdzunaStorage:
       self._save_index()
     else:
       self._load_index()
-
+  """Load the job index from file"""
   def _load_index(self) -> Dict:
-    """Load the job index from file"""
     try:
       with open(ADZUNA_INDEX_FILE, 'r', encoding='utf-8') as f:
         self._index = json.load(f)
-
       # Ensure the index has all required keys
       if "batches" not in self._index:
         self._index["batches"] = {}
@@ -45,15 +43,14 @@ class AdzunaStorage:
         self._index["last_sync"] = None
       if "last_batch" not in self._index:
         self._index["last_batch"] = None
-      logger.info("_load_index returning with self=%s", self)
-
+      logger.info("ran")
       return self._index
     except Exception as e:
       logger.error(f"Error loading Adzuna index: {str(e)}")
       # If index file is corrupted, create a new one
       self._index = {"batches": {}, "job_count": 0, "last_sync": None, "last_batch": None}
       self._save_index()
-      logger.info("_load_index returning with self=%s", self)
+      logger.info("ran")
       return self._index
 
   def _save_index(self):
@@ -134,24 +131,15 @@ class AdzunaStorage:
       logger.error(f"Error storing jobs: {str(e)}")
       logger.info("store_jobs returning with self=%s, jobs=%s, keywords=%s, location=%s, country=%s, max_days_old=%s", self, jobs, keywords, location, country, max_days_old)
       return 0
-
+  # Get all stored Adzuna jobs
   def get_all_jobs(self) -> List[Job]:
-    """
-        Get all stored Adzuna jobs
-        
-        Returns:
-            List of Job objects
-        """
     try:
       all_jobs = []
-
       # Load index
       self._load_index()
-
       # Loop through batches
       for batch_id in self._index["batches"]:
         batch_jobs = self._load_job_batch(batch_id)
-
         # Convert dictionary to Job objects
         for job_dict in batch_jobs:
           try:
@@ -160,41 +148,25 @@ class AdzunaStorage:
           except Exception as e:
             logger.error(f"Error creating Job object: {str(e)}")
             continue
-      logger.info("get_all_jobs returning with self=%s", self)
-
+      logger.info("get_all_jobs ran")
       return all_jobs
-
     except Exception as e:
       logger.error(f"Error getting all jobs: {str(e)}")
-      logger.info("get_all_jobs returning with self=%s", self)
       return []
-
+# 
   def get_recent_jobs(self, days: int = 30) -> List[Job]:
-    """
-        Get jobs posted within the last X days
-        
-        Args:
-            days: Number of days to look back
-            
-        Returns:
-            List of Job objects
-        """
     try:
       all_jobs = self.get_all_jobs()
-
       if not all_jobs:
         logger.info("get_recent_jobs returning with self=%s, days=%s", self, days)
         return []
-
       # Calculate cutoff date
       cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
-
       # Filter by posted date
       recent_jobs = []
       for job in all_jobs:
         if not job.posted_date:
           continue
-
         # Convert string to datetime for comparison
         try:
           job_date = None
@@ -220,80 +192,56 @@ class AdzunaStorage:
           else:
             # Unknown type, skip
             continue
-
           # Convert cutoff_date to datetime if it's a string
           cutoff_datetime = datetime.fromisoformat(cutoff_date) if isinstance(cutoff_date, str) else cutoff_date
-
           # Compare datetime objects
           if job_date >= cutoff_datetime:
             recent_jobs.append(job)
-
         except Exception as e:
           logger.error(f"Error comparing dates for job {job.title}: {str(e)}")
           # Include jobs with date parsing errors to avoid excluding valid jobs
           recent_jobs.append(job)
-      logger.info("get_recent_jobs returning with self=%s, days=%s", self, days)
-
+      logger.info("ran")
       return recent_jobs
-
     except Exception as e:
       logger.error(f"Error getting recent jobs: {str(e)}")
-      logger.info("get_recent_jobs returning with self=%s, days=%s", self, days)
       return []
-
+# Remove jobs older than a certain age
   def cleanup_old_jobs(self, max_age_days: int = 90) -> int:
-    """
-        Remove jobs older than a certain age
-        
-        Args:
-            max_age_days: Maximum age in days
-            
-        Returns:
-            Number of jobs removed
-        """
     try:
       # Load index
       self._load_index()
-
       # Calculate cutoff date
       cutoff_date = (datetime.now() - timedelta(days=max_age_days)).isoformat()
-
       # Track batches and jobs to remove
       batches_to_remove = []
       job_count_removed = 0
-
       # Check each batch
       for batch_id, batch_info in self._index["batches"].items():
         # If batch is older than cutoff, mark for removal
         if batch_info["timestamp"] < cutoff_date:
           batches_to_remove.append(batch_id)
           job_count_removed += batch_info["job_count"]
-
       # Remove batches
       for batch_id in batches_to_remove:
         # Remove batch file
         batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
         if os.path.exists(batch_file):
           os.remove(batch_file)
-
         # Remove from index
         del self._index["batches"][batch_id]
-
       # Update total job count
       self._index["job_count"] -= job_count_removed
       if self._index["job_count"] < 0:
         self._index["job_count"] = 0
-
       # Update last batch
       if self._index["last_batch"] in batches_to_remove:
         self._index["last_batch"] = None
         if self._index["batches"]:
           # Set to most recent remaining batch
           self._index["last_batch"] = max(self._index["batches"].items(), key=lambda x: x[1]["timestamp"])[0]
-
       # Save index
       self._save_index()
-
       logger.info(f"Removed {job_count_removed} jobs from {len(batches_to_remove)} batches")
       logger.info("cleanup_old_jobs returning with self=%s, max_age_days=%s", self, max_age_days)
       return job_count_removed
@@ -302,34 +250,22 @@ class AdzunaStorage:
       logger.error(f"Error cleaning up old jobs: {str(e)}")
       logger.info("cleanup_old_jobs returning with self=%s, max_age_days=%s", self, max_age_days)
       return 0
-
+  # Get the current sync status
   def get_sync_status(self) -> Dict:
-    """
-        Get the current sync status
-        
-        Returns:
-            Dict with status information
-        """
     try:
       # Load index
       self._load_index()
-
       # Get batch and job counts
       batch_count = len(self._index["batches"])
       job_count = self._index["job_count"]
-
       # Get last sync date
       last_sync = self._index["last_sync"]
-
       # Get last batch info
       last_batch = None
       if self._index["last_batch"]:
         last_batch = self._index["last_batch"]
-      logger.info("get_sync_status returning with self=%s", self)
-
+      logger.info(f"{job_count} jobs and {batch_count} batches stored")
       return {"batch_count": batch_count, "total_jobs": job_count, "last_sync": last_sync, "last_batch": last_batch}
-
     except Exception as e:
       logger.error(f"Error getting sync status: {str(e)}")
-      logger.info("get_sync_status returning with self=%s", self)
       return {"batch_count": 0, "total_jobs": 0, "last_sync": None, "last_batch": None, "error": str(e)}
