@@ -484,66 +484,6 @@
                 </div>
             </div>
         </div>
-        <!-- Sync Jobs Form -->
-        <div class="card shadow mb-4" id="start-sync">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold">Bulk Sync Jobs</h6>
-            </div>
-            <div class="card-body">
-                <form id="bulkSyncForm">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="keywords" class="form-label">Keywords (optional)</label>
-                            <input type="text" class="form-control" id="keywords" placeholder="e.g., python developer" value="{{ keywords }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="location" class="form-label">Location (optional)</label>
-                            <input type="text" class="form-control" id="location" placeholder="e.g., London" value="{{ location }}">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="country" class="form-label">Country</label>
-                            <select class="form-select" id="country">
-                                <option value="gb" {% if country == 'gb' %}selected{% endif %}>United Kingdom</option>
-                                <option value="us" {% if country == 'us' %}selected{% endif %}>United States</option>
-                                <option value="ca" {% if country == 'ca' %}selected{% endif %}>Canada</option>
-                                <option value="au" {% if country == 'au' %}selected{% endif %}>Australia</option>
-                                <option value="de" {% if country == 'de' %}selected{% endif %}>Germany</option>
-                                <option value="fr" {% if country == 'fr' %}selected{% endif %}>France</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="maxPages" class="form-label">Max Pages (optional)</label>
-                            <input type="number" class="form-control" id="maxPages" placeholder="Leave empty for all pages">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="maxDaysOld" class="form-label">Max Days Old</label>
-                            <select class="form-select" id="maxDaysOld">
-                                <option value="1" {% if max_days_old == '1' %}selected{% endif %}>1 day</option>
-                                <option value="3" {% if max_days_old == '3' %}selected{% endif %}>3 days</option>
-                                <option value="7" {% if max_days_old == '7' %}selected{% endif %}>1 week</option>
-                                <option value="14" {% if max_days_old == '14' %}selected{% endif %}>2 weeks</option>
-                                <option value="30" {% if max_days_old == '30' or not max_days_old %}selected{% endif %}>30 days</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mt-4">
-                                <input class="form-check-input" type="checkbox" id="remoteOnly" {% if remote_only %}checked{% endif %}>
-                                <label class="form-check-label" for="remoteOnly">
-                                    Remote Jobs Only
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-primary" onclick="startJobSync()">
-                        <i class="fas fa-sync me-1"></i> Sync Jobs
-                    </button>
-                </form>
-            </div>
-        </div>
         
         <!-- Job Details Modal -->
         <div class="modal fade" id="jobDetailsModal" tabindex="-1" aria-labelledby="jobDetailsModalLabel" aria-hidden="true">
@@ -587,6 +527,26 @@
 
             // Initialize everything when document is ready
             $(document).ready(function() {
+                // Load saved job search parameters if available
+                if (localStorage.getItem('job_search_keywords')) {
+                    $('#keywords').val(localStorage.getItem('job_search_keywords'));
+                }
+                if (localStorage.getItem('job_search_location')) {
+                    $('#location').val(localStorage.getItem('job_search_location'));
+                }
+                if (localStorage.getItem('job_search_country')) {
+                    $('#country').val(localStorage.getItem('job_search_country'));
+                }
+                if (localStorage.getItem('job_search_max_days_old')) {
+                    $('#maxDaysOld').val(localStorage.getItem('job_search_max_days_old'));
+                }
+                if (localStorage.getItem('job_search_remote_only') === '1') {
+                    $('#remote_only').prop('checked', true);
+                }
+                if (localStorage.getItem('job_search_max_pages')) {
+                    $('#maxPages').val(localStorage.getItem('job_search_max_pages'));
+                }
+                
                 // Check for active resume ID in URL query parameters
                 const urlParams = new URLSearchParams(window.location.search);
                 const activeResumeId = urlParams.get('active_resume_id');
@@ -725,13 +685,13 @@
             
             // Start a new job sync
             function startJobSync() {
-                // Get sync parameters from the form
+                // Get sync parameters from the Job Search Parameters form
                 const keywords = $('#keywords').val();
                 const location = $('#location').val();
                 const country = $('#country').val();
                 const maxPages = $('#maxPages').val() ? parseInt($('#maxPages').val()) : null;
                 const maxDaysOld = parseInt($('#maxDaysOld').val());
-                const remoteOnly = $('#remoteOnly').is(':checked');
+                const remoteOnly = $('#remote_only').is(':checked');
                 
                 // Show status alert
                 $('#syncStatus').show().removeClass('alert-success alert-danger').addClass('alert-info');
@@ -861,6 +821,34 @@
                         $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${errorMsg}`);
                     }
                 });
+            }
+            
+            // Save job search parameters
+            function saveJobSearch() {
+                // Get form values
+                const keywords = $('#keywords').val();
+                const location = $('#location').val();
+                const country = $('#country').val();
+                const maxDaysOld = $('#maxDaysOld').val();
+                const remoteOnly = $('#remote_only').is(':checked') ? '1' : '';
+                const maxPages = $('#maxPages').val();
+                
+                // Store values in session/browser storage for persistence
+                localStorage.setItem('job_search_keywords', keywords);
+                localStorage.setItem('job_search_location', location);
+                localStorage.setItem('job_search_country', country);
+                localStorage.setItem('job_search_max_days_old', maxDaysOld);
+                localStorage.setItem('job_search_remote_only', remoteOnly);
+                localStorage.setItem('job_search_max_pages', maxPages);
+                
+                // Show confirmation message
+                $('#syncStatus').show().removeClass('alert-info alert-danger').addClass('alert-success');
+                $('#syncStatusText').html('<i class="fas fa-check-circle"></i> Settings saved successfully.');
+                
+                // Auto-hide after a few seconds
+                setTimeout(function() {
+                    $('#syncStatus').fadeOut();
+                }, 3000);
             }
             
             // Export jobs
