@@ -6,7 +6,6 @@ import requests
 from datetime import datetime
 import time
 from adzuna_storage import AdzunaStorage
-from matching_engine import add_job
 from models import Job
 
 logger = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ def get_api_credentials():
   logger.info("get_api_credentials returning with no parameters")
   return app_id, api_key
 
-# Initialize storage
+# Initialize global storage object
 _adzuna_storage = AdzunaStorage()
 
 # Default rate limiting constants
@@ -40,8 +39,10 @@ class ScraperConfig:
   rate_limit_calls = DEFAULT_RATE_LIMIT_CALLS
   rate_limit_period = DEFAULT_RATE_LIMIT_PERIOD
   call_delay = DEFAULT_CALL_DELAY
+  
 # Initialize config
 config = ScraperConfig()
+
 # Rate limiter class
 class RateLimiter:
   """Manages API rate limiting with a sliding window approach"""
@@ -50,10 +51,11 @@ class RateLimiter:
     self.period_seconds = period_seconds
     self.call_delay = call_delay
     self.call_timestamps = []
-#  Get the total number of calls tracked
+    
   def get_call_count(self):
     logger.info("get_call_count returning with self=%s", self)
     return len(self.call_timestamps)
+
 def check_adzuna_api_status() -> bool:
   """
     Check if Adzuna API credentials are properly configured
@@ -68,49 +70,50 @@ def check_adzuna_api_status() -> bool:
   except AdzunaAPIError:
     logger.info("check_adzuna_api_status returning with no parameters")
     return False
-# Import Adzuna jobs into the main job storage
-def import_adzuna_jobs_to_main_storage(days: int = 30) -> int:
-  try:
-    # Get recent jobs from Adzuna storage
-    adzuna_jobs = _adzuna_storage.get_recent_jobs(days=days)
-    logger.info(f"Importing {len(adzuna_jobs)} jobs from Adzuna storage")
-    # Import each job
-    imported_count = 0
-    for job in adzuna_jobs:
-      try:
-        # Convert to dictionary and add to main storage
-        job_dict = job.to_dict()
-        add_job(job_dict)
-        imported_count += 1
-      except Exception as e:
-        logger.error(f"Error importing job {job.title}: {str(e)}")
-        continue
-    logger.info(f"Successfully imported {imported_count} jobs")
-    return imported_count
-  except ImportError:
-    logger.error("job_data module not available for import")
-    return 0
-  except Exception as e:
-    logger.error(f"Error importing Adzuna jobs: {str(e)}")
-    return 0
+
 # Get Adzuna jobs from storage
-def get_adzuna_jobs(import_to_main: bool = False, days: int = 30) -> List[Job]:
+def get_adzuna_jobs(days: int = 30) -> List[Job]:
+  """
+  Get jobs from Adzuna storage
+  
+  Args:
+      days: Number of days to look back for recent jobs
+      
+  Returns:
+      List of Job objects
+  """
   jobs = _adzuna_storage.get_recent_jobs(days=days)
-  if import_to_main:
-    import_adzuna_jobs_to_main_storage(days=days)
-  logger.info("get_adzuna_jobs returning with import_to_main=%s, days=%s", import_to_main, days)
+  logger.info(f"Retrieved {len(jobs)} jobs from Adzuna storage (last {days} days)")
   return jobs
+
 # Clean up old Adzuna jobs
-def cleanup_old_adzuna_jobs(max_age_days: int = 10) -> int:
-  logger.info("cleanup_old_adzuna_jobs returning with max_age_days=%s", max_age_days)
-  return _adzuna_storage.cleanup_old_jobs(max_age_days=max_age_days)
+def cleanup_old_adzuna_jobs(max_age_days: int = 90) -> int:
+  """
+  Clean up old Adzuna jobs from storage
+  
+  Args:
+      max_age_days: Maximum age of jobs to keep in days
+      
+  Returns:
+      Number of jobs removed
+  """
+  removed_count = _adzuna_storage.cleanup_old_jobs(max_age_days=max_age_days)
+  logger.info(f"Removed {removed_count} jobs older than {max_age_days} days")
+  return removed_count
+
 # Get status of Adzuna job storage
 def get_adzuna_storage_status() -> Dict[str, Any]:
+  """
+  Get status information about Adzuna job storage
+  
+  Returns:
+      Dictionary with status information including job count, batch count, etc.
+  """
   logger.info("ran")
   return _adzuna_storage.get_sync_status()
 
 # Search for jobs using the Adzuna API
-def search_jobs(keywords=None,location=None,
+def search_jobs(keywords=None, location=None,
     country="gb", # Default to UK
     distance=15, # Default to 15 miles/km
     max_days_old=30,
@@ -119,13 +122,34 @@ def search_jobs(keywords=None,location=None,
     category=None,
     full_time=None,
     permanent=None):
+  """
+  Search for jobs using the Adzuna API and store them in the job storage
+  
+  Args:
+      keywords: Job search keywords
+      location: Job location
+      country: Country code (default: "gb")
+      distance: Search radius in miles/km (default: 15)
+      max_days_old: Maximum age of jobs in days (default: 30)
+      page: Page number for pagination (default: 1)
+      results_per_page: Number of results per page (default: 50)
+      category: Job category
+      full_time: Filter for full-time jobs
+      permanent: Filter for permanent jobs
+      
+  Returns:
+      Custom list of Job objects with pagination metadata
+  """
   try:
     # Get API credentials
     app_id, api_key = get_api_credentials()
+    
     # Build API URL
     url = f"{ADZUNA_API_BASE_URL}/jobs/{country}/search/{page}"
+    
     # Prepare query parameters
     params = {"app_id": app_id, "app_key": api_key, "results_per_page": results_per_page, "max_days_old": max_days_old}
+    
     # Add optional filters
     if keywords:
       params["what"] = keywords
@@ -139,9 +163,11 @@ def search_jobs(keywords=None,location=None,
       params["full_time"] = 1 if full_time else 0
     if permanent is not None:
       params["permanent"] = 1 if permanent else 0
+      
     # Make API request with timeout
     try:
       response = requests.get(url, params=params, timeout=30) # 30 second timeout
+      
       # Check for API errors
       if response.status_code != 200:
         error_message = f"API request failed with status code {response.status_code}"
@@ -158,11 +184,14 @@ def search_jobs(keywords=None,location=None,
       raise AdzunaAPIError("Failed to connect to the Adzuna API. Please check your network connection and try again.")
     except Exception as e:
       raise AdzunaAPIError(f"Unexpected error during API request: {str(e)}")
+      
     # Parse response
     data = response.json()
+    
     # Get total counts for pagination
     count = data.get("count", 0)
     total_pages = (count // results_per_page) + (1 if count % results_per_page > 0 else 0)
+    
     # Process job listings
     jobs = []
     for job_data in data.get("results", []):
@@ -172,29 +201,44 @@ def search_jobs(keywords=None,location=None,
         title = job_data.get("title", "Unknown Position")
         description = job_data.get("description", "")
         location = job_data.get("location", {}).get("display_name", "")
+        
         # Extract salary range
         salary_min = job_data.get("salary_min")
         salary_max = job_data.get("salary_max")
         salary_range = format_salary_range(salary_min, salary_max)
+        
         # Extract posting date
         created = job_data.get("created")
         if created:
           # Convert to ISO format
           created = datetime.strptime(created, "%Y-%m-%dT%H:%M:%SZ").isoformat()
+          
         # Extract URL
         redirect_url = job_data.get("redirect_url", "")
+        
         # Check if job is remote
         is_remote = False
         if "remote" in job_data.get("category", {}).get("tag", "").lower() or "remote" in title.lower():
           is_remote = True
+          
         # Extract skills from description
         skills = extract_skills_from_adzuna(job_data)
+        
         # Create Job object
-        job = Job(title=title, company=company, description=description, location=location, is_remote=is_remote, posted_date=created, url=redirect_url, skills=skills, salary_range=salary_range)
+        job = Job(title=title, company=company, description=description, location=location, 
+                 is_remote=is_remote, posted_date=created, url=redirect_url, 
+                 skills=skills, salary_range=salary_range)
         jobs.append(job)
       except Exception as e:
         logger.error(f"Error processing job data: {str(e)}")
         continue
+        
+    # Store the jobs in Adzuna storage
+    if jobs:
+      _adzuna_storage.store_jobs(jobs, keywords=keywords, location=location, 
+                               country=country, max_days_old=max_days_old)
+      logger.info(f"Stored {len(jobs)} jobs in Adzuna storage")
+    
     # Create a custom class to hold the list and metadata
     class JobResults(list):
       def __init__(self, jobs_list):
@@ -208,6 +252,7 @@ def search_jobs(keywords=None,location=None,
     job_results.total_count = count
     job_results.total_pages = total_pages
     job_results.current_page = page
+    
     return job_results
   except AdzunaAPIError:
     # Re-raise API errors
@@ -218,20 +263,37 @@ def search_jobs(keywords=None,location=None,
 
 # Extract skills from Adzuna job data
 def extract_skills_from_adzuna(job_data):
+  """
+  Extract skills from Adzuna job data
+  
+  Args:
+      job_data: Job data from Adzuna API
+      
+  Returns:
+      List of skills extracted from the job data
+  """
   skills = []
+  
   # Try to use the Adzuna Category Tag Skill list
   if "category" in job_data and "tag" in job_data["category"]:
     category = job_data["category"]["tag"].lower()
+    
     # Extract programming languages and technologies from IT job categories
     if "it" in category or "software" in category or "developer" in category:
-      tech_skills = ["python", "java", "javascript", "typescript", "ruby", "php", "c#", "c++", "go", "rust", "swift", "kotlin", "react", "angular", "vue", "node.js", "django", "flask", "spring", "aws", "azure", "gcp", "docker", "kubernetes", "sql", "mongodb", "postgresql", "mysql", "oracle", "redis", "elasticsearch"]
+      tech_skills = ["python", "java", "javascript", "typescript", "ruby", "php", "c#", "c++", "go", 
+                    "rust", "swift", "kotlin", "react", "angular", "vue", "node.js", "django", "flask", 
+                    "spring", "aws", "azure", "gcp", "docker", "kubernetes", "sql", "mongodb", 
+                    "postgresql", "mysql", "oracle", "redis", "elasticsearch"]
+      
       description = job_data.get("description", "").lower()
       title = job_data.get("title", "").lower()
+      
       # Check for skills in description
       for skill in tech_skills:
         if skill in description or skill in title:
           if skill not in skills:
             skills.append(skill)
+            
   # Fall back to extracting from title and description if no skills found
   if not skills:
     # This functionality has been moved to matching_engine.py
@@ -242,14 +304,26 @@ def extract_skills_from_adzuna(job_data):
       skills.extend(extracted_skills)
     except ImportError:
       logger.warning("Could not import extract_skills from matching_engine")
+      
   logger.info("extract_skills_from_adzuna returning with job_data=%s", job_data)
   return list(set(skills)) # Remove duplicates
 
 # Format salary range as a string
 def format_salary_range(min_salary, max_salary):
+  """
+  Format salary range as a human-readable string
+  
+  Args:
+      min_salary: Minimum salary amount
+      max_salary: Maximum salary amount
+      
+  Returns:
+      Formatted salary range string or None if no salary data
+  """
   if min_salary is None and max_salary is None:
     logger.info("format_salary_range returning with min_salary=%s, max_salary=%s", min_salary, max_salary)
     return None
+    
   # Format values
   if min_salary and max_salary:
     if min_salary == max_salary:
@@ -263,5 +337,6 @@ def format_salary_range(min_salary, max_salary):
   elif max_salary:
     logger.info("format_salary_range returning with min_salary=%s, max_salary=%s", min_salary, max_salary)
     return f"Up to £{max_salary:,.0f}"
+    
   logger.info("format_salary_range returning with min_salary=%s, max_salary=%s", min_salary, max_salary)
   return None

@@ -9,7 +9,7 @@ from datetime import datetime
 from resume_parser import parse_resume, FileParsingError
 from matching_engine import generate_dual_embeddings, get_job_data, find_matching_jobs
 from resume_storage import resume_storage
-from adzuna_scraper import (get_adzuna_jobs, import_adzuna_jobs_to_main_storage, cleanup_old_adzuna_jobs, get_adzuna_storage_status, search_jobs)
+from adzuna_scraper import (get_adzuna_jobs, cleanup_old_adzuna_jobs, get_adzuna_storage_status, search_jobs)
 from adzuna_storage import AdzunaStorage
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
@@ -409,13 +409,12 @@ def config_adzuna():
 def get_adzuna_jobs_endpoint():
   try:
     days = request.args.get('days', 30, type=int)
-    import_to_main = request.args.get('import_to_main', 'false').lower() == 'true'
-    # Get jobs
-    jobs = get_adzuna_jobs(import_to_main=import_to_main, days=days)
+    # Get jobs directly from Adzuna storage
+    jobs = get_adzuna_jobs(days=days)
     # Convert to dictionaries for JSON response
     job_dicts = [job.to_dict() for job in jobs]
     logger.info("get_adzuna_jobs_endpoint returning with no parameters")
-    return jsonify({"success": True, "jobs": job_dicts, "count": len(job_dicts), "imported": import_to_main})
+    return jsonify({"success": True, "jobs": job_dicts, "count": len(job_dicts)})
   except Exception as e:
     logger.info("get_adzuna_jobs_endpoint returning with no parameters")
     return _handle_api_exception(e, "getting Adzuna jobs")
@@ -504,24 +503,15 @@ def delete_adzuna_batch(batch_id):
   except Exception as e:
     logger.error(f"Error deleting batch {batch_id}: {str(e)}")
     return _handle_api_exception(e, f"deleting batch {batch_id}")
+# This endpoint has been removed as part of simplifying the job storage implementation
+# Jobs are now directly accessed from Adzuna storage
+"""
 @app.route('/api/adzuna/import', methods=['POST'])
 def import_adzuna_jobs_endpoint():
-  """API endpoint to import Adzuna jobs to main storage"""
-  try:
-    # Check if request is JSON
-    json_error = _require_json_request()
-    if json_error:
-      logger.info("import_adzuna_jobs_endpoint returning with no parameters")
-      return json_error
-    data = request.json
-    days = data.get('days', 30)
-    # Import jobs
-    count = import_adzuna_jobs_to_main_storage(days=days)
-    logger.info("import_adzuna_jobs_endpoint returning with no parameters")
-    return jsonify({"success": True, "count": count, "message": f"Successfully imported {count} Adzuna jobs to main storage"})
-  except Exception as e:
-    logger.info("import_adzuna_jobs_endpoint returning with no parameters")
-    return _handle_api_exception(e, "importing Adzuna jobs")
+  # This endpoint is intentionally commented out as it's no longer needed
+  # Jobs are now directly accessed from Adzuna storage
+  return jsonify({"success": False, "error": "This endpoint has been deprecated"}), 410
+"""
 
 @app.route('/api/jobs/sync', methods=['POST'])
 def sync_jobs():

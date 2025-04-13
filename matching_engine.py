@@ -2,7 +2,6 @@
 # Merged file containing functionality from:
 # - matching_engine.py (job matching functionality)
 # - embedding_generator.py (text embedding generation)
-# - job_data.py (job data management)
 
 import logging
 import os
@@ -203,97 +202,65 @@ def generate_dual_embeddings(text: str) -> dict:
     return {"narrative": generate_embedding(cleaned), "skills": generate_embedding(clean_text(skill_text))}
 
 ################################################################################
-# JOB DATA SECTION (originally from job_data.py)
+# JOB DATA & MATCHING ENGINE SECTION (simplified)
 ################################################################################
 
-# Import Adzuna functions if available
-try:
-    from adzuna_scraper import get_adzuna_jobs
-    ADZUNA_AVAILABLE = True
-except ImportError:
-    ADZUNA_AVAILABLE = False
+# Import Adzuna storage for direct access
+from adzuna_storage import AdzunaStorage
 
 # Cache for job data with embeddings
 _job_cache = None
 _job_cache_last_updated = None
 
-# Load job data from Adzuna storage
-def load_job_data():
-    if ADZUNA_AVAILABLE:
-        logger.debug("Loading job data from Adzuna storage")
-        try:
-            adzuna_jobs = get_adzuna_jobs(days=30)
-            if adzuna_jobs and len(adzuna_jobs) > 0:
-                logger.debug(f"Loaded {len(adzuna_jobs)} jobs from Adzuna storage")
-                return adzuna_jobs
-            else:
-                logger.warning("No Adzuna jobs available")
-                return []
-        except Exception as e:
-            logger.error(f"Error loading Adzuna jobs: {str(e)}")
-            return []
-    else:
-        logger.warning("Adzuna API not available")
-        return []
-
-# Generate narrative and skills embeddings for job descriptions
-def generate_job_embeddings(jobs):
-    logger.debug(f"Generating dual embeddings for {len(jobs)} jobs")
-
-    for job in jobs:
-        job_text = f"{job.title}\n{job.company}\n{job.description}"
-        if job.skills:
-            job_text += "\nSkills: " + ", ".join(job.skills)
-
-        embeddings = generate_dual_embeddings(job_text)
-        job.embedding_narrative = embeddings["narrative"]
-        job.embedding_skills = embeddings["skills"]
-    logger.info("generate_job_embeddings returning with jobs=%s", jobs)
-
-    return jobs
 # Get job data with embeddings, using cache if available
-def get_job_data():
+def get_job_data(days=30, refresh=False):
+    """
+    Get job data with embeddings from Adzuna storage.
+    
+    Args:
+        days: Number of days to look back for recent jobs
+        refresh: Force refresh the cache
+        
+    Returns:
+        List of Job objects with embeddings
+    """
     global _job_cache, _job_cache_last_updated
+    
     # Check if we need to refresh the cache
     current_time = datetime.now()
     cache_age = (current_time - _job_cache_last_updated).total_seconds() if _job_cache_last_updated else None
-    if _job_cache is None or cache_age is None or cache_age > 3600: # Refresh cache if older than 1 hour
+    
+    if refresh or _job_cache is None or cache_age is None or cache_age > 3600:  # Refresh if forced or cache older than 1 hour
         logger.debug("Refreshing job data cache")
-        # Load job data
-        jobs = load_job_data()
-        # Generate embeddings
-        jobs_with_embeddings = generate_job_embeddings(jobs)
+        
+        # Get jobs directly from Adzuna storage
+        adzuna_storage = AdzunaStorage()
+        jobs = adzuna_storage.get_recent_jobs(days=days)
+        
+        if not jobs:
+            logger.warning("No jobs available from Adzuna storage")
+            return []
+        
+        # Generate embeddings for jobs
+        for job in jobs:
+            if not hasattr(job, 'embedding_narrative') or not hasattr(job, 'embedding_skills'):
+                job_text = f"{job.title}\n{job.company}\n{job.description}"
+                if job.skills:
+                    job_text += "\nSkills: " + ", ".join(job.skills)
+                
+                embeddings = generate_dual_embeddings(job_text)
+                job.embedding_narrative = embeddings["narrative"]
+                job.embedding_skills = embeddings["skills"]
+        
         # Update cache
-        _job_cache = jobs_with_embeddings
+        _job_cache = jobs
         _job_cache_last_updated = current_time
-        logger.info(f"get_job_data returned {_job_cache}")
-        return jobs_with_embeddings
+        
+        logger.debug(f"Refreshed job cache with {len(jobs)} jobs")
+        return jobs
     else:
-        logger.debug("Using cached job data")
+        logger.debug(f"Using cached job data ({len(_job_cache) if _job_cache else 0} jobs)")
         return _job_cache
-# Add a new job to the job data file
-def add_job(job_dict):
-    logger.debug(f"Adding new job: {job_dict.get('title')}")
-    # Load existing jobs
-    jobs = load_job_data()
-    # Create new Job object
-    new_job = Job(title=job_dict.get('title', ''), company=job_dict.get('company', ''), 
-                 description=job_dict.get('description', ''), location=job_dict.get('location', ''), 
-                 is_remote=job_dict.get('is_remote', False), posted_date=datetime.now(), 
-                 url=job_dict.get('url', ''), skills=job_dict.get('skills', []), 
-                 salary_range=job_dict.get('salary_range', ''))
-    # Add to list
-    jobs.append(new_job)
-    # Invalidate cache
-    global _job_cache, _job_cache_last_updated
-    _job_cache = None
-    _job_cache_last_updated = None
-    logger.info("add_job returning with job_dict=%s", job_dict)
-    return new_job
-
-################################################################################
-# MATCHING ENGINE SECTION (originally from matching_engine.py)
-################################################################################
 
 # Calculate cosine similarity between resume and job embeddings
 def calculate_similarity(resume_embedding, job_embedding):
@@ -363,32 +330,69 @@ def apply_filters(jobs, filters):
     return filtered_jobs
 
 # Match jobs to resume using narrative + skill embeddings.
-def find_matching_jobs(resume_embeddings, jobs, filters=None, resume_text=None):
+def find_matching_jobs(resume_embeddings, jobs=None, filters=None, resume_text=None, days=30):
+    """
+    Find jobs matching a resume using embeddings
+    
+    Args:
+        resume_embeddings: Dict with 'narrative' and 'skills' embeddings
+        jobs: Optional list of Job objects (if None, will load from storage)
+        filters: Optional dictionary of filter criteria
+        resume_text: Optional raw resume text for skill boosting
+        days: Number of days to look back for jobs (if jobs not provided)
+        
+    Returns:
+        List of JobMatch objects sorted by similarity score
+    """
     logger.debug("Finding matching jobs (dual embeddings)")
 
+    # Get jobs if not provided
+    if jobs is None:
+        jobs = get_job_data(days=days)
+        
+    if not jobs:
+        logger.warning("No jobs available for matching")
+        return []
+
+    # Apply filters if specified
     if filters:
         filtered_jobs = apply_filters(jobs, filters)
     else:
         filtered_jobs = jobs
 
+    # Match jobs to resume
     matches = []
     for job in filtered_jobs:
-        if job.embedding_narrative is None or job.embedding_skills is None:
-            logger.warning(f"Job '{job.title}' missing dual embeddings")
-            continue
+        # Skip jobs without embeddings
+        if not hasattr(job, 'embedding_narrative') or not hasattr(job, 'embedding_skills'):
+            logger.warning(f"Job '{job.title}' missing embeddings, generating now")
+            # Generate embeddings for this job
+            job_text = f"{job.title}\n{job.company}\n{job.description}"
+            if job.skills:
+                job_text += "\nSkills: " + ", ".join(job.skills)
+            
+            embeddings = generate_dual_embeddings(job_text)
+            job.embedding_narrative = embeddings["narrative"]
+            job.embedding_skills = embeddings["skills"]
 
+        # Calculate similarity scores
         sim_narrative = calculate_similarity(resume_embeddings["narrative"], job.embedding_narrative)
         sim_skills = calculate_similarity(resume_embeddings["skills"], job.embedding_skills)
 
-        similarity = (sim_narrative + sim_skills) / 2 # Weighted average
-        logger.debug(f"{job.title}: sim_narrative={sim_narrative:.3f}, sim_skills={sim_skills:.3f}, final={similarity:.3f}")
-
+        # Weighted average of narrative and skills similarity
+        similarity = (sim_narrative + sim_skills) / 2
+        
+        # Apply skill boost if resume text provided
         if resume_text:
             job_text = f"{job.title} {job.description} {' '.join(job.skills)}"
             similarity = boost_score_with_skills(similarity, resume_text, job_text, DEFAULT_SKILLS)
 
         matches.append(JobMatch(job, similarity))
 
+    # Sort by similarity score (descending)
     matches.sort(key=lambda m: m.similarity_score, reverse=True)
+    
+    logger.debug(f"Found {len(matches)} matching jobs")
     logger.info("find_matching_jobs returning with resume_embeddings=%s, jobs=%s, filters=%s, resume_text=%s", resume_embeddings, jobs, filters, resume_text)
+    
     return matches
