@@ -43,6 +43,12 @@ def index():
   status = {}
   if ADZUNA_SCRAPER_AVAILABLE:
     storage_status = get_adzuna_storage_status()
+    
+    # Get the batches from the Adzuna storage for our batch summary tab
+    adzuna_storage = AdzunaStorage()
+    adzuna_storage._load_index()
+    storage_status["batches"] = adzuna_storage._index.get("batches", {})
+    
     jobs = get_adzuna_jobs(days=30)
     recent_jobs_list = []
     for job in jobs:

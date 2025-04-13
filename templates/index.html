@@ -420,6 +420,44 @@
                             </table>
                         </div>
                     </div>
+                    <div class="tab-pane fade" id="batch-summary" role="tabpanel" aria-labelledby="batch-summary-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered job-table" id="batchSummaryTable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Batch ID</th>
+                                        <th>Timestamp</th>
+                                        <th>Job Count</th>
+                                        <th>Keywords</th>
+                                        <th>Location</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if storage_status and storage_status.get('batches') %}
+                                        {% for batch_id, batch_info in storage_status.get('batches').items() %}
+                                            <tr>
+                                                <td>{{ batch_id }}</td>
+                                                <td>{{ batch_info.timestamp }}</td>
+                                                <td>{{ batch_info.job_count }}</td>
+                                                <td>{{ batch_info.keywords|default('') }}</td>
+                                                <td>{{ batch_info.location|default('') }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-danger delete-batch" data-batch-id="{{ batch_id }}">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center">No batches found.</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -535,6 +573,13 @@
 
             // Initialize everything when document is ready
             $(document).ready(function() {
+                // Add event handler for batch deletion
+                $(document).on('click', '.delete-batch', function() {
+                    const batchId = $(this).data('batch-id');
+                    if (confirm('Are you sure you want to delete this batch? This action cannot be undone.')) {
+                        deleteBatch(batchId);
+                    }
+                });
                 // Load saved job search parameters if available
                 if (localStorage.getItem('job_search_keywords')) {
                     $('#keywords').val(localStorage.getItem('job_search_keywords'));
@@ -869,6 +914,46 @@
             }
             
             // Initialize job tables with proper configuration
+            // Function to delete a batch
+            function deleteBatch(batchId) {
+                $('#syncStatus').show().removeClass('alert-success alert-danger').addClass('alert-info');
+                $('#syncStatusText').text('Deleting batch...');
+                
+                $.ajax({
+                    url: `/api/adzuna/batches/${batchId}`,
+                    method: 'DELETE',
+                    success: function(response) {
+                        if (response.success) {
+                            $('#syncStatus').removeClass('alert-info').addClass('alert-success');
+                            $('#syncStatusText').html(`<i class="fas fa-check-circle"></i> Batch deleted successfully.`);
+                            
+                            // Remove the row from the table
+                            $(`button.delete-batch[data-batch-id="${batchId}"]`).closest('tr').remove();
+                            
+                            // Reload the page after a short delay to refresh the data
+                            setTimeout(function() {
+                                location.reload();
+                            }, 2000);
+                        } else {
+                            $('#syncStatus').removeClass('alert-info').addClass('alert-danger');
+                            $('#syncStatusText').html(`<i class="fas fa-exclamation-circle"></i> Error: ${response.error || 'Unknown error'}`);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#syncStatus').removeClass('alert-info').addClass('alert-danger');
+                        let errorMsg = 'Unknown error';
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        } else if (error) {
+                            errorMsg = error;
+                        }
+                        
+                        $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${errorMsg}`);
+                    }
+                });
+            }
+            
             function initializeJobTables() {
                 try {
                     // Wait for the DOM to be fully ready
