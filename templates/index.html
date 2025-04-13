@@ -480,50 +480,8 @@
                         </div>
                     </form>
                 </div>
-                <div class="col-lg-3">
-                    <h6 class="mb-3">API Rate Limiting</h6>
-                    <div class="form-group mb-2">
-                        <label for="call_delay" class="form-label small">API Call Delay (sec)</label>
-                        <input type="number" class="form-control form-control-sm" id="call_delay" name="call_delay" min="0" max="60" value="{{ call_delay|default(3) }}">
-                    </div>
-                    <div class="form-group mb-2">
-                        <label for="rate_limit_calls" class="form-label small">Calls Per Period</label>
-                        <input type="number" class="form-control form-control-sm" id="rate_limit_calls" name="rate_limit_calls" min="1" max="100" value="{{ rate_limit_calls|default(20) }}">
-                    </div>
-                    <div class="form-group mb-2">
-                        <label for="rate_limit_period" class="form-label small">Period (seconds)</label>
-                        <input type="number" class="form-control form-control-sm" id="rate_limit_period" name="rate_limit_period" min="30" max="600" value="{{ rate_limit_period|default(60) }}">
-                    </div>
-                </div>
             </div>
         </div>
-
-        <!-- Sync Progress Bar (initially hidden) -->
-        <div id="syncProgressContainer" class="card-body pb-0" style="display:none;">
-            <div class="mb-2">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <h6 class="mb-0" id="syncStatusText">Syncing jobs...</h6>
-                    <span class="text-muted" id="syncProgressPercent">0%</span>
-                </div>
-                <div class="progress">
-                    <div id="syncProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                </div>
-            </div>
-            <div class="row text-center mb-2 small">
-                <div class="col">
-                    <span class="text-muted">Current Page: </span>
-                    <span id="currentPageValue">0</span>/<span id="totalPagesValue">0</span>
-                </div>
-                <div class="col">
-                    <span class="text-muted">Jobs Found: </span>
-                    <span id="jobsFoundValue">0</span>
-                </div>
-                <div class="col">
-                    <span class="text-muted">Estimated Completion: </span>
-                    <span id="estimatedTimeValue">Calculating...</span>
-                </div>
-            </div>
-
         <!-- Sync Jobs Form -->
         <div class="card shadow mb-4" id="start-sync">
             <div class="card-header py-3">

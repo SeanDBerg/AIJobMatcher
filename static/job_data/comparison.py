@@ -1,0 +1,1 @@
+exclude_dirs = {'.venv', '__pycache__', '.git', '.pythonlibs', '.cache'}
