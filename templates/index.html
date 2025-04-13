@@ -961,9 +961,14 @@
                         // Super basic configuration - minimum features to ensure it works
                         const tableConfig = {
                             pageLength: 10,
-                            order: [[6, 'desc']], // Sort by match percentage column by default
                             processing: true,
-                            retrieve: true, // Allow the table to be retrieved again
+                            retrieve: true // Allow the table to be retrieved again
+                        };
+                        
+                        // Special config for job tables (with match percentage)
+                        const jobTableConfig = {
+                            ...tableConfig,
+                            order: [[6, 'desc']], // Sort by match percentage column by default
                             columnDefs: [
                                 {
                                     targets: 6, // Match percentage column
@@ -976,6 +981,13 @@
                                     }
                                 }
                             ]
+                        };
+                        
+                        // Special config for batch summary table
+                        const batchTableConfig = {
+                            ...tableConfig,
+                            order: [[1, 'desc']], // Sort by timestamp by default
+                            columnDefs: []
                         };
                         
                         // Initialize all tables with a delay to ensure DOM is ready
@@ -1009,11 +1021,20 @@
                                     
                                     // Create new table with safer configuration and error handling
                                     try {
+                                        let config = tableConfig;
+                                        
+                                        // Use appropriate config based on table type
+                                        if (tableId === '#batchSummaryTable') {
+                                            config = batchTableConfig;
+                                        } else if (['#jobsTable', '#recentJobsTable', '#remoteJobsTable'].includes(tableId)) {
+                                            config = jobTableConfig;
+                                        }
+                                        
                                         const table = $(tableId).DataTable({
-                                            ...tableConfig,
+                                            ...config,
                                             // Handle errors gracefully
                                             language: {
-                                                emptyTable: "No job data available"
+                                                emptyTable: tableId === '#batchSummaryTable' ? "No batches available" : "No job data available"
                                             }
                                         });
                                         jobTables[tableId] = table;
@@ -1091,6 +1112,11 @@
 
                 $('.job-table').each(function() {
                     const tableId = '#' + $(this).attr('id');
+                    
+                    // Skip batch summary table
+                    if (tableId === '#batchSummaryTable') {
+                        return;
+                    }
 
                     if (!$.fn.DataTable.isDataTable(tableId)) {
                         console.log("Table not initialized:", tableId);

@@ -156,15 +156,6 @@
       "job_count": 50,
       "max_days_old": 1
     },
-    "b9fc28b3-6658-4379-a4f2-5ccb8a466fcd": {
-      "id": "b9fc28b3-6658-4379-a4f2-5ccb8a466fcd",
-      "timestamp": "2025-04-11T23:17:55.521392",
-      "keywords": "",
-      "location": "Northampton, PA",
-      "country": "us",
-      "job_count": 50,
-      "max_days_old": 1
-    },
     "5fab8abc-8048-4f90-9090-e93101b4a97f": {
       "id": "5fab8abc-8048-4f90-9090-e93101b4a97f",
       "timestamp": "2025-04-13T00:38:45.848984",
@@ -182,17 +173,8 @@
       "country": "us",
       "job_count": 50,
       "max_days_old": 1
-    },
-    "038723da-13ab-4be0-953e-2dff881a6cd8": {
-      "id": "038723da-13ab-4be0-953e-2dff881a6cd8",
-      "timestamp": "2025-04-13T00:38:54.411151",
-      "keywords": "Developer",
-      "location": "Northampton, PA",
-      "country": "us",
-      "job_count": 47,
-      "max_days_old": 1
     }
   },
-  "job_count": 1747,
-  "last_batch": "038723da-13ab-4be0-953e-2dff881a6cd8"
+  "job_count": 1650,
+  "last_batch": "e439b6f4-0719-4cf2-83ab-55b49c0227bb"
 }
