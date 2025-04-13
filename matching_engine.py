@@ -163,17 +163,49 @@ def extract_skills(text: str, known_skills: set) -> set:
     return found
 
 def boost_score_with_skills(similarity: float, resume_text: str, job_text: str, known_skills=DEFAULT_SKILLS) -> float:
-    resume_skills = extract_skills(resume_text, known_skills)
-    job_skills = extract_skills(job_text, known_skills)
-    overlap = resume_skills & job_skills
-
-    if not overlap:
-        logger.info("boost_score_with_skills returning with similarity=%s, resume_text=%s, job_text=%s, known_skills=%s", similarity, resume_text, job_text, known_skills)
+    """
+    Boost similarity score based on skill overlap
+    
+    Args:
+        similarity: Base similarity score (0.0-1.0)
+        resume_text: Resume text to extract skills from
+        job_text: Job description text to extract skills from
+        known_skills: Set of known skills to check against
+        
+    Returns:
+        Boosted similarity score (0.0-1.0)
+    """
+    # Safety check for None or invalid inputs
+    if similarity is None or not isinstance(similarity, (int, float)):
+        logger.warning("Invalid similarity value in boost_score_with_skills")
+        return 0.0
+        
+    if resume_text is None or job_text is None:
+        logger.warning("Missing text in boost_score_with_skills")
         return similarity
+        
+    try:
+        # Extract skills from both texts
+        resume_skills = extract_skills(resume_text, known_skills)
+        job_skills = extract_skills(job_text, known_skills)
+        
+        # Find overlapping skills
+        overlap = resume_skills & job_skills
 
-    boost = 0.05 * len(overlap)
-    logger.info("boost_score_with_skills returning with similarity=%s, resume_text=%s, job_text=%s, known_skills=%s", similarity, resume_text, job_text, known_skills)
-    return min(similarity + boost, 1.0)
+        if not overlap:
+            logger.debug("No overlapping skills found")
+            return similarity
+
+        # Apply boost based on number of overlapping skills
+        boost = 0.05 * len(overlap)
+        boosted_score = min(similarity + boost, 1.0)
+        
+        logger.debug(f"Skill boost: {similarity:.2f} → {boosted_score:.2f} (overlapping skills: {len(overlap)})")
+        return boosted_score
+        
+    except Exception as e:
+        logger.error(f"Error in boost_score_with_skills: {str(e)}")
+        return similarity
 
 # Generate two embeddings: one for the full narrative, one for just the skills section.
 def generate_dual_embeddings(text: str) -> dict:
@@ -266,23 +298,55 @@ def get_job_data(days=30, refresh=False):
 def calculate_similarity(resume_embedding, job_embedding):
     """
     Calculate cosine similarity between resume and job embeddings
+    
+    Handles None values and invalid inputs gracefully
     """
-    # Convert to arrays if needed
-    resume_vec = np.array(resume_embedding)
-    job_vec = np.array(job_embedding)
-
-    # Compute cosine similarity
-    dot_product = np.dot(resume_vec, job_vec)
-    norm_a = np.linalg.norm(resume_vec)
-    norm_b = np.linalg.norm(job_vec)
-
-    if norm_a == 0 or norm_b == 0:
-        logger.info("calculate_similarity returning with resume_embedding=%s, job_embedding=%s", resume_embedding, job_embedding)
+    # Check for None values
+    if resume_embedding is None or job_embedding is None:
+        logger.warning("Cannot calculate similarity - one of the embeddings is None")
         return 0.0
+        
+    try:
+        # Convert to arrays if needed
+        resume_vec = np.array(resume_embedding)
+        job_vec = np.array(job_embedding)
+        
+        # Verify dimensions are valid
+        if resume_vec.size == 0 or job_vec.size == 0:
+            logger.warning("Cannot calculate similarity - empty vector(s)")
+            return 0.0
+            
+        # Check for NaN or inf values
+        if np.isnan(resume_vec).any() or np.isnan(job_vec).any() or \
+           np.isinf(resume_vec).any() or np.isinf(job_vec).any():
+            logger.warning("Cannot calculate similarity - invalid values in vectors")
+            return 0.0
 
-    similarity = dot_product / (norm_a * norm_b)
-    logger.info("calculate_similarity returning with resume_embedding=%s, job_embedding=%s", resume_embedding, job_embedding)
-    return (similarity + 1) / 2 # normalize to [0, 1]
+        # Compute cosine similarity
+        dot_product = np.dot(resume_vec, job_vec)
+        norm_a = np.linalg.norm(resume_vec)
+        norm_b = np.linalg.norm(job_vec)
+
+        if norm_a == 0 or norm_b == 0:
+            logger.warning("Cannot calculate similarity - zero norm vector(s)")
+            return 0.0
+
+        similarity = dot_product / (norm_a * norm_b)
+        
+        # Handle any invalid results
+        if np.isnan(similarity) or np.isinf(similarity):
+            logger.warning("Invalid similarity result - using default 0.0")
+            return 0.0
+            
+        # Normalize to [0, 1]
+        normalized = (similarity + 1) / 2
+        
+        logger.info("calculate_similarity returning with result=%s", normalized)
+        return normalized
+        
+    except Exception as e:
+        logger.error(f"Error calculating similarity: {str(e)}")
+        return 0.0
 
 def apply_filters(jobs, filters):
     """
@@ -345,6 +409,15 @@ def find_matching_jobs(resume_embeddings, jobs=None, filters=None, resume_text=N
         List of JobMatch objects sorted by similarity score
     """
     logger.debug("Finding matching jobs (dual embeddings)")
+    
+    # Validate resume_embeddings
+    if resume_embeddings is None or not isinstance(resume_embeddings, dict):
+        logger.error("Invalid resume_embeddings - must be a dictionary")
+        return []
+        
+    if "narrative" not in resume_embeddings or "skills" not in resume_embeddings:
+        logger.error("Missing required keys in resume_embeddings ('narrative' and/or 'skills')")
+        return []
 
     # Get jobs if not provided
     if jobs is None:
@@ -355,44 +428,54 @@ def find_matching_jobs(resume_embeddings, jobs=None, filters=None, resume_text=N
         return []
 
     # Apply filters if specified
-    if filters:
-        filtered_jobs = apply_filters(jobs, filters)
-    else:
+    try:
+        if filters:
+            filtered_jobs = apply_filters(jobs, filters)
+        else:
+            filtered_jobs = jobs
+    except Exception as e:
+        logger.error(f"Error applying filters: {str(e)}")
         filtered_jobs = jobs
 
     # Match jobs to resume
     matches = []
     for job in filtered_jobs:
-        # Skip jobs without embeddings
-        if not hasattr(job, 'embedding_narrative') or not hasattr(job, 'embedding_skills'):
-            logger.warning(f"Job '{job.title}' missing embeddings, generating now")
-            # Generate embeddings for this job
-            job_text = f"{job.title}\n{job.company}\n{job.description}"
-            if job.skills:
-                job_text += "\nSkills: " + ", ".join(job.skills)
+        try:
+            # Skip jobs without embeddings
+            if not hasattr(job, 'embedding_narrative') or not hasattr(job, 'embedding_skills'):
+                logger.warning(f"Job '{job.title}' missing embeddings, generating now")
+                # Generate embeddings for this job
+                job_text = f"{job.title}\n{job.company}\n{job.description}"
+                if job.skills:
+                    job_text += "\nSkills: " + ", ".join(job.skills)
+                
+                embeddings = generate_dual_embeddings(job_text)
+                job.embedding_narrative = embeddings["narrative"]
+                job.embedding_skills = embeddings["skills"]
+
+            # Calculate similarity scores
+            sim_narrative = calculate_similarity(resume_embeddings["narrative"], job.embedding_narrative)
+            sim_skills = calculate_similarity(resume_embeddings["skills"], job.embedding_skills)
+
+            # Weighted average of narrative and skills similarity
+            similarity = (sim_narrative + sim_skills) / 2
             
-            embeddings = generate_dual_embeddings(job_text)
-            job.embedding_narrative = embeddings["narrative"]
-            job.embedding_skills = embeddings["skills"]
+            # Apply skill boost if resume text provided
+            if resume_text:
+                job_text = f"{job.title} {job.description} {' '.join(job.skills)}"
+                similarity = boost_score_with_skills(similarity, resume_text, job_text, DEFAULT_SKILLS)
 
-        # Calculate similarity scores
-        sim_narrative = calculate_similarity(resume_embeddings["narrative"], job.embedding_narrative)
-        sim_skills = calculate_similarity(resume_embeddings["skills"], job.embedding_skills)
-
-        # Weighted average of narrative and skills similarity
-        similarity = (sim_narrative + sim_skills) / 2
-        
-        # Apply skill boost if resume text provided
-        if resume_text:
-            job_text = f"{job.title} {job.description} {' '.join(job.skills)}"
-            similarity = boost_score_with_skills(similarity, resume_text, job_text, DEFAULT_SKILLS)
-
-        matches.append(JobMatch(job, similarity))
+            matches.append(JobMatch(job, similarity))
+        except Exception as e:
+            # Log and continue with next job if there's an error with this one
+            logger.error(f"Error matching job '{job.title}': {str(e)}")
+            continue
 
     # Sort by similarity score (descending)
-    matches.sort(key=lambda m: m.similarity_score, reverse=True)
+    try:
+        matches.sort(key=lambda m: m.similarity_score, reverse=True)
+    except Exception as e:
+        logger.error(f"Error sorting matches: {str(e)}")
     
     logger.debug(f"Found {len(matches)} matching jobs")
-    logger.info("find_matching_jobs returning with resume_embeddings=%s, jobs=%s, filters=%s, resume_text=%s", resume_embeddings, jobs, filters, resume_text)
-    
     return matches
