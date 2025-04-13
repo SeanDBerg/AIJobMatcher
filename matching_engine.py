@@ -142,71 +142,41 @@ def generate_embedding_for_long_text(text, max_length=512, overlap=50):
     return np.mean(embeddings, axis=0)
 
 DEFAULT_SKILLS = {"python", "java", "c++", "c#", "javascript", "typescript", "react", "node", "sql", "postgresql", "mysql", "mongodb", "aws", "azure", "gcp", "docker", "kubernetes", "git", "flask", "django", "linux", "pandas", "numpy", "tensorflow", "scikit", "html", "css", "bash", "redis", "graphql"}
-
+# Extract matching skills from text using a known skills list.
 def extract_skills(text: str, known_skills: set) -> set:
-    """
-    Extract matching skills from text using a known skills list.
-    Args:
-        text: Cleaned text input
-        known_skills: A set of lowercase skill keywords
-    Returns:
-        Set of skills found in the text
-    """
     tokens = text.lower().split()
     found = set()
-
     for token in tokens:
         if token in known_skills:
             found.add(token)
-    logger.info("extract_skills returning with text=%s, known_skills=%s", text, known_skills)
-
+    logger.info("ran")
     return found
-
+# Boost similarity score based on skill overlap
 def boost_score_with_skills(similarity: float, resume_text: str, job_text: str, known_skills=DEFAULT_SKILLS) -> float:
-    """
-    Boost similarity score based on skill overlap
-    
-    Args:
-        similarity: Base similarity score (0.0-1.0)
-        resume_text: Resume text to extract skills from
-        job_text: Job description text to extract skills from
-        known_skills: Set of known skills to check against
-        
-    Returns:
-        Boosted similarity score (0.0-1.0)
-    """
     # Safety check for None or invalid inputs
     if similarity is None or not isinstance(similarity, (int, float)):
         logger.warning("Invalid similarity value in boost_score_with_skills")
         return 0.0
-        
     if resume_text is None or job_text is None:
         logger.warning("Missing text in boost_score_with_skills")
         return similarity
-        
     try:
         # Extract skills from both texts
         resume_skills = extract_skills(resume_text, known_skills)
         job_skills = extract_skills(job_text, known_skills)
-        
         # Find overlapping skills
         overlap = resume_skills & job_skills
-
         if not overlap:
             logger.debug("No overlapping skills found")
             return similarity
-
         # Apply boost based on number of overlapping skills
         boost = 0.05 * len(overlap)
         boosted_score = min(similarity + boost, 1.0)
-        
         logger.debug(f"Skill boost: {similarity:.2f} → {boosted_score:.2f} (overlapping skills: {len(overlap)})")
         return boosted_score
-        
     except Exception as e:
         logger.error(f"Error in boost_score_with_skills: {str(e)}")
         return similarity
-
 # Generate two embeddings: one for the full narrative, one for just the skills section.
 def generate_dual_embeddings(text: str) -> dict:
     cleaned = clean_text(text)
@@ -293,103 +263,66 @@ def get_job_data(days=30, refresh=False):
     else:
         logger.debug(f"Using cached job data ({len(_job_cache) if _job_cache else 0} jobs)")
         return _job_cache
-
 # Calculate cosine similarity between resume and job embeddings
 def calculate_similarity(resume_embedding, job_embedding):
-    """
-    Calculate cosine similarity between resume and job embeddings
-    
-    Handles None values and invalid inputs gracefully
-    """
+
     # Check for None values
     if resume_embedding is None or job_embedding is None:
         logger.warning("Cannot calculate similarity - one of the embeddings is None")
         return 0.0
-        
     try:
         # Convert to arrays if needed
         resume_vec = np.array(resume_embedding)
         job_vec = np.array(job_embedding)
-        
         # Verify dimensions are valid
         if resume_vec.size == 0 or job_vec.size == 0:
             logger.warning("Cannot calculate similarity - empty vector(s)")
             return 0.0
-            
         # Check for NaN or inf values
         if np.isnan(resume_vec).any() or np.isnan(job_vec).any() or \
            np.isinf(resume_vec).any() or np.isinf(job_vec).any():
             logger.warning("Cannot calculate similarity - invalid values in vectors")
             return 0.0
-
         # Compute cosine similarity
         dot_product = np.dot(resume_vec, job_vec)
         norm_a = np.linalg.norm(resume_vec)
         norm_b = np.linalg.norm(job_vec)
-
         if norm_a == 0 or norm_b == 0:
             logger.warning("Cannot calculate similarity - zero norm vector(s)")
             return 0.0
-
         similarity = dot_product / (norm_a * norm_b)
-        
         # Handle any invalid results
         if np.isnan(similarity) or np.isinf(similarity):
             logger.warning("Invalid similarity result - using default 0.0")
             return 0.0
-            
         # Normalize to [0, 1]
         normalized = (similarity + 1) / 2
-        
-        logger.info("calculate_similarity returning with result=%s", normalized)
         return normalized
-        
     except Exception as e:
         logger.error(f"Error calculating similarity: {str(e)}")
         return 0.0
-
+# Apply filters to job listings
 def apply_filters(jobs, filters):
-    """
-    Apply filters to job listings
-    
-    Args:
-        jobs: List of Job objects
-        filters: Dictionary of filter criteria
-            - remote: Boolean indicating preference for remote jobs
-            - location: String with preferred location
-            - keywords: String with comma-separated keywords
-        
-    Returns:
-        List of filtered Job objects
-    """
     logger.debug(f"Applying filters: {filters}")
-
     filtered_jobs = jobs.copy()
-
     # Filter for remote jobs if specified
     if filters.get('remote'):
         filtered_jobs = [job for job in filtered_jobs if job.is_remote]
-
     # Filter by location if specified
     location = filters.get('location', '').strip().lower()
     if location:
         filtered_jobs = [job for job in filtered_jobs if location in job.location.lower()]
-
     # Filter by keywords if specified
     keywords = filters.get('keywords', '').strip()
     if keywords:
         keyword_list = [kw.strip().lower() for kw in keywords.split(',')]
         filtered_jobs = []
-
         for job in jobs:
             job_text = (job.title + ' ' + job.description + ' ' + job.company + ' ' + ' '.join(job.skills)).lower()
-
             # Check if any keyword is present
             if any(kw in job_text for kw in keyword_list):
                 filtered_jobs.append(job)
-
     logger.debug(f"Filtered jobs from {len(jobs)} to {len(filtered_jobs)}")
-    logger.info("apply_filters returning with jobs=%s, filters=%s", jobs, filters)
 
     return filtered_jobs
 

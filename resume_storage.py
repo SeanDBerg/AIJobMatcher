@@ -147,7 +147,6 @@ class ResumeStorage:
     except Exception as e:
       logger.error(f"Error storing resume: {str(e)}")
       raise
-
   # Get all stored resumes
   def get_all_resumes(self) -> List[Dict]:
     try:
@@ -156,26 +155,22 @@ class ResumeStorage:
       # Sort resumes by upload date (newest first)
       resumes = list(self._index["resumes"].values())
       resumes.sort(key=lambda r: r.get("upload_date", ""), reverse=True)
-      logger.info("get_all_resumes returning with self=%s", self)
+      logger.info("ran")
       return resumes
     except Exception as e:
       logger.error(f"Error getting all resumes: {str(e)}")
-      logger.info("get_all_resumes returning with self=%s", self)
       return []
-
   # Get a specific resume's metadata
   def get_resume(self, resume_id: str) -> Optional[Dict]:
     try:
       # Load index
       self._load_index()
-      logger.info("get_resume returning with self=%s, resume_id=%s", self, resume_id)
+      logger.info("ran")
       # Return resume metadata
       return self._index["resumes"].get(resume_id)
     except Exception as e:
       logger.error(f"Error getting resume {resume_id}: {str(e)}")
-      logger.info("get_resume returning with self=%s, resume_id=%s", self, resume_id)
       return None
-
   # Get the content of a resume
   def get_resume_content(self, resume_id: str) -> Optional[str]:
     try:
