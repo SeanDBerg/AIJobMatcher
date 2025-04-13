@@ -32,7 +32,7 @@
         <!-- Upload Resume Section -->
         <div class="card mb-4">
             <div class="card-body">
-                <form method="POST" action="{{ url_for('upload_resume') }}" enctype="multipart/form-data" class="row">
+                <form method="POST" action="{{ url_for('upload_resume.upload_resume') }}" enctype="multipart/form-data" class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="resume" class="form-label">Upload Resume (PDF, DOCX, or TXT)</label>
@@ -356,6 +356,7 @@
                                         <th>Title</th>
                                         <th>Company</th>
                                         <th>Location</th>
+                                        <th>Remote</th>
                                         <th>Date Posted</th>
                                         <th>Salary</th>
                                         <th>Match %</th>
@@ -369,6 +370,7 @@
                                                 <td>{{ job.title }}</td>
                                                 <td>{{ job.company }}</td>
                                                 <td>{{ job.location }}</td>
+                                                <td>{{ 'Yes' if job.is_remote else 'No' }}</td>
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
                                                 <td>{{ (job.match_percentage|string ~ '%') if job.match_percentage is not none else '0%' }}</td>

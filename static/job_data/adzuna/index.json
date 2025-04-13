@@ -1,5 +1,5 @@
 {
-  "last_sync": "2025-04-13T00:38:54.412762",
+  "last_sync": "2025-04-13T04:30:58.188184",
   "total_jobs": 0,
   "jobs": [],
   "batches": {
@@ -20,8 +20,125 @@
       "country": "us",
       "job_count": 50,
       "max_days_old": 1
+    },
+    "8b507686-e566-4bd9-b50a-f7873f6b278f": {
+      "id": "8b507686-e566-4bd9-b50a-f7873f6b278f",
+      "timestamp": "2025-04-13T04:30:46.948774",
+      "keywords": "Developer",
+      "location": "Allentown, Lehigh County",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "a0ac98d8-9738-433f-affa-58637ef38fd6": {
+      "id": "a0ac98d8-9738-433f-affa-58637ef38fd6",
+      "timestamp": "2025-04-13T04:30:47.533870",
+      "keywords": "Project Manager",
+      "location": "Bethlehem, Northampton County",
+      "country": "us",
+      "job_count": 13,
+      "max_days_old": 1
+    },
+    "9f798827-56ac-4dbd-8668-db12955ba2a2": {
+      "id": "9f798827-56ac-4dbd-8668-db12955ba2a2",
+      "timestamp": "2025-04-13T04:30:49.023663",
+      "keywords": "Project Coordinator",
+      "location": "Allentown, Lehigh County",
+      "country": "us",
+      "job_count": 5,
+      "max_days_old": 1
+    },
+    "8eac5ec1-b4d1-4ddd-8517-af3b7a4d8702": {
+      "id": "8eac5ec1-b4d1-4ddd-8517-af3b7a4d8702",
+      "timestamp": "2025-04-13T04:30:49.335407",
+      "keywords": "Project Lead",
+      "location": "Allentown, Lehigh County",
+      "country": "us",
+      "job_count": 2,
+      "max_days_old": 1
+    },
+    "bb13d38f-88ea-4590-8e99-1cb2ca9101f2": {
+      "id": "bb13d38f-88ea-4590-8e99-1cb2ca9101f2",
+      "timestamp": "2025-04-13T04:30:49.670932",
+      "keywords": "Implementation Manager",
+      "location": "Allentown, Lehigh County",
+      "country": "us",
+      "job_count": 4,
+      "max_days_old": 1
+    },
+    "fa0fd2f9-46a0-4cf0-90f3-198e655949fa": {
+      "id": "fa0fd2f9-46a0-4cf0-90f3-198e655949fa",
+      "timestamp": "2025-04-13T04:30:50.120800",
+      "keywords": "Program Manager",
+      "location": "Walnutport, Northampton County",
+      "country": "us",
+      "job_count": 8,
+      "max_days_old": 1
+    },
+    "54ab5da2-47ca-4f18-86d9-c2229ac1e440": {
+      "id": "54ab5da2-47ca-4f18-86d9-c2229ac1e440",
+      "timestamp": "2025-04-13T04:30:50.466347",
+      "keywords": "Delivery Manager",
+      "location": "Bethlehem, Northampton County",
+      "country": "us",
+      "job_count": 3,
+      "max_days_old": 1
+    },
+    "8e25937f-4202-48b2-bcf3-27110437a32a": {
+      "id": "8e25937f-4202-48b2-bcf3-27110437a32a",
+      "timestamp": "2025-04-13T04:30:51.206659",
+      "keywords": "Operations Manager",
+      "location": "Allentown, Lehigh County",
+      "country": "us",
+      "job_count": 23,
+      "max_days_old": 1
+    },
+    "5e6d6f79-41b9-4fb7-ba75-e77acdf19ce2": {
+      "id": "5e6d6f79-41b9-4fb7-ba75-e77acdf19ce2",
+      "timestamp": "2025-04-13T04:30:53.001049",
+      "keywords": "Continuous Improvement Manager",
+      "location": "Walnutport, Northampton County",
+      "country": "us",
+      "job_count": 2,
+      "max_days_old": 1
+    },
+    "9fb70e24-6b51-47e4-93e4-72c13117792f": {
+      "id": "9fb70e24-6b51-47e4-93e4-72c13117792f",
+      "timestamp": "2025-04-13T04:30:53.342857",
+      "keywords": "Operational Excellence Manager",
+      "location": "Whitehall, Lehigh County",
+      "country": "us",
+      "job_count": 3,
+      "max_days_old": 1
+    },
+    "a1eb4c68-d7c7-4132-8db1-10b05aa24f29": {
+      "id": "a1eb4c68-d7c7-4132-8db1-10b05aa24f29",
+      "timestamp": "2025-04-13T04:30:54.604027",
+      "keywords": "Product Manager",
+      "location": "Weissport, Carbon County",
+      "country": "us",
+      "job_count": 8,
+      "max_days_old": 1
+    },
+    "85636d29-6993-4940-9c67-42e7522945f6": {
+      "id": "85636d29-6993-4940-9c67-42e7522945f6",
+      "timestamp": "2025-04-13T04:30:56.188078",
+      "keywords": "Training Coordinator",
+      "location": "Breinigsville, Lehigh County",
+      "country": "us",
+      "job_count": 5,
+      "max_days_old": 1
+    },
+    "16d4b5d7-e6ec-4ba3-834c-6b963a7feeef": {
+      "id": "16d4b5d7-e6ec-4ba3-834c-6b963a7feeef",
+      "timestamp": "2025-04-13T04:30:58.187450",
+      "keywords": "Business Manager",
+      "location": "Lehigh Valley, Northampton County",
+      "country": "us",
+      "job_count": 11,
+      "max_days_old": 1
     }
   },
-  "job_count": 100,
-  "last_batch": "e439b6f4-0719-4cf2-83ab-55b49c0227bb"
+  "job_count": 237,
+  "last_batch": "16d4b5d7-e6ec-4ba3-834c-6b963a7feeef"
 }
