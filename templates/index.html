@@ -628,6 +628,9 @@
                             
                             // Save to localStorage
                             localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
+                            
+                            // Also save to server session
+                            saveKeywordsListToServer(keywordsList);
                         } else {
                             // Show message that keyword already exists
                             $('#syncStatus').show().removeClass('alert-success alert-info').addClass('alert-warning');
@@ -671,7 +674,32 @@
                     
                     // Save to localStorage
                     localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
+                    
+                    // Also save to server session for persistence
+                    saveKeywordsListToServer(keywordsList);
                 });
+                
+                // Function to save keywords list to server
+                function saveKeywordsListToServer(keywordsList) {
+                    $.ajax({
+                        url: '/api/save_keywords_list',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            keywords_list: keywordsList
+                        }),
+                        success: function(response) {
+                            if (response.success) {
+                                console.log(`Saved ${response.count} keywords to server session`);
+                            } else {
+                                console.error('Error saving keywords list:', response.error);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Error saving keywords list to server:', error);
+                        }
+                    });
+                }
                 
                 // Add event handler for batch deletion
                 $(document).on('click', '.delete-batch', function() {
