@@ -7,10 +7,9 @@ import tempfile
 import numpy as np
 from datetime import datetime
 from resume_parser import parse_resume, FileParsingError
-from matching_engine import generate_dual_embeddings, get_job_data, find_matching_jobs
+from matching_engine import generate_dual_embeddings
 from resume_storage import resume_storage
-from adzuna_scraper import (get_adzuna_jobs, cleanup_old_adzuna_jobs, get_adzuna_storage_status, search_jobs)
-from adzuna_storage import AdzunaStorage
+from job_manager import job_manager, AdzunaAPIError
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -40,15 +39,15 @@ def index():
   max_days_old = request.args.get('max_days_old', '1')
   remote_only = request.args.get('remote_only', '') == '1'
   status = {}
+  
   if ADZUNA_SCRAPER_AVAILABLE:
-    storage_status = get_adzuna_storage_status()
+    # Use our unified JobManager
+    storage_status = job_manager.get_storage_status()
     
-    # Get the batches from the Adzuna storage for our batch summary tab
-    adzuna_storage = AdzunaStorage()
-    adzuna_storage._load_index()
-    storage_status["batches"] = adzuna_storage._index.get("batches", {})
+    # Get jobs using the JobManager
+    jobs = job_manager.get_recent_jobs(days=30)
     
-    jobs = get_adzuna_jobs(days=30)
+    # Filter recent jobs (last 7 days)
     recent_jobs_list = []
     for job in jobs:
       if job.posted_date:
@@ -58,7 +57,11 @@ def index():
             recent_jobs_list.append(job)
         except Exception:
           pass
+          
+    # Get remote jobs
     remote_jobs_list = [job for job in jobs if job.is_remote]
+    
+    # Get resume and embeddings if available
     resume_id = session.get('resume_id')
     resume_embeddings = None
     if resume_id:
@@ -66,18 +69,24 @@ def index():
       if active_resume and "metadata" in active_resume:
         metadata = active_resume["metadata"]
         resume_embeddings = {"narrative": np.array(metadata["embedding_narrative"]), "skills": np.array(metadata["embedding_skills"])}
+    
+    # Calculate matching percentages if resume available
     if resume_embeddings:
-      matches = find_matching_jobs(resume_embeddings, jobs)
+      matches = job_manager.match_jobs_to_resume(resume_embeddings, jobs)
       job_id_to_match = {match.job.url: match for match in matches}
       for job in jobs:
-          match = job_id_to_match.get(job.url)
-          job.match_percentage = int(match.similarity_score * 100) if match else 0
+        match = job_id_to_match.get(job.url)
+        job.match_percentage = int(match.similarity_score * 100) if match else 0
     else:
       for job in jobs:
-          job.match_percentage = 0  # Ensure numeric zero
+        job.match_percentage = 0  # Ensure numeric zero
+    
+    # Convert to dictionaries for template
     jobs_dict = {i: job.to_dict() for i, job in enumerate(jobs)}
     recent_jobs_dict = {i: job.to_dict() for i, job in enumerate(recent_jobs_list)}
     remote_jobs_dict = {i: job.to_dict() for i, job in enumerate(remote_jobs_list)}
+    
+    # Update status for template
     status.update({
       "storage_status": storage_status,
       "jobs": jobs_dict,
@@ -86,15 +95,18 @@ def index():
       "total_jobs": len(jobs),
       "recent_jobs": len(recent_jobs_list),
       "last_sync": storage_status.get("last_sync", "Never"),
-      "next_sync": "Manual sync only", # No scheduler, manual sync only
+      "next_sync": "Manual sync only",  # No scheduler, manual sync only
       "keywords": keywords,
       "location": location,
       "country": country,
       "max_days_old": max_days_old,
       "remote_only": remote_only
     })
+    
+  # Add stored resumes to status
   status["stored_resumes"] = resume_storage.get_all_resumes()
-  logger.info("index returning with no parameters")
+  
+  logger.debug("Rendering index with %d jobs", status.get("total_jobs", 0))
   return render_template('index.html', **status)
 #"""Serve resume files"""
 @app.route('/resume_files/<resume_id>/<filename>')
@@ -222,9 +234,9 @@ def upload_resume():
         find_matches = request.form.get('find_matches', '') == 'on'
 
         if find_matches:
-          # Get all job data
+          # Get all job data using JobManager
           try:
-            jobs = get_job_data()
+            jobs = job_manager.get_recent_jobs(days=30)
             if not jobs:
               flash('No job data available to match against', 'warning')
               return redirect(url_for('index', resume_id=resume_id))
@@ -233,10 +245,10 @@ def upload_resume():
             flash(f'Error retrieving job data: {str(e)}', 'danger')
             return redirect(url_for('index', resume_id=resume_id))
 
-          # Find matching jobs
+          # Find matching jobs using JobManager
           try:
             resume_embeddings = {"narrative": resume_embedding_narrative, "skills": resume_embedding_skills}
-            matching_jobs = find_matching_jobs(resume_embeddings, jobs, filters, resume_text=resume_text)
+            matching_jobs = job_manager.match_jobs_to_resume(resume_embeddings, jobs, filters, resume_text=resume_text)
 
             # Store resume text in session for display on results page
             session['resume_text'] = resume_text
@@ -289,12 +301,12 @@ def upload_resume():
 def get_jobs():
   """API endpoint to get job listings"""
   try:
-    jobs = get_job_data()
-    logger.info("get_jobs returning with no parameters")
-    return jsonify({"success": True, "jobs": jobs})
+    days = request.args.get('days', 30, type=int)
+    jobs = job_manager.get_recent_jobs(days=days)
+    logger.debug("Retrieved %d jobs for API", len(jobs))
+    return jsonify({"success": True, "jobs": [job.to_dict() for job in jobs]})
   except Exception as e:
     logger.error(f"Error fetching jobs: {str(e)}")
-    logger.info("get_jobs returning with no parameters")
     return jsonify({"success": False, "error": str(e)})
 @app.route('/api/match-jobs', methods=['POST'])
 def match_jobs():
@@ -346,20 +358,21 @@ def match_jobs():
     else:
       logger.info("match_jobs returning with no parameters")
       return jsonify({"success": False, "error": "Request must be JSON"}), 400
-    # Get job data
+    # Get job data using the JobManager
     try:
-      jobs = get_job_data()
+      days = data.get('days', 30)
+      jobs = job_manager.get_recent_jobs(days=days)
       if not jobs:
-        logger.info("match_jobs returning with no parameters")
+        logger.warning("No job data available for matching")
         return jsonify({"success": False, "error": "No job data available to match against"}), 500
     except Exception as e:
       logger.error(f"Error retrieving job data: {str(e)}")
-      logger.info("match_jobs returning with no parameters")
       return jsonify({"success": False, "error": f"Error retrieving job data: {str(e)}"}), 500
-    # Find matching jobs
+      
+    # Find matching jobs using the JobManager
     try:
       resume_embeddings = {"narrative": resume_embedding_narrative, "skills": resume_embedding_skills}
-      matching_jobs = find_matching_jobs(resume_embeddings, jobs, filters, resume_text=resume_text)
+      matching_jobs = job_manager.match_jobs_to_resume(resume_embeddings, jobs, filters, resume_text=resume_text)
       if not matching_jobs:
         logger.info("match_jobs returning with no parameters")
         return jsonify({"success": True, "matches": {}, "message": "No matching jobs found based on your filters. Try adjusting your search criteria."})
@@ -404,123 +417,95 @@ def config_adzuna():
     logger.error(f"Error configuring Adzuna API: {str(e)}")
     logger.info("config_adzuna returning with no parameters")
     return jsonify({"success": False, "error": str(e)}), 500    
-"""API endpoint to get Adzuna jobs from storage"""
+"""API endpoint to get jobs from storage"""
 @app.route('/api/adzuna/jobs', methods=['GET'])
 def get_adzuna_jobs_endpoint():
   try:
     days = request.args.get('days', 30, type=int)
-    # Get jobs directly from Adzuna storage
-    jobs = get_adzuna_jobs(days=days)
+    # Get jobs using JobManager
+    jobs = job_manager.get_recent_jobs(days=days)
     # Convert to dictionaries for JSON response
     job_dicts = [job.to_dict() for job in jobs]
-    logger.info("get_adzuna_jobs_endpoint returning with no parameters")
+    logger.debug("Retrieved %d jobs for API", len(jobs))
     return jsonify({"success": True, "jobs": job_dicts, "count": len(job_dicts)})
   except Exception as e:
-    logger.info("get_adzuna_jobs_endpoint returning with no parameters")
-    return _handle_api_exception(e, "getting Adzuna jobs")
+    logger.error(f"Error getting jobs: {str(e)}")
+    return _handle_api_exception(e, "getting jobs")
+
 @app.route('/api/adzuna/cleanup', methods=['POST'])
 def cleanup_adzuna_jobs_endpoint():
-  """API endpoint to clean up old Adzuna jobs"""
+  """API endpoint to clean up old jobs"""
   try:
     # Check if request is JSON
     json_error = _require_json_request()
     if json_error:
-      logger.info("cleanup_adzuna_jobs_endpoint returning with no parameters")
       return json_error
+      
     data = request.json
     max_age_days = data.get('max_age_days', 90)
-    # Clean up old jobs
-    removed_count = cleanup_old_adzuna_jobs(max_age_days=max_age_days)
-    logger.info("cleanup_adzuna_jobs_endpoint returning with no parameters")
-    return jsonify({"success": True, "removed_count": removed_count, "message": f"Successfully removed {removed_count} old Adzuna jobs"})
+    
+    # Clean up old jobs using JobManager
+    removed_count = job_manager.cleanup_old_jobs(max_age_days=max_age_days)
+    
+    logger.debug(f"Removed {removed_count} old jobs")
+    return jsonify({
+      "success": True, 
+      "removed_count": removed_count, 
+      "message": f"Successfully removed {removed_count} old jobs"
+    })
   except Exception as e:
-    logger.info("cleanup_adzuna_jobs_endpoint returning with no parameters")
-    return _handle_api_exception(e, "cleaning up Adzuna jobs")
-"""API endpoint to get Adzuna storage status"""
+    logger.error(f"Error cleaning up jobs: {str(e)}")
+    return _handle_api_exception(e, "cleaning up jobs")
+
+"""API endpoint to get storage status"""
 @app.route('/api/adzuna/status', methods=['GET'])
 def get_adzuna_storage_status_endpoint():
   try:
-    # Get status
-    status = get_adzuna_storage_status()
-    # Format datetime for JSON
-    if status.get('last_sync'):
+    # Get status using JobManager
+    status = job_manager.get_storage_status()
+    
+    # Format datetime for JSON if needed
+    if status.get('last_sync') and not isinstance(status['last_sync'], str):
       status['last_sync'] = status['last_sync'].isoformat()
+      
     return jsonify({"success": True, "status": status})
   except Exception as e:
-    return _handle_api_exception(e, "getting Adzuna storage status")
+    logger.error(f"Error getting storage status: {str(e)}")
+    return _handle_api_exception(e, "getting storage status")
     
 @app.route('/api/adzuna/batch/<batch_id>', methods=['DELETE'])
 def delete_adzuna_batch(batch_id):
-  """API endpoint to delete a specific Adzuna batch"""
+  """API endpoint to delete a specific batch"""
   try:
-    # Initialize storage
-    adzuna_storage = AdzunaStorage()
+    # Use JobManager to delete the batch
+    success = job_manager.delete_batch(batch_id)
     
-    # Load index
-    adzuna_storage._load_index()
+    if not success:
+      logger.warning(f"Batch {batch_id} not found or could not be deleted")
+      return jsonify({
+        "success": False, 
+        "error": f"Batch {batch_id} not found or could not be deleted"
+      }), 404
     
-    # Check if batch exists
-    if batch_id not in adzuna_storage._index["batches"]:
-      logger.info(f"Batch {batch_id} not found in index")
-      return jsonify({"success": False, "error": f"Batch {batch_id} not found"}), 404
+    # Get updated status after deletion
+    status = job_manager.get_storage_status()
     
-    # Get job count before deletion
-    job_count_before = adzuna_storage._index["job_count"]
-    batch_job_count = adzuna_storage._index["batches"][batch_id]["job_count"]
-    
-    # Remove batch file
-    import os
-    from adzuna_storage import ADZUNA_DATA_DIR
-    batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
-    if os.path.exists(batch_file):
-      os.remove(batch_file)
-    
-    # Remove from index
-    del adzuna_storage._index["batches"][batch_id]
-    
-    # Update total job count
-    adzuna_storage._index["job_count"] -= batch_job_count
-    if adzuna_storage._index["job_count"] < 0:
-      adzuna_storage._index["job_count"] = 0
-    
-    # Update last batch if this was the last batch
-    if adzuna_storage._index["last_batch"] == batch_id:
-      adzuna_storage._index["last_batch"] = None
-      if adzuna_storage._index["batches"]:
-        # Set to most recent remaining batch
-        adzuna_storage._index["last_batch"] = max(adzuna_storage._index["batches"].items(), key=lambda x: x[1]["timestamp"])[0]
-    
-    # Save updated index
-    adzuna_storage._save_index()
-    
-    logger.info(f"Successfully deleted batch {batch_id} containing {batch_job_count} jobs")
+    logger.debug(f"Successfully deleted batch {batch_id}")
     return jsonify({
       "success": True, 
       "batch_id": batch_id,
-      "removed_jobs": batch_job_count,
-      "new_total": adzuna_storage._index["job_count"]
+      "status": status
     })
   except Exception as e:
     logger.error(f"Error deleting batch {batch_id}: {str(e)}")
     return _handle_api_exception(e, f"deleting batch {batch_id}")
-# This endpoint has been removed as part of simplifying the job storage implementation
-# Jobs are now directly accessed from Adzuna storage
-"""
-@app.route('/api/adzuna/import', methods=['POST'])
-def import_adzuna_jobs_endpoint():
-  # This endpoint is intentionally commented out as it's no longer needed
-  # Jobs are now directly accessed from Adzuna storage
-  return jsonify({"success": False, "error": "This endpoint has been deprecated"}), 410
-"""
-
+# API endpoint to sync jobs from Adzuna
 @app.route('/api/jobs/sync', methods=['POST'])
 def sync_jobs():
-  """API endpoint to sync jobs from Adzuna"""
   try:
     # Check if request is JSON
     json_error = _require_json_request()
     if json_error:
-      logger.info("sync_jobs returning with no parameters")
       return json_error
     
     # Get parameters from request
@@ -528,33 +513,34 @@ def sync_jobs():
     keywords = data.get('keywords', '')
     location = data.get('location', '')
     country = data.get('country', 'gb')
-    max_pages = data.get('max_pages', 5)
     max_days_old = data.get('max_days_old', 30)
-    remote_only = data.get('remote_only', False)
     
-    # Call search jobs function
-    results = search_jobs(
-      keywords=keywords,
-      location=location,
-      country=country,
-      max_days_old=max_days_old,
-      page=1,
-      results_per_page=50,
-      full_time=None,
-      permanent=None,
-      category=None,
-      distance=15
-    )
-    
-    # Log results
-    logger.info(f"Synced {len(results)} jobs from Adzuna")
-    
-    logger.info("sync_jobs returning with no parameters")
-    return jsonify({
-      "success": True, 
-      "message": f"Retrieved {len(results)} jobs", 
-      "jobs_count": len(results)
-    })
+    # Use JobManager to search for jobs
+    try:
+      jobs, count, total_pages, current_page = job_manager.search_jobs(
+        keywords=keywords,
+        location=location,
+        country=country,
+        max_days_old=max_days_old,
+        page=1,
+        results_per_page=50
+      )
+      
+      logger.debug(f"Synced {len(jobs)} jobs from API")
+      
+      # Return success with job information
+      return jsonify({
+        "success": True, 
+        "message": f"Retrieved {len(jobs)} jobs", 
+        "jobs_count": len(jobs),
+        "total_count": count,
+        "total_pages": total_pages
+      })
+    except AdzunaAPIError as e:
+      # Handle API-specific errors
+      logger.error(f"API error: {str(e)}")
+      return jsonify({"success": False, "error": str(e)}), 400
+      
   except Exception as e:
-    logger.info("sync_jobs returning with no parameters")
-    return _handle_api_exception(e, "syncing jobs from Adzuna")
+    logger.error(f"Error syncing jobs: {str(e)}")
+    return _handle_api_exception(e, "syncing jobs from API")

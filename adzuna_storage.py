@@ -12,10 +12,17 @@ logger = logging.getLogger(__name__)
 ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), 'static', 'job_data', 'adzuna')
 ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
 """Class for managing Adzuna job data storage"""
+# Global cache to store loaded index and jobs
+_GLOBAL_INDEX_CACHE = None
+_GLOBAL_JOBS_CACHE = None
+_GLOBAL_CACHE_TIMESTAMP = None
+
 class AdzunaStorage:
   def __init__(self):
     """Initialize the storage"""
     self._index = {}
+    self._job_cache = None
+    self._cache_timestamp = None
     self._initialize_adzuna_index()
 
   def _initialize_adzuna_index(self):
@@ -29,11 +36,24 @@ class AdzunaStorage:
       self._save_index()
     else:
       self._load_index()
+      
   """Load the job index from file"""
   def _load_index(self) -> Dict:
+    global _GLOBAL_INDEX_CACHE, _GLOBAL_CACHE_TIMESTAMP
+    
+    # If we have a cached index and it's less than 5 seconds old, use it
+    current_time = datetime.now()
+    cache_age = (current_time - _GLOBAL_CACHE_TIMESTAMP).total_seconds() if _GLOBAL_CACHE_TIMESTAMP else None
+    
+    if _GLOBAL_INDEX_CACHE is not None and cache_age is not None and cache_age < 5:
+      self._index = _GLOBAL_INDEX_CACHE
+      logger.debug("Using cached index (age: %.2f seconds)", cache_age)
+      return self._index
+    
     try:
       with open(ADZUNA_INDEX_FILE, 'r', encoding='utf-8') as f:
         self._index = json.load(f)
+      
       # Ensure the index has all required keys
       if "batches" not in self._index:
         self._index["batches"] = {}
@@ -43,14 +63,24 @@ class AdzunaStorage:
         self._index["last_sync"] = None
       if "last_batch" not in self._index:
         self._index["last_batch"] = None
-      logger.info("ran")
+      
+      # Update global cache
+      _GLOBAL_INDEX_CACHE = self._index
+      _GLOBAL_CACHE_TIMESTAMP = current_time
+      
+      logger.debug("Loaded fresh index from disk")
       return self._index
     except Exception as e:
       logger.error(f"Error loading Adzuna index: {str(e)}")
       # If index file is corrupted, create a new one
       self._index = {"batches": {}, "job_count": 0, "last_sync": None, "last_batch": None}
       self._save_index()
-      logger.info("ran")
+      
+      # Update global cache
+      _GLOBAL_INDEX_CACHE = self._index
+      _GLOBAL_CACHE_TIMESTAMP = current_time
+      
+      logger.debug("Created new index due to error")
       return self._index
 
   def _save_index(self):
@@ -133,9 +163,19 @@ class AdzunaStorage:
       return 0
   # Get all stored Adzuna jobs
   def get_all_jobs(self) -> List[Job]:
+    global _GLOBAL_JOBS_CACHE, _GLOBAL_CACHE_TIMESTAMP
+    
+    # If we have a cached jobs and it's less than 10 seconds old, use it
+    current_time = datetime.now()
+    cache_age = (current_time - _GLOBAL_CACHE_TIMESTAMP).total_seconds() if _GLOBAL_CACHE_TIMESTAMP else None
+    
+    if _GLOBAL_JOBS_CACHE is not None and cache_age is not None and cache_age < 10:
+      logger.debug("Using cached jobs (age: %.2f seconds)", cache_age)
+      return _GLOBAL_JOBS_CACHE
+    
     try:
       all_jobs = []
-      # Load index
+      # Load index - uses its own caching
       self._load_index()
       # Loop through batches
       for batch_id in self._index["batches"]:
@@ -143,30 +183,49 @@ class AdzunaStorage:
         # Convert dictionary to Job objects
         for job_dict in batch_jobs:
           try:
-            job = Job(title=job_dict["title"], company=job_dict["company"], description=job_dict["description"], location=job_dict["location"], is_remote=job_dict.get("is_remote", False), posted_date=job_dict.get("posted_date"), url=job_dict.get("url", ""), skills=job_dict.get("skills", []), salary_range=job_dict.get("salary_range"))
+            job = Job(title=job_dict["title"], company=job_dict["company"], 
+                     description=job_dict["description"], location=job_dict["location"], 
+                     is_remote=job_dict.get("is_remote", False), 
+                     posted_date=job_dict.get("posted_date"), 
+                     url=job_dict.get("url", ""), 
+                     skills=job_dict.get("skills", []), 
+                     salary_range=job_dict.get("salary_range"))
             all_jobs.append(job)
           except Exception as e:
             logger.error(f"Error creating Job object: {str(e)}")
             continue
-      logger.info("get_all_jobs ran")
+            
+      # Update global cache
+      _GLOBAL_JOBS_CACHE = all_jobs
+      _GLOBAL_CACHE_TIMESTAMP = current_time
+      
+      logger.debug("Loaded %d jobs from disk", len(all_jobs))
       return all_jobs
     except Exception as e:
       logger.error(f"Error getting all jobs: {str(e)}")
       return []
-# 
+      
+  # Get recent jobs with caching
   def get_recent_jobs(self, days: int = 30) -> List[Job]:
     try:
+      # Get all jobs (uses caching internally)
       all_jobs = self.get_all_jobs()
+      
       if not all_jobs:
-        logger.info("get_recent_jobs returning with self=%s, days=%s", self, days)
+        logger.debug("No jobs found")
         return []
+        
       # Calculate cutoff date
       cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+      
       # Filter by posted date
       recent_jobs = []
+      cutoff_datetime = datetime.fromisoformat(cutoff_date)
+      
       for job in all_jobs:
         if not job.posted_date:
           continue
+          
         # Convert string to datetime for comparison
         try:
           job_date = None
@@ -192,17 +251,19 @@ class AdzunaStorage:
           else:
             # Unknown type, skip
             continue
-          # Convert cutoff_date to datetime if it's a string
-          cutoff_datetime = datetime.fromisoformat(cutoff_date) if isinstance(cutoff_date, str) else cutoff_date
+            
           # Compare datetime objects
           if job_date >= cutoff_datetime:
             recent_jobs.append(job)
+            
         except Exception as e:
           logger.error(f"Error comparing dates for job {job.title}: {str(e)}")
           # Include jobs with date parsing errors to avoid excluding valid jobs
           recent_jobs.append(job)
-      logger.info("ran")
+          
+      logger.debug("Filtered to %d recent jobs (last %d days)", len(recent_jobs), days)
       return recent_jobs
+      
     except Exception as e:
       logger.error(f"Error getting recent jobs: {str(e)}")
       return []
