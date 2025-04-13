@@ -11,7 +11,7 @@ from embedding_generator import generate_dual_embeddings
 from job_data import get_job_data
 from matching_engine import find_matching_jobs
 from resume_storage import resume_storage
-from adzuna_scraper import (get_adzuna_jobs, import_adzuna_jobs_to_main_storage, cleanup_old_adzuna_jobs, get_adzuna_storage_status)
+from adzuna_scraper import (get_adzuna_jobs, import_adzuna_jobs_to_main_storage, cleanup_old_adzuna_jobs, get_adzuna_storage_status, search_jobs)
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -300,7 +300,6 @@ def match_jobs():
       resume_id = data.get('resume_id')
       resume_text = data.get('resume_text', '')
       filters = data.get('filters', {})
-
       # If resume_id is provided, get resume from storage
       if resume_id:
         try:
@@ -308,9 +307,7 @@ def match_jobs():
           if not resume_metadata:
             logger.info("match_jobs returning with no parameters")
             return jsonify({"success": False, "error": f"Resume with ID {resume_id} not found"}), 404
-
           resume_text = resume_storage.get_resume_content(resume_id) or ''
-
           # Get embedding from metadata if available
           if resume_metadata.get('embedding_narrative') and resume_metadata.get('embedding_skills'):
             resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
@@ -319,11 +316,9 @@ def match_jobs():
             embeddings = generate_dual_embeddings(resume_text)
             resume_embedding_narrative = embeddings['narrative']
             resume_embedding_skills = embeddings['skills']
-
           # Use filters from metadata if not provided in request
           if not filters and resume_metadata.get('filters'):
             filters = resume_metadata['filters']
-
         except Exception as e:
           logger.error(f"Error retrieving resume {resume_id}: {str(e)}")
           logger.info("match_jobs returning with no parameters")
@@ -333,7 +328,6 @@ def match_jobs():
         if not resume_text or len(resume_text.strip()) < 50:
           logger.info("match_jobs returning with no parameters")
           return jsonify({"success": False, "error": "Resume text is too short. Please provide a complete resume."}), 400
-
         # Generate embedding
         try:
           embeddings = generate_dual_embeddings(resume_text)
@@ -346,7 +340,6 @@ def match_jobs():
     else:
       logger.info("match_jobs returning with no parameters")
       return jsonify({"success": False, "error": "Request must be JSON"}), 400
-
     # Get job data
     try:
       jobs = get_job_data()
@@ -357,7 +350,6 @@ def match_jobs():
       logger.error(f"Error retrieving job data: {str(e)}")
       logger.info("match_jobs returning with no parameters")
       return jsonify({"success": False, "error": f"Error retrieving job data: {str(e)}"}), 500
-
     # Find matching jobs
     try:
       resume_embeddings = {"narrative": resume_embedding_narrative, "skills": resume_embedding_skills}
@@ -369,7 +361,6 @@ def match_jobs():
       logger.error(f"Error matching jobs: {str(e)}")
       logger.info("match_jobs returning with no parameters")
       return jsonify({"success": False, "error": f"Error matching jobs: {str(e)}"}), 500
-
     # Create a dictionary with job IDs as keys and match percentages as values
     # This is the format needed by our JavaScript function
     matches_dict = {}
@@ -378,9 +369,7 @@ def match_jobs():
       match_percentage = int(job_match.similarity_score * 100)
       matches_dict[job_id] = match_percentage
     logger.info("match_jobs returning with no parameters")
-
     return jsonify({"success": True, "matches": matches_dict, "count": len(matching_jobs), "resume_id": resume_id if resume_id else None})
-
   except Exception as e:
     logger.error(f"Unexpected error in API: {str(e)}")
     logger.info("match_jobs returning with no parameters")
@@ -392,59 +381,26 @@ def config_adzuna():
     if not request.is_json:
       logger.info("config_adzuna returning with no parameters")
       return jsonify({"success": False, "error": "Request must be JSON"}), 400
-
     data = request.json
     app_id = data.get('app_id')
     api_key = data.get('api_key')
-
     # Here we would normally save these to environment variables or a secure storage
     # For this example, we'll just set them in the current process environment
     if app_id:
       os.environ['ADZUNA_APP_ID'] = app_id
       logger.info("Adzuna App ID configured")
-
     if api_key:
       os.environ['ADZUNA_API_KEY'] = api_key
       logger.info("Adzuna API Key configured")
     logger.info("config_adzuna returning with no parameters")
-
     return jsonify({"success": True})
-
   except Exception as e:
     logger.error(f"Error configuring Adzuna API: {str(e)}")
     logger.info("config_adzuna returning with no parameters")
-    return jsonify({"success": False, "error": str(e)}), 500
-# Commented out Bulk Sync endpoint (removed in favor of Job Search Parameters)
-# @app.route('/api/adzuna/bulk-sync', methods=['POST'])
-# def bulk_sync_adzuna_jobs():
-#   """API endpoint to perform a bulk job sync from Adzuna with rate limiting"""
-#   try:
-#     if not request.is_json:
-#       logger.info("bulk_sync_adzuna_jobs returning with no parameters")
-#       return jsonify({"success": False, "error": "Request must be JSON"}), 400
-#     data = request.json
-#     keywords = data.get('keywords', '')
-#     location = data.get('location', '')
-#     country = data.get('country', 'gb')
-#     max_pages = data.get('max_pages', None)
-#     max_days_old = data.get('max_days_old', 30)
-
-#     # Perform bulk sync
-#     results = sync_jobs_from_adzuna(keywords=keywords, location=location, country=country, max_pages=max_pages, max_days_old=max_days_old)
-
-#     if results.get('status') != 'success':
-#       logger.info("bulk_sync_adzuna_jobs returning with no parameters")
-#       return jsonify({"success": False, "error": results.get('error', 'Unknown error occurred during sync')}), 500
-#     logger.info("bulk_sync_adzuna_jobs returning with no parameters")
-
-#     return jsonify({"success": True, "results": results, "message": f"Successfully synced {results.get('new_jobs', 0)} new jobs " + f"across {results.get('pages_fetched', 0)} pages"})
-
-#   except Exception as e:
-#     logger.info("bulk_sync_adzuna_jobs returning with no parameters")
-#     return _handle_api_exception(e, "during Adzuna bulk sync")
+    return jsonify({"success": False, "error": str(e)}), 500    
+"""API endpoint to get Adzuna jobs from storage"""
 @app.route('/api/adzuna/jobs', methods=['GET'])
 def get_adzuna_jobs_endpoint():
-  """API endpoint to get Adzuna jobs from storage"""
   try:
     days = request.args.get('days', 30, type=int)
     import_to_main = request.args.get('import_to_main', 'false').lower() == 'true'
@@ -507,3 +463,49 @@ def import_adzuna_jobs_endpoint():
   except Exception as e:
     logger.info("import_adzuna_jobs_endpoint returning with no parameters")
     return _handle_api_exception(e, "importing Adzuna jobs")
+
+@app.route('/api/jobs/sync', methods=['POST'])
+def sync_jobs():
+  """API endpoint to sync jobs from Adzuna"""
+  try:
+    # Check if request is JSON
+    json_error = _require_json_request()
+    if json_error:
+      logger.info("sync_jobs returning with no parameters")
+      return json_error
+    
+    # Get parameters from request
+    data = request.json
+    keywords = data.get('keywords', '')
+    location = data.get('location', '')
+    country = data.get('country', 'gb')
+    max_pages = data.get('max_pages', 5)
+    max_days_old = data.get('max_days_old', 30)
+    remote_only = data.get('remote_only', False)
+    
+    # Call search jobs function
+    results = search_jobs(
+      keywords=keywords,
+      location=location,
+      country=country,
+      max_days_old=max_days_old,
+      page=1,
+      results_per_page=50,
+      full_time=None,
+      permanent=None,
+      category=None,
+      distance=15
+    )
+    
+    # Log results
+    logger.info(f"Synced {len(results)} jobs from Adzuna")
+    
+    logger.info("sync_jobs returning with no parameters")
+    return jsonify({
+      "success": True, 
+      "message": f"Retrieved {len(results)} jobs", 
+      "jobs_count": len(results)
+    })
+  except Exception as e:
+    logger.info("sync_jobs returning with no parameters")
+    return _handle_api_exception(e, "syncing jobs from Adzuna")

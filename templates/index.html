@@ -481,10 +481,9 @@
                             <button type="button" class="btn btn-primary" onclick="saveJobSearch()">
                                 <i class="fas fa-save me-1"></i> Save Settings
                             </button>
-                            <!-- Bulk Sync button removed in favor of the Save Settings functionality -->
-                            <!-- <button type="button" class="btn btn-success ms-2" onclick="startJobSync()">
-                                <i class="fas fa-sync-alt me-1"></i> Save & Sync Now
-                            </button> -->
+                            <button type="button" class="btn btn-success ms-2" onclick="syncJobs()">
+                                <i class="fas fa-sync-alt me-1"></i> Sync Jobs
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -689,16 +688,18 @@
             let syncProgressInterval;
             let syncStartTime;
             
-            // Start a new job sync - REMOVED (commented out - duplicate functionality)
-            /* 
-            function startJobSync() {
+            // Function to sync jobs from Adzuna
+            function syncJobs() {
                 // Get sync parameters from the Job Search Parameters form
                 const keywords = $('#keywords').val();
                 const location = $('#location').val();
                 const country = $('#country').val();
-                const maxPages = $('#maxPages').val() ? parseInt($('#maxPages').val()) : null;
-                const maxDaysOld = parseInt($('#maxDaysOld').val());
+                const maxPages = $('#maxPages').val() ? parseInt($('#maxPages').val()) : 5;
+                const maxDaysOld = parseInt($('#max_days_old').val());
                 const remoteOnly = $('#remote_only').is(':checked');
+                
+                // Save settings first
+                saveJobSearch();
                 
                 // Show status alert
                 $('#syncStatus').show().removeClass('alert-success alert-danger').addClass('alert-info');
@@ -709,7 +710,7 @@
                 
                 // Start the sync
                 $.ajax({
-                    url: '/api/adzuna/bulk-sync',
+                    url: '/api/jobs/sync',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({
@@ -748,7 +749,6 @@
                     }
                 });
             }
-            */
             
             // Import to main storage
             function importToMainStorage() {
