@@ -5,10 +5,11 @@ from flask import Flask, render_template, request, jsonify, flash, redirect, url
 import numpy as np
 from datetime import datetime
 from matching_engine import generate_dual_embeddings
-from job_manager import JobManager, AdzunaAPIError
+from job_manager import JobManager
 from client.resume.uploadResume import upload_resume_bp
 from client.resume.resumeHistory import resume_history_bp, get_all_resumes
 from resume_storage import resume_storage
+from templates.jobs.jobHeading import job_heading_bp
 
 job_manager = JobManager()
 # Set up logging
@@ -21,18 +22,12 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 app.register_blueprint(upload_resume_bp)
 app.register_blueprint(resume_history_bp)
+app.register_blueprint(job_heading_bp)
 #"""Log exception and return standardized error response"""
 def _handle_api_exception(e, operation_name):
   logger.error(f"Error {operation_name}: {str(e)}")
   logger.info("_handle_api_exception returning with e=%s, operation_name=%s", e, operation_name)
   return jsonify({"success": False, "error": str(e)}), 500
-#"""Check if request is JSON and return error response if not"""
-def _require_json_request():
-  if not request.is_json:
-    logger.info("_require_json_request returning with no parameters")
-    return jsonify({"success": False, "error": "Request must be JSON"}), 400
-  logger.info("_require_json_request returning with no parameters")
-  return None
 # Route for the main page
 @app.route('/')
 def index():
@@ -57,8 +52,6 @@ def index():
   }
   
   if ADZUNA_SCRAPER_AVAILABLE:
-    # Use our unified JobManager
-    storage_status = job_manager.get_storage_status()
     
     # Get jobs using the JobManager
     jobs = job_manager.get_recent_jobs(days=30)
@@ -104,13 +97,11 @@ def index():
     
     # Update status for template
     status.update({
-      "storage_status": storage_status,
       "jobs": jobs_dict,
       "recent_jobs_list": recent_jobs_dict,
       "remote_jobs_list": remote_jobs_dict,
       "total_jobs": len(jobs),
       "recent_jobs": len(recent_jobs_list),
-      "last_sync": storage_status.get("last_sync", "Never"),
       "next_sync": "Manual sync only",  # No scheduler, manual sync only
       "keywords": keywords,
       "location": location,
@@ -311,72 +302,6 @@ def get_adzuna_jobs_endpoint():
     logger.error(f"Error getting jobs: {str(e)}")
     return _handle_api_exception(e, "getting jobs")
 
-@app.route('/api/adzuna/cleanup', methods=['POST'])
-def cleanup_adzuna_jobs_endpoint():
-  """API endpoint to clean up old jobs"""
-  try:
-    # Check if request is JSON
-    json_error = _require_json_request()
-    if json_error:
-      return json_error
-      
-    data = request.json
-    max_age_days = data.get('max_age_days', 90)
-    
-    # Clean up old jobs using JobManager
-    removed_count = job_manager.cleanup_old_jobs(max_age_days=max_age_days)
-    
-    logger.debug(f"Removed {removed_count} old jobs")
-    return jsonify({
-      "success": True, 
-      "removed_count": removed_count, 
-      "message": f"Successfully removed {removed_count} old jobs"
-    })
-  except Exception as e:
-    logger.error(f"Error cleaning up jobs: {str(e)}")
-    return _handle_api_exception(e, "cleaning up jobs")
-
-"""API endpoint to get storage status"""
-@app.route('/api/adzuna/status', methods=['GET'])
-def get_adzuna_storage_status_endpoint():
-  try:
-    # Get status using JobManager
-    status = job_manager.get_storage_status()
-    
-    # Format datetime for JSON if needed
-    if status.get('last_sync') and not isinstance(status['last_sync'], str):
-      status['last_sync'] = status['last_sync'].isoformat()
-      
-    return jsonify({"success": True, "status": status})
-  except Exception as e:
-    logger.error(f"Error getting storage status: {str(e)}")
-    return _handle_api_exception(e, "getting storage status")
-    
-@app.route('/api/save_keywords_list', methods=['POST'])
-def save_keywords_list():
-  """API endpoint to save keywords list"""
-  try:
-    # Check if request is JSON
-    json_error = _require_json_request()
-    if json_error:
-      return json_error
-      
-    data = request.json
-    keywords_list = data.get('keywords_list', [])
-    
-    # Store in session
-    session['keywords_list'] = keywords_list
-    
-    logger.debug(f"Saved keywords list with {len(keywords_list)} items")
-    return jsonify({
-      "success": True, 
-      "message": "Keywords list saved successfully",
-      "count": len(keywords_list)
-    })
-  except Exception as e:
-    logger.error(f"Error saving keywords list: {str(e)}")
-    return _handle_api_exception(e, "saving keywords list")
-
 @app.route('/api/adzuna/batch/<batch_id>', methods=['DELETE'])
 def delete_adzuna_batch(batch_id):
   """API endpoint to delete a specific batch"""
@@ -403,88 +328,3 @@ def delete_adzuna_batch(batch_id):
   except Exception as e:
     logger.error(f"Error deleting batch {batch_id}: {str(e)}")
     return _handle_api_exception(e, f"deleting batch {batch_id}")
-# API endpoint to sync jobs from Adzuna
-@app.route('/api/jobs/sync', methods=['POST'])
-def sync_jobs():
-  try:
-    # Check if request is JSON
-    json_error = _require_json_request()
-    if json_error:
-      return json_error
-    
-    # Get parameters from request
-    data = request.json
-    keywords = data.get('keywords', '')
-    keywords_list = data.get('keywords_list', [])
-    location = data.get('location', '')
-    country = data.get('country', 'gb')
-    max_days_old = data.get('max_days_old', 30)
-    
-    # Track total jobs found across all keyword searches
-    total_jobs_found = 0
-    all_jobs = []
-    
-    # If we have a keywords list, search for each keyword separately
-    if keywords_list and isinstance(keywords_list, list) and len(keywords_list) > 0:
-      logger.debug(f"Searching for multiple keywords: {keywords_list}")
-      
-      for keyword in keywords_list:
-        if not keyword:  # Skip empty keywords
-          continue
-          
-        try:
-          # Search for jobs with this keyword
-          logger.debug(f"Searching for keyword: {keyword}")
-          jobs, count, total_pages, current_page = job_manager.search_jobs(
-            keywords=keyword,
-            location=location,
-            country=country,
-            max_days_old=max_days_old,
-            page=1,
-            results_per_page=50
-          )
-          
-          if jobs:
-            total_jobs_found += len(jobs)
-            all_jobs.extend(jobs)
-            logger.debug(f"Found {len(jobs)} jobs for keyword '{keyword}'")
-        except Exception as keyword_error:
-          logger.error(f"Error searching for keyword '{keyword}': {str(keyword_error)}")
-    
-    # If no keywords list or it was empty, or we want to also search with the main keyword
-    if (not keywords_list or len(keywords_list) == 0 or not all_jobs) and keywords:
-      # Use JobManager to search for jobs with the main keyword
-      try:
-        jobs, count, total_pages, current_page = job_manager.search_jobs(
-          keywords=keywords,
-          location=location,
-          country=country,
-          max_days_old=max_days_old,
-          page=1,
-          results_per_page=50
-        )
-        
-        if jobs:
-          total_jobs_found += len(jobs)
-          all_jobs.extend(jobs)
-      except Exception as main_keyword_error:
-        if not all_jobs:  # Only raise error if we haven't found any jobs yet
-          raise main_keyword_error
-    
-    # Return success with job information
-    logger.debug(f"Synced {total_jobs_found} jobs from API across {len(keywords_list) if keywords_list else 0} keywords")
-    return jsonify({
-      "success": True, 
-      "message": f"Retrieved {total_jobs_found} jobs", 
-      "jobs_count": total_jobs_found,
-      "keywords_searched": keywords_list if keywords_list else [keywords] if keywords else []
-    })
-      
-  except AdzunaAPIError as e:
-    # Handle API-specific errors
-    logger.error(f"API error: {str(e)}")
-    return jsonify({"success": False, "error": str(e)}), 400
-    
-  except Exception as e:
-    logger.error(f"Error syncing jobs: {str(e)}")
-    return _handle_api_exception(e, "syncing jobs from API")

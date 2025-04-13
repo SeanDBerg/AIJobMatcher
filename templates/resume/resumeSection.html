@@ -38,6 +38,7 @@
                   </div>
                 </a>
                 <form action="{{ url_for('resume_history.delete_resume_route', resume_id=resume.id) }}" method="POST" class="d-inline">
+
                   <button type="submit" class="btn btn-sm btn-danger">
                     <i class="fas fa-trash"></i>
                   </button>
@@ -53,79 +54,4 @@
       </div>
     </div>
   </div>
-</div>
-<!-- Main Dashboard Section -->
-<div class="row mb-4">
-    <!-- Left Column: Stats -->
-    <div class="col-md-8">
-        <div class="row">
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-primary shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                    Total Jobs</div>
-                                <div class="h5 mb-0 font-weight-bold">{{ total_jobs|default('0') }}</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-briefcase fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-success shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                    Last 7 Days</div>
-                                <div class="h5 mb-0 font-weight-bold">{{ recent_jobs|default('0') }}</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-info shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                    Last Sync</div>
-                                <div class="h5 mb-0 font-weight-bold">{{ last_sync|default('Never') }}</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-sync fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-warning shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                    Sync Method</div>
-                                <div class="h5 mb-0 font-weight-bold">Manual Only</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-sync fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>

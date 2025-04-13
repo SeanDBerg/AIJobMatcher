@@ -30,32 +30,9 @@
         {% endwith %}
 
         {% include 'resume/resumeSection.html' %}
-        
-        <!-- Job Listings Section -->
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold">Job Listings</h6>
-                <div class="dropdown">
-                    <button class="btn btn-primary dropdown-toggle" type="button" id="jobActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-ellipsis-v fa-sm fa-fw"></i> Actions
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="jobActionsDropdown">
-                        <li><a class="dropdown-item" href="#" onclick="exportJobs()">
-                            <i class="fas fa-download fa-sm fa-fw me-2 text-gray-400"></i>
-                            Export Jobs
-                        </a></li>
-                        <li><a class="dropdown-item" href="#" onclick="importToMainStorage()">
-                            <i class="fas fa-database fa-sm fa-fw me-2 text-gray-400"></i>
-                            Import to Main Storage
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" onclick="cleanupOldJobs()">
-                            <i class="fas fa-trash fa-sm fa-fw me-2 text-gray-400"></i>
-                            Clean Up Old Jobs
-                        </a></li>
-                    </ul>
-                </div>
-            </div>
+        {% include 'jobs/jobSection.html' %}
+
+
             <div class="card-body">
                 <ul class="nav nav-tabs" id="jobsTab" role="tablist">
                     <li class="nav-item" role="presentation">

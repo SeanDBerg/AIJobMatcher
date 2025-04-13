@@ -1,0 +1,42 @@
+    <!-- Job Listings Header with Stats -->
+    <div class="card shadow mb-4">
+      <div class="card-header py-3 d-flex flex-wrap align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold me-3">Job Listings</h6>
+
+        <!-- Compact Stat Cards -->
+        <div class="d-flex flex-wrap gap-3">
+          <div class="card border-left-primary shadow-sm py-1 px-3">
+            <div class="d-flex align-items-center">
+              <div class="me-2">
+                <i class="fas fa-briefcase text-primary"></i>
+              </div>
+              <div>
+                <div class="text-xs font-weight-bold text-primary text-uppercase">Total Jobs</div>
+                <div class="h6 mb-0 font-weight-bold">{{ total_jobs|default('0') }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-left-success shadow-sm py-1 px-3">
+            <div class="d-flex align-items-center">
+              <div class="me-2">
+                <i class="fas fa-calendar-week text-success"></i>
+              </div>
+              <div>
+                <div class="text-xs font-weight-bold text-success text-uppercase">Last 7 Days</div>
+                <div class="h6 mb-0 font-weight-bold">{{ recent_jobs|default('0') }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <button class="btn btn-sm btn-outline-primary" onclick="exportJobs()">
+            <i class="fas fa-download me-1"></i> Export Jobs
+          </button>
+
+          <button class="btn btn-sm btn-outline-danger" onclick="cleanupOldJobs()">
+            <i class="fas fa-trash me-1"></i> Clean Up Old Jobs
+          </button>
+        </div>
+      </div>
+    </div>
