@@ -877,8 +877,10 @@
                     // Initialize all tables with a delay
                     setTimeout(function() {
                         $('.job-table').each(function() {
-                            // Skip if table has no rows
-                            if ($(this).find('tbody tr').length <= 1 && $(this).find('tbody tr td').length <= 1) {
+                            // Skip if table has no rows or is empty
+                            if ($(this).find('tbody tr').length === 0 || 
+                                ($(this).find('tbody tr').length === 1 && $(this).find('tbody tr:first td').length === 1) ||
+                                ($(this).find('tbody tr').length >= 1 && $(this).find('tbody tr:first td:first').text().trim() === 'No data available')) {
                                 console.log("Skipping empty table:", $(this).attr('id'));
                                 return;
                             }
@@ -891,10 +893,26 @@
                                     $(tableId).DataTable().destroy();
                                 }
                                 
-                                // Create new table with minimal configuration
-                                const table = $(tableId).DataTable(tableConfig);
-                                jobTables[tableId] = table;
-                                console.log("Table initialized:", tableId);
+                                // Check if table has a header row
+                                if ($(tableId + ' thead tr th').length === 0) {
+                                    console.log("Table has no header row:", tableId);
+                                    return;
+                                }
+                                
+                                // Create new table with minimal configuration and error handling
+                                try {
+                                    const table = $(tableId).DataTable({
+                                        ...tableConfig,
+                                        // Handle errors gracefully
+                                        language: {
+                                            emptyTable: "No job data available"
+                                        }
+                                    });
+                                    jobTables[tableId] = table;
+                                    console.log("Table initialized:", tableId);
+                                } catch (dtError) {
+                                    console.error("DataTables initialization error:", dtError);
+                                }
                             } catch (tableError) {
                                 console.error("Error initializing table:", $(this).attr('id'), tableError);
                             }
