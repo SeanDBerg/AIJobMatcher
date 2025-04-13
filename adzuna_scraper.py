@@ -1,4 +1,4 @@
-# adzuna_scraper.py - Adzuna job scraping module for bulk job retrieval with API integration
+# adzuna_scraper.py - Adzuna API job scraping for bulk job retrieval
 from typing import List, Dict, Any
 import os
 import logging

@@ -1,0 +1,44 @@
+2025-04-13 02:23:28,936 DEBUG-app: [index] Job tracker parameters: keywords='', location='', country='gb', max_days_old='30', remote_only='False'
+2025-04-13 02:23:28,936 INFO-adzuna_scraper: [get_adzuna_storage_status] get_adzuna_storage_status ran
+2025-04-13 02:23:28,936 INFO-adzuna_storage: [_load_index] _load_index returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>
+2025-04-13 02:23:28,936 INFO-adzuna_storage: [get_sync_status] get_sync_status returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>
+2025-04-13 02:23:28,937 INFO-adzuna_storage: [_load_index] _load_index returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>
+2025-04-13 02:23:28,944 INFO-adzuna_storage: [get_all_jobs] get_all_jobs returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>
+2025-04-13 02:23:28,945 INFO-adzuna_storage: [get_recent_jobs] get_recent_jobs returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>, days=30
+2025-04-13 02:23:28,945 INFO-adzuna_scraper: [get_adzuna_jobs] get_adzuna_jobs returning with import_to_main=False, days=30
+2025-04-13 02:23:28,947 INFO-resume_storage: [_load_index] _load_index returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:28,947 INFO-resume_storage: [get_resume] get_resume returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>, resume_id=abf0f4cd-b205-4963-94cc-bdcbd3ca789b
+2025-04-13 02:23:28,949 INFO-resume_storage: [_load_index] _load_index returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:28,950 INFO-resume_storage: [get_all_resumes] get_all_resumes returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:28,950 INFO-app: [index] index returning with no parameters
+2025-04-13 02:23:31,883 INFO-resume_storage: [_load_index] _load_index returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:31,883 INFO-resume_storage: [get_resume] get_resume returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>, resume_id=9df4ea6a-c9b9-498f-ad3d-4408917b26d6
+2025-04-13 02:23:31,883 INFO-resume_storage: [_load_index] _load_index returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:31,883 INFO-resume_storage: [get_resume] get_resume returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>, resume_id=9df4ea6a-c9b9-498f-ad3d-4408917b26d6
+2025-04-13 02:23:31,884 INFO-resume_storage: [get_resume_content] get_resume_content returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>, resume_id=9df4ea6a-c9b9-498f-ad3d-4408917b26d6
+2025-04-13 02:23:31,884 DEBUG-matching_engine: [get_job_data] Refreshing job data cache
+2025-04-13 02:23:31,884 WARNING-matching_engine: [load_job_data] Adzuna API not available
+2025-04-13 02:23:31,884 INFO-matching_engine: [load_job_data] load_job_data returning with no parameters
+2025-04-13 02:23:31,884 DEBUG-matching_engine: [generate_job_embeddings] Generating dual embeddings for 0 jobs
+2025-04-13 02:23:31,884 INFO-matching_engine: [generate_job_embeddings] generate_job_embeddings returning with jobs=[]
+2025-04-13 02:23:31,884 INFO-matching_engine: [get_job_data] get_job_data returning with no parameters
+2025-04-13 02:23:31,884 INFO-app: [match_jobs] match_jobs returning with no parameters
+2025-04-13 02:23:35,292 DEBUG-app: [index] Job tracker parameters: keywords='', location='', country='gb', max_days_old='30', remote_only='False'
+2025-04-13 02:23:35,292 INFO-adzuna_scraper: [get_adzuna_storage_status] get_adzuna_storage_status ran
+2025-04-13 02:23:35,292 INFO-adzuna_storage: [_load_index] _load_index returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>
+2025-04-13 02:23:35,292 INFO-adzuna_storage: [get_sync_status] get_sync_status returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>
+2025-04-13 02:23:35,293 INFO-adzuna_storage: [_load_index] _load_index returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>
+2025-04-13 02:23:35,299 INFO-adzuna_storage: [get_all_jobs] get_all_jobs returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>
+2025-04-13 02:23:35,300 INFO-adzuna_storage: [get_recent_jobs] get_recent_jobs returning with self=<adzuna_storage.AdzunaStorage object at 0x7ff7f51521d0>, days=30
+2025-04-13 02:23:35,300 INFO-adzuna_scraper: [get_adzuna_jobs] get_adzuna_jobs returning with import_to_main=False, days=30
+2025-04-13 02:23:35,304 INFO-resume_storage: [_load_index] _load_index returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:35,304 INFO-resume_storage: [get_all_resumes] get_all_resumes returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:35,304 INFO-app: [index] index returning with no parameters
+2025-04-13 02:23:38,500 INFO-resume_storage: [_load_index] _load_index returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:38,500 INFO-resume_storage: [get_resume] get_resume returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>, resume_id=9df4ea6a-c9b9-498f-ad3d-4408917b26d6
+2025-04-13 02:23:38,501 INFO-resume_storage: [_load_index] _load_index returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>
+2025-04-13 02:23:38,501 INFO-resume_storage: [get_resume] get_resume returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>, resume_id=9df4ea6a-c9b9-498f-ad3d-4408917b26d6
+2025-04-13 02:23:38,501 INFO-resume_storage: [get_resume_content] get_resume_content returning with self=<resume_storage.ResumeStorage object at 0x7ff7f575ea90>, resume_id=9df4ea6a-c9b9-498f-ad3d-4408917b26d6
+2025-04-13 02:23:38,501 DEBUG-matching_engine: [get_job_data] Using cached job data
+2025-04-13 02:23:38,501 INFO-matching_engine: [get_job_data] get_job_data returning with no parameters
+2025-04-13 02:23:38,501 INFO-app: [match_jobs] match_jobs returning with no parameters
