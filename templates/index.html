@@ -840,9 +840,35 @@
             function syncJobs() {
                 // Get sync parameters from the Job Search Parameters form
                 const keywords = $('#keywords').val();
+                const keywordsList = [];
+                
+                // Try to get keywords list from hidden input
+                try {
+                    const keywordsListData = $('#keywordsListData').val();
+                    if (keywordsListData) {
+                        const parsedKeywords = JSON.parse(keywordsListData);
+                        if (Array.isArray(parsedKeywords)) {
+                            // Add all keywords in the list
+                            parsedKeywords.forEach(kw => {
+                                if (kw && !keywordsList.includes(kw)) {
+                                    keywordsList.push(kw);
+                                }
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error parsing keywords list:", e);
+                }
+                
+                // Add the keyword from the input field if it's not empty and not already in the list
+                if (keywords && !keywordsList.includes(keywords)) {
+                    keywordsList.push(keywords);
+                }
+                
                 const location = $('#location').val();
                 const country = $('#country').val();
-                const maxPages = $('#maxPages').val() ? parseInt($('#maxPages').val()) : 5;
+                const maxPages = $('#maxPages').val() ? parseInt($('#maxPages').val()) :
+                5;
                 const maxDaysOld = parseInt($('#max_days_old').val());
                 const remoteOnly = $('#remote_only').is(':checked');
                 
@@ -863,6 +889,7 @@
                     contentType: 'application/json',
                     data: JSON.stringify({
                         keywords: keywords,
+                        keywords_list: keywordsList,
                         location: location,
                         country: country,
                         max_pages: maxPages,
@@ -989,8 +1016,20 @@
                 const remoteOnly = $('#remote_only').is(':checked') ? '1' : '';
                 const maxPages = $('#maxPages').val();
                 
+                // Get keywords list from hidden input
+                let keywordsList = [];
+                try {
+                    const keywordsListData = $('#keywordsListData').val();
+                    if (keywordsListData) {
+                        keywordsList = JSON.parse(keywordsListData);
+                    }
+                } catch (e) {
+                    console.error("Error parsing keywords list in saveJobSearch:", e);
+                }
+                
                 // Store values in session/browser storage for persistence
                 localStorage.setItem('job_search_keywords', keywords);
+                localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
                 localStorage.setItem('job_search_location', location);
                 localStorage.setItem('job_search_country', country);
                 localStorage.setItem('job_search_max_days_old', maxDaysOld);
