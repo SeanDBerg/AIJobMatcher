@@ -1,11 +1,31 @@
-# adzuna_scraper.py - Adzuna job scraping module for bulk job retrieval with rate limiting
+# adzuna_scraper.py - Adzuna job scraping module for bulk job retrieval with API integration
 from typing import List, Dict, Any
+import os
 import logging
-from adzuna_api import get_api_credentials, AdzunaAPIError
+import requests
+from datetime import datetime
+import time
 from adzuna_storage import AdzunaStorage
 from job_data import add_job
 from models import Job
+
 logger = logging.getLogger(__name__)
+
+# API settings
+ADZUNA_API_BASE_URL = "https://api.adzuna.com/v1/api"
+
+# Custom exception for Adzuna API errors
+class AdzunaAPIError(Exception):
+  pass
+
+# Get Adzuna API credentials from environment variables
+def get_api_credentials():
+  app_id = os.environ.get('ADZUNA_APP_ID')
+  api_key = os.environ.get('ADZUNA_API_KEY')
+  if not app_id or not api_key:
+    raise AdzunaAPIError("Adzuna API credentials are not configured. Please set ADZUNA_APP_ID and ADZUNA_API_KEY environment variables.")
+  logger.info("get_api_credentials returning with no parameters")
+  return app_id, api_key
 
 # Initialize storage
 _adzuna_storage = AdzunaStorage()

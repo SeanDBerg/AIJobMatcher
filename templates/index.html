@@ -444,12 +444,12 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="search_location" class="form-label">Location</label>
-                            <input type="text" class="form-control" id="search_location" name="location" value="{{ location|default('') }}" placeholder="e.g., London, New York">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="location" name="location" value="{{ location|default('') }}" placeholder="e.g., London, New York">
                         </div>
                         <div class="col-md-4">
-                            <label for="search_keywords" class="form-label">Keywords</label>
-                            <input type="text" class="form-control" id="search_keywords" name="keywords" value="{{ keywords|default('') }}" placeholder="e.g., Python Developer">
+                            <label for="keywords" class="form-label">Keywords</label>
+                            <input type="text" class="form-control" id="keywords" name="keywords" value="{{ keywords|default('') }}" placeholder="e.g., Python Developer">
                         </div>
                         <div class="col-md-3">
                             <label for="max_days_old" class="form-label">Max Days Old</label>
@@ -460,6 +460,11 @@
                                 <option value="14" {% if max_days_old == 14 %}selected{% endif %}>2 weeks</option>
                                 <option value="30" {% if not max_days_old or max_days_old == 30 %}selected{% endif %}>30 days</option>
                             </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="maxPages" class="form-label">Max Pages</label>
+                            <input type="number" class="form-control" id="maxPages" name="max_pages" value="{{ max_pages|default('5') }}" min="1" max="20">
+                            <small class="text-muted">1-20 pages (50 jobs per page)</small>
                         </div>
                         <div class="col-md-3">
                             <div class="mt-4">
@@ -539,7 +544,7 @@
                     $('#country').val(localStorage.getItem('job_search_country'));
                 }
                 if (localStorage.getItem('job_search_max_days_old')) {
-                    $('#maxDaysOld').val(localStorage.getItem('job_search_max_days_old'));
+                    $('#max_days_old').val(localStorage.getItem('job_search_max_days_old'));
                 }
                 if (localStorage.getItem('job_search_remote_only') === '1') {
                     $('#remote_only').prop('checked', true);
@@ -832,7 +837,7 @@
                 const keywords = $('#keywords').val();
                 const location = $('#location').val();
                 const country = $('#country').val();
-                const maxDaysOld = $('#maxDaysOld').val();
+                const maxDaysOld = $('#max_days_old').val();
                 const remoteOnly = $('#remote_only').is(':checked') ? '1' : '';
                 const maxPages = $('#maxPages').val();
                 
