@@ -871,7 +871,20 @@
                     // Super basic configuration - minimum features to ensure it works
                     const tableConfig = {
                         pageLength: 10,
-                        order: [[6, 'desc']] // Sort by match percentage column by default
+                        order: [[6, 'desc']], // Sort by match percentage column by default
+                        columnDefs: [
+                            {
+                                targets: 6, // Match percentage column
+                                type: 'string',
+                                render: function(data, type, row) {
+                                    if (type === 'sort' || type === 'type') {
+                                        // Extract numeric part for sorting
+                                        return parseFloat(data) || 0;
+                                    }
+                                    return data;
+                                }
+                            }
+                        ]
                     };
                     
                     // Initialize all tables with a delay
