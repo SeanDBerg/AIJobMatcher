@@ -221,7 +221,7 @@
                                                 <td>{{ 'Yes' if job.is_remote else 'No' }}</td>
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
-                                                <td>{{ job.match_percentage if job.match_percentage is not none else 0 }}</td>
+                                                <td>{{ (job.match_percentage|string ~ '%') if job.match_percentage is not none else '0%' }}</td>
 
                                                 <td>
                                                     <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="{{ job_id }}">
@@ -296,7 +296,7 @@
                                                 <td>{{ 'Yes' if job.is_remote else 'No' }}</td>
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
-                                                <td>{{ job.match_percentage if job.match_percentage is not none else 0 }}</td>
+                                                <td>{{ (job.match_percentage|string ~ '%') if job.match_percentage is not none else '0%' }}</td>
                                                 <td>
                                                     <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="recent-{{ job_id }}">
                                                         <i class="fas fa-eye"></i> View
@@ -368,7 +368,7 @@
                                                 <td>{{ job.location }}</td>
                                                 <td>{{ job.posted_date }}</td>
                                                 <td>{{ job.salary_range|default('Not specified') }}</td>
-                                                <td>{{ job.match_percentage if job.match_percentage is not none else 0 }}</td>
+                                                <td>{{ (job.match_percentage|string ~ '%') if job.match_percentage is not none else '0%' }}</td>
                                                 <td>
                                                     <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="remote-{{ job_id }}">
                                                         <i class="fas fa-eye"></i> View
