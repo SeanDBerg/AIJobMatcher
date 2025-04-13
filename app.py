@@ -5,9 +5,10 @@ from flask import Flask, render_template, request, jsonify, flash, redirect, url
 import numpy as np
 from datetime import datetime
 from matching_engine import generate_dual_embeddings
-from resume_storage import resume_storage
 from job_manager import JobManager, AdzunaAPIError
 from client.resume.uploadResume import upload_resume_bp
+from client.resume.resumeHistory import resume_history_bp, get_all_resumes
+from resume_storage import resume_storage
 
 job_manager = JobManager()
 # Set up logging
@@ -19,6 +20,7 @@ ADZUNA_SCRAPER_AVAILABLE = True
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 app.register_blueprint(upload_resume_bp)
+app.register_blueprint(resume_history_bp)
 #"""Log exception and return standardized error response"""
 def _handle_api_exception(e, operation_name):
   logger.error(f"Error {operation_name}: {str(e)}")
@@ -118,7 +120,7 @@ def index():
     })
     
   # Add stored resumes to status
-  status["stored_resumes"] = resume_storage.get_all_resumes()
+  status["stored_resumes"] = get_all_resumes()
   
   logger.debug("Rendering index with %d jobs", status.get("total_jobs", 0))
   return render_template('index.html', **status)
@@ -129,19 +131,6 @@ def resume_files(resume_id, filename):
   from resume_storage import RESUME_DIR
   logger.info("resume_files returning with resume_id=%s, filename=%s", resume_id, filename)
   return send_from_directory(RESUME_DIR, f"{resume_id}_{filename}")
-#"""Delete a stored resume"""
-@app.route('/delete_resume/<resume_id>', methods=['POST'])
-def delete_resume(resume_id):
-  try:
-    if resume_storage.delete_resume(resume_id):
-      flash('Resume deleted successfully', 'success')
-    else:
-      flash('Resume not found or could not be deleted', 'danger')
-  except Exception as e:
-    logger.error(f"Error deleting resume: {str(e)}")
-    flash(f'Error deleting resume: {str(e)}', 'danger')
-  logger.info("delete_resume returning with resume_id=%s", resume_id)
-  return redirect(url_for('index'))
 #"""Save user settings for job search"""
 @app.route('/save_settings', methods=['POST'])
 def save_settings():

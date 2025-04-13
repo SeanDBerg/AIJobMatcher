@@ -5,7 +5,7 @@ import uuid
 import logging
 import shutil
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -147,19 +147,6 @@ class ResumeStorage:
     except Exception as e:
       logger.error(f"Error storing resume: {str(e)}")
       raise
-  # Get all stored resumes
-  def get_all_resumes(self) -> List[Dict]:
-    try:
-      # Load index
-      self._load_index()
-      # Sort resumes by upload date (newest first)
-      resumes = list(self._index["resumes"].values())
-      resumes.sort(key=lambda r: r.get("upload_date", ""), reverse=True)
-      logger.info("ran")
-      return resumes
-    except Exception as e:
-      logger.error(f"Error getting all resumes: {str(e)}")
-      return []
   # Get a specific resume's metadata
   def get_resume(self, resume_id: str) -> Optional[Dict]:
     try:
@@ -193,44 +180,5 @@ class ResumeStorage:
       logger.info("get_resume_content returning with self=%s, resume_id=%s", self, resume_id)
       return None
 
-  # Delete a resume
-  def delete_resume(self, resume_id: str) -> bool:
-    try:
-      # Load index
-      self._load_index()
-      # Check if resume exists
-      if resume_id not in self._index["resumes"]:
-        logger.warning(f"Resume {resume_id} not found for deletion")
-        logger.info("delete_resume returning with self=%s, resume_id=%s", self, resume_id)
-        return False
-      # Get resume metadata
-      resume = self._index["resumes"][resume_id]
-      # Delete files
-      stored_filepath = os.path.join(RESUME_DIR, resume["stored_filename"])
-      content_filepath = os.path.join(RESUME_DIR, f"{resume_id}_content.txt")
-      if os.path.exists(stored_filepath):
-        os.remove(stored_filepath)
-      if os.path.exists(content_filepath):
-        os.remove(content_filepath)
-      # Update index
-      del self._index["resumes"][resume_id]
-      self._index["count"] -= 1
-      # Update last_added if needed
-      if self._index["last_added"] == resume_id:
-        if self._index["resumes"]:
-          # Set to most recent remaining resume
-          newest = max(self._index["resumes"].values(), key=lambda r: r.get("upload_date", ""))
-          self._index["last_added"] = newest["id"]
-        else:
-          self._index["last_added"] = None
-      # Save index
-      self._save_index()
-      logger.info(f"Resume {resume_id} deleted")
-      logger.info("delete_resume returning with self=%s, resume_id=%s", self, resume_id)
-      return True
-    except Exception as e:
-      logger.error(f"Error deleting resume {resume_id}: {str(e)}")
-      logger.info("delete_resume returning with self=%s, resume_id=%s", self, resume_id)
-      return False
-# Global instance
+# Global instance for application-wide access
 resume_storage = ResumeStorage()
