@@ -11,7 +11,7 @@ from embedding_generator import generate_dual_embeddings
 from job_data import get_job_data
 from matching_engine import find_matching_jobs
 from resume_storage import resume_storage
-from adzuna_scraper import (sync_jobs_from_adzuna, get_adzuna_jobs, import_adzuna_jobs_to_main_storage, cleanup_old_adzuna_jobs, get_adzuna_storage_status)
+from adzuna_scraper import (get_adzuna_jobs, import_adzuna_jobs_to_main_storage, cleanup_old_adzuna_jobs, get_adzuna_storage_status)
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -414,33 +414,34 @@ def config_adzuna():
     logger.error(f"Error configuring Adzuna API: {str(e)}")
     logger.info("config_adzuna returning with no parameters")
     return jsonify({"success": False, "error": str(e)}), 500
-@app.route('/api/adzuna/bulk-sync', methods=['POST'])
-def bulk_sync_adzuna_jobs():
-  """API endpoint to perform a bulk job sync from Adzuna with rate limiting"""
-  try:
-    if not request.is_json:
-      logger.info("bulk_sync_adzuna_jobs returning with no parameters")
-      return jsonify({"success": False, "error": "Request must be JSON"}), 400
-    data = request.json
-    keywords = data.get('keywords', '')
-    location = data.get('location', '')
-    country = data.get('country', 'gb')
-    max_pages = data.get('max_pages', None)
-    max_days_old = data.get('max_days_old', 30)
+# Commented out Bulk Sync endpoint (removed in favor of Job Search Parameters)
+# @app.route('/api/adzuna/bulk-sync', methods=['POST'])
+# def bulk_sync_adzuna_jobs():
+#   """API endpoint to perform a bulk job sync from Adzuna with rate limiting"""
+#   try:
+#     if not request.is_json:
+#       logger.info("bulk_sync_adzuna_jobs returning with no parameters")
+#       return jsonify({"success": False, "error": "Request must be JSON"}), 400
+#     data = request.json
+#     keywords = data.get('keywords', '')
+#     location = data.get('location', '')
+#     country = data.get('country', 'gb')
+#     max_pages = data.get('max_pages', None)
+#     max_days_old = data.get('max_days_old', 30)
 
-    # Perform bulk sync
-    results = sync_jobs_from_adzuna(keywords=keywords, location=location, country=country, max_pages=max_pages, max_days_old=max_days_old)
+#     # Perform bulk sync
+#     results = sync_jobs_from_adzuna(keywords=keywords, location=location, country=country, max_pages=max_pages, max_days_old=max_days_old)
 
-    if results.get('status') != 'success':
-      logger.info("bulk_sync_adzuna_jobs returning with no parameters")
-      return jsonify({"success": False, "error": results.get('error', 'Unknown error occurred during sync')}), 500
-    logger.info("bulk_sync_adzuna_jobs returning with no parameters")
+#     if results.get('status') != 'success':
+#       logger.info("bulk_sync_adzuna_jobs returning with no parameters")
+#       return jsonify({"success": False, "error": results.get('error', 'Unknown error occurred during sync')}), 500
+#     logger.info("bulk_sync_adzuna_jobs returning with no parameters")
 
-    return jsonify({"success": True, "results": results, "message": f"Successfully synced {results.get('new_jobs', 0)} new jobs " + f"across {results.get('pages_fetched', 0)} pages"})
+#     return jsonify({"success": True, "results": results, "message": f"Successfully synced {results.get('new_jobs', 0)} new jobs " + f"across {results.get('pages_fetched', 0)} pages"})
 
-  except Exception as e:
-    logger.info("bulk_sync_adzuna_jobs returning with no parameters")
-    return _handle_api_exception(e, "during Adzuna bulk sync")
+#   except Exception as e:
+#     logger.info("bulk_sync_adzuna_jobs returning with no parameters")
+#     return _handle_api_exception(e, "during Adzuna bulk sync")
 @app.route('/api/adzuna/jobs', methods=['GET'])
 def get_adzuna_jobs_endpoint():
   """API endpoint to get Adzuna jobs from storage"""
