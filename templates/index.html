@@ -490,7 +490,14 @@
                         </div>
                         <div class="col-md-4">
                             <label for="keywords" class="form-label">Keywords</label>
-                            <input type="text" class="form-control" id="keywords" name="keywords" value="{{ keywords|default('') }}" placeholder="e.g., Python Developer">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="keywords" name="keywords" value="" placeholder="e.g., Python Developer">
+                                <button class="btn btn-outline-secondary" type="button" id="addKeywordBtn">Add</button>
+                            </div>
+                            <div id="keywordsList" class="mt-2">
+                                <!-- Keywords will be displayed here -->
+                            </div>
+                            <input type="hidden" id="keywordsListData" name="keywordsListData" value='{{ keywords_list|default("[]")|tojson }}'>
                         </div>
                         <div class="col-md-3">
                             <label for="max_days_old" class="form-label">Max Days Old</label>
@@ -573,6 +580,99 @@
 
             // Initialize everything when document is ready
             $(document).ready(function() {
+                // Initialize keywords list
+                let keywordsList = [];
+                try {
+                    // Try to load from the hidden input
+                    const savedKeywords = $('#keywordsListData').val();
+                    if (savedKeywords) {
+                        keywordsList = JSON.parse(savedKeywords);
+                        // Render the keywords
+                        renderKeywords();
+                    }
+                } catch (e) {
+                    console.error("Error loading keywords list:", e);
+                }
+                
+                // Load keywords from localStorage if available
+                if (localStorage.getItem('job_search_keywords_list')) {
+                    try {
+                        keywordsList = JSON.parse(localStorage.getItem('job_search_keywords_list'));
+                        renderKeywords();
+                    } catch (e) {
+                        console.error("Error parsing keywords from localStorage:", e);
+                    }
+                }
+                
+                // Add keyword button click handler
+                $('#addKeywordBtn').click(function() {
+                    addKeyword();
+                });
+                
+                // Keywords input enter key press handler
+                $('#keywords').keypress(function(e) {
+                    if (e.which === 13) { // Enter key
+                        e.preventDefault();
+                        addKeyword();
+                    }
+                });
+                
+                // Function to add keyword from input
+                function addKeyword() {
+                    const keyword = $('#keywords').val().trim();
+                    if (keyword) {
+                        if (!keywordsList.includes(keyword)) {
+                            keywordsList.push(keyword);
+                            renderKeywords();
+                            $('#keywords').val(''); // Clear input
+                            
+                            // Save to localStorage
+                            localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
+                        } else {
+                            // Show message that keyword already exists
+                            $('#syncStatus').show().removeClass('alert-success alert-info').addClass('alert-warning');
+                            $('#syncStatusText').html('<i class="fas fa-exclamation-triangle"></i> Keyword already in list.');
+                            
+                            // Auto-hide after a few seconds
+                            setTimeout(function() {
+                                $('#syncStatus').fadeOut();
+                            }, 3000);
+                        }
+                    }
+                }
+                
+                // Function to render keywords
+                function renderKeywords() {
+                    const $container = $('#keywordsList');
+                    $container.empty();
+                    
+                    if (keywordsList.length > 0) {
+                        keywordsList.forEach((keyword, index) => {
+                            const $keyword = $(`
+                                <div class="badge bg-primary me-2 mb-2 p-2">
+                                    ${keyword}
+                                    <button type="button" class="btn-close btn-close-white ms-2" 
+                                            aria-label="Remove" data-index="${index}"></button>
+                                </div>
+                            `);
+                            $container.append($keyword);
+                        });
+                        
+                        // Update hidden input with JSON data
+                        $('#keywordsListData').val(JSON.stringify(keywordsList));
+                    }
+                }
+                
+                // Keyword delete button handler
+                $(document).on('click', '#keywordsList .btn-close', function() {
+                    const index = $(this).data('index');
+                    keywordsList.splice(index, 1);
+                    renderKeywords();
+                    
+                    // Save to localStorage
+                    localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
+                });
+                
                 // Add event handler for batch deletion
                 $(document).on('click', '.delete-batch', function() {
                     const batchId = $(this).data('batch-id');
