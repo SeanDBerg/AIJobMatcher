@@ -1,4 +1,4 @@
-# jobLayout.py - Blueprint and logic for rendering job and batch data tables
+# logic/b_jobs/jobLayout.py - Blueprint and logic for rendering job and batch data tables
 import logging
 import os
 import json

@@ -1,21 +1,24 @@
-# client/resume/uploadResume.py - Handles resume upload and parsing
+# logic/a_resume/uploadResume.py - Handles resume upload and parsing
 import os
 import tempfile
+import json
 import logging
 from flask import Blueprint, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
-from job_manager import JobManager
+from logic.a_resume.resumeHistory import resume_storage
 logger = logging.getLogger(__name__)
 upload_resume_bp = Blueprint("upload_resume", __name__)
-
+# === Configuration ===
+ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
+ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
+RESUME_INDEX_FILE = os.path.join(os.path.dirname(__file__), '../../static/resumes/index.json')
 ALLOWED_EXTENSIONS = {"docx", "txt"}
 TEMP_FOLDER = tempfile.gettempdir()
-job_manager = JobManager()
 
 # === Resume Parsing ===
 class FileParsingError(Exception):
     pass
-"""Extracts text from DOCX file including paragraphs, tables, headers, footers"""
+# """Extracts text from DOCX file including paragraphs, tables, headers, footers"""
 def parse_docx(file_path):
     try:
         from docx import Document
@@ -52,7 +55,7 @@ def parse_docx(file_path):
     except Exception as e:
         logger.error(f"Error parsing DOCX: {str(e)}")
         raise FileParsingError(f"Failed to parse DOCX: {str(e)}")
-"""Extracts text from a plain text file"""
+# """Extracts text from a plain text file"""
 def parse_txt(file_path):
     try:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -63,11 +66,10 @@ def parse_txt(file_path):
     except Exception as e:
         logger.error(f"Error reading TXT: {str(e)}")
         raise FileParsingError(f"Failed to read text file: {str(e)}")
-"""Dispatch parsing based on file extension"""
+# """Dispatch parsing based on file extension"""
 def parse_resume(file_path):
     if not os.path.exists(file_path):
         raise FileParsingError(f"File not found: {file_path}")
-
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".docx":
         return parse_docx(file_path)
@@ -79,10 +81,30 @@ def parse_resume(file_path):
 """Return True if the filename is a supported file type"""
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+# """Save the resume index with embedded arrays converted to lists"""
+def export_resume_index_with_embeddings(resume_storage_instance) -> None:
+    try:
+        index_copy = {
+            "resumes": {},
+            "count": resume_storage_instance._index["count"],
+            "last_added": resume_storage_instance._index["last_added"]
+        }
+        for resume_id, resume_data in resume_storage_instance._index["resumes"].items():
+            resume_copy = resume_data.copy()
+            if "embedding" in resume_copy and hasattr(resume_copy["embedding"], "tolist"):
+                resume_copy["embedding"] = resume_copy["embedding"].tolist()
+            index_copy["resumes"][resume_id] = resume_copy
+        with open(RESUME_INDEX_FILE, 'w', encoding='utf-8') as f:
+            json.dump(index_copy, f, indent=2)
+        logger.info("Exported resume index with embeddings serialized")
+    except Exception as e:
+        logger.error(f"Error saving resume index: {str(e)}")
+
+
 # === Upload Resume Route ===
+# """Route for handling resume file upload and processing"""
 @upload_resume_bp.route("/upload_resume", methods=["POST"])
 def upload_resume():
-    """Route for handling resume file upload and processing"""
     if "resume" not in request.files:
         flash("No file part", "danger")
         return redirect(url_for("index"))
@@ -117,22 +139,6 @@ def upload_resume():
             metadata=metadata
         )
         flash(f'Resume "{filename}" successfully uploaded and stored', "success")
+        return redirect(url_for("index"))
     flash("Invalid file type", "danger")
     return redirect(url_for("index"))
-"""Save the resume index to file"""
-def _save_index(self):
-    try:
-        # Create a deep copy of the index to avoid modifying the original
-        index_copy = {"resumes": {}, "count": self._index["count"], "last_added": self._index["last_added"]}
-        # Convert any NumPy arrays to lists in the resume metadata
-        for resume_id, resume_data in self._index["resumes"].items():
-            resume_copy = resume_data.copy()
-            # If there's an embedding, convert it to a list if it's a NumPy array
-            if "embedding" in resume_copy and hasattr(resume_copy["embedding"], "tolist"):
-                resume_copy["embedding"] = resume_copy["embedding"].tolist()
-            index_copy["resumes"][resume_id] = resume_copy
-        # Save the processed index to file
-        with open(RESUME_INDEX_FILE, 'w', encoding='utf-8') as f:
-            json.dump(index_copy, f, indent=2)
-    except Exception as e:
-        logger.error(f"Error saving resume index: {str(e)}")

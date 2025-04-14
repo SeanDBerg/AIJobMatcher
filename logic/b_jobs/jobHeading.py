@@ -1,13 +1,11 @@
-# jobHeading.py - Isolated API routes for the Job Header controls (stats, cleanup, sync)
+# logic/b_jobs/jobHeading.py - Isolated API routes for the Job Header controls (stats, cleanup, sync)
 import os
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import Dict, Any
 from flask import Blueprint, request, jsonify
-from job_manager import JobManager
 job_heading_bp = Blueprint('job_heading', __name__)
 logger = logging.getLogger(__name__)
-job_manager = JobManager()
 
 # Local copy of the Adzuna data directory path used for batch file storage
 ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), 'static', 'job_data', 'adzuna')

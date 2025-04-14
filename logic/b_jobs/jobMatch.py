@@ -1,11 +1,13 @@
-# jobMatch.py - Comprehensive matching logic
+# logic/b_jobs/jobMatch.py - Comprehensive matching logic
 import logging
 import numpy as np
 import re
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Set
 from sklearn.feature_extraction.text import HashingVectorizer
+from logic.a_resume.resumeHistory import resume_storage
 logger = logging.getLogger(__name__)
+# === Job Model ===
 class Job:
     def __init__(self, title, company, description, location, is_remote=False,
                  posted_date=None, url="", skills=None, salary_range=None, match_percentage=None):
@@ -51,9 +53,6 @@ def generate_embedding(text: str) -> np.ndarray:
     except Exception as e:
         logger.error(f"Embedding generation failed: {e}")
         return np.zeros(EMBEDDING_DIM)
-# Generate embeddings for a batch of texts
-def batch_generate_embeddings(texts):
-    return [generate_embedding(text) for text in texts]
 # Sentence-aware chunking that splits text into chunks close to max_length.
 def chunk_text(text, max_length=512, overlap=50):
     sentences = re.split(r'(?<=[.!?]) +', text)
@@ -63,11 +62,7 @@ def chunk_text(text, max_length=512, overlap=50):
         if len(current_chunk) + len(sentence) + 1 > max_length:
             if current_chunk:
                 chunks.append(current_chunk.strip())
-            if overlap > 0 and len(current_chunk) > overlap:
-                overlap_text = current_chunk[-overlap:]
-                current_chunk = overlap_text + " " + sentence
-            else:
-                current_chunk = sentence
+            current_chunk = sentence if overlap <= 0 else current_chunk[-overlap:] + " " + sentence
         else:
             current_chunk += " " + sentence
     if current_chunk:
@@ -80,9 +75,7 @@ def generate_embedding_for_long_text(text, max_length=512, overlap=50):
         return generate_embedding(cleaned)
     chunks = chunk_text(cleaned, max_length, overlap)
     embeddings = [generate_embedding(chunk) for chunk in chunks if len(chunk.strip()) >= 10]
-    if not embeddings:
-        return np.zeros(EMBEDDING_DIM)
-    return np.mean(embeddings, axis=0)
+    return np.mean(embeddings, axis=0) if embeddings else np.zeros(EMBEDDING_DIM)
 # Generate two embeddings: one for the full narrative, one for just the skills section.
 def generate_dual_embeddings(text: str) -> dict:
     cleaned = clean_text(text)
@@ -95,10 +88,9 @@ def generate_dual_embeddings(text: str) -> dict:
         if any(k in line_lower for k in skill_keywords):
             collecting = True
             continue
-        if collecting:
-            if line.strip() == "" or len(skill_blocks) > 5:
-                break
-            skill_blocks.append(line.strip())
+        if collecting and (line.strip() == "" or len(skill_blocks) > 5):
+            break
+        skill_blocks.append(line.strip())
     skill_text = " ".join(skill_blocks) if skill_blocks else cleaned
     return {
         "narrative": generate_embedding(cleaned),
@@ -112,18 +104,11 @@ def extract_skills(text: str, known_skills: set) -> set:
     return {token for token in tokens if token in known_skills}
 # Boost similarity score based on skill overlap
 def boost_score_with_skills(similarity: float, resume_text: str, job_text: str, known_skills=DEFAULT_SKILLS) -> float:
-    if similarity is None or not isinstance(similarity, (int, float)):
-        return 0.0
-    if resume_text is None or job_text is None:
-        return similarity
     try:
         resume_skills = extract_skills(resume_text, known_skills)
         job_skills = extract_skills(job_text, known_skills)
         overlap = resume_skills & job_skills
-        if not overlap:
-            return similarity
-        boost = 0.05 * len(overlap)
-        return min(similarity + boost, 1.0)
+        return min(similarity + 0.05 * len(overlap), 1.0) if overlap else similarity
     except Exception as e:
         logger.error(f"Error in boost_score_with_skills: {str(e)}")
         return similarity
@@ -132,67 +117,54 @@ def calculate_similarity(resume_embedding, job_embedding):
     if resume_embedding is None or job_embedding is None:
         return 0.0
     try:
-        resume_vec = np.array(resume_embedding)
-        job_vec = np.array(job_embedding)
-        if resume_vec.size == 0 or job_vec.size == 0:
+        a = np.array(resume_embedding)
+        b = np.array(job_embedding)
+        if np.any(np.isnan(a)) or np.any(np.isinf(a)) or np.any(np.isnan(b)) or np.any(np.isinf(b)):
             return 0.0
-        if np.isnan(resume_vec).any() or np.isinf(resume_vec).any() or np.isnan(job_vec).any() or np.isinf(job_vec).any():
-            return 0.0
-        dot_product = np.dot(resume_vec, job_vec)
-        norm_a = np.linalg.norm(resume_vec)
-        norm_b = np.linalg.norm(job_vec)
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
-        similarity = dot_product / (norm_a * norm_b)
-        normalized = (similarity + 1) / 2
-        return normalized
+        similarity = np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+        return (similarity + 1) / 2  # normalize to 0–1
     except Exception as e:
         logger.error(f"Error calculating similarity: {str(e)}")
         return 0.0
 # Apply filters to job listings
 def apply_filters(jobs, filters):
-    filtered_jobs = jobs.copy()
+    filtered = jobs.copy()
     if filters.get('remote'):
-        filtered_jobs = [job for job in filtered_jobs if job.is_remote]
-    location = filters.get('location', '').strip().lower()
-    if location:
-        filtered_jobs = [job for job in filtered_jobs if location in job.location.lower()]
+        filtered = [job for job in filtered if job.is_remote]
+    loc = filters.get('location', '').strip().lower()
+    if loc:
+        filtered = [job for job in filtered if loc in job.location.lower()]
     keywords = filters.get('keywords', '').strip()
     if keywords:
-        keyword_list = [kw.strip().lower() for kw in keywords.split(',')]
-        filtered_jobs = [job for job in filtered_jobs if any(kw in f"{job.title} {job.description} {job.company} {' '.join(job.skills)}".lower() for kw in keyword_list)]
-    return filtered_jobs
+        kw_list = [k.strip().lower() for k in keywords.split(',')]
+        filtered = [job for job in filtered if any(kw in f"{job.title} {job.description} {job.company} {' '.join(job.skills)}".lower() for kw in kw_list)]
+    return filtered
 # Assigns match percentage to each job based on resume embeddings
 def get_resume_embeddings(resume_id):
     try:
-        active_resume = resume_storage.get_resume(resume_id)
-        if active_resume and "metadata" in active_resume:
-            metadata = active_resume["metadata"]
+        metadata = resume_storage.get_resume(resume_id)
+        if metadata and "metadata" in metadata:
             return {
-                "narrative": np.array(metadata["embedding_narrative"]),
-                "skills": np.array(metadata["embedding_skills"])
+                "narrative": np.array(metadata["metadata"]["embedding_narrative"]),
+                "skills": np.array(metadata["metadata"]["embedding_skills"])
             }
         return None
     except Exception as e:
         logger.error(f"Error retrieving resume embeddings for ID {resume_id}: {str(e)}")
         return None
-# === Resume Matching Pipeline ===
+# === Resume-to-Job Matching Engine ===
 # Class representing a match between a resume and job
 class JobMatch:
-  def __init__(self, job, similarity_score):
-    self.job = job
-    self.similarity_score = similarity_score
+    def __init__(self, job, similarity_score):
+        self.job = job
+        self.similarity_score = similarity_score
 
-  def to_dict(self):
-    return {'job': self.job.to_dict(), 'similarity_score': self.similarity_score}
+    def to_dict(self):
+        return {'job': self.job.to_dict(), 'similarity_score': self.similarity_score}
 # Match jobs to a resume
-def match_jobs_to_resume(resume_embeddings: Dict[str, np.ndarray], jobs: Optional[List[Job]] = None, filters: Optional[Dict] = None, resume_text: Optional[str] = None, days: int = 30) -> List[JobMatch]:
-    if resume_embeddings is None or not isinstance(resume_embeddings, dict):
+def match_jobs_to_resume(resume_embeddings: Dict[str, np.ndarray], jobs: Optional[List[Job]], filters: Optional[Dict] = None, resume_text: Optional[str] = None) -> List[JobMatch]:
+    if not resume_embeddings or not all(k in resume_embeddings for k in ["narrative", "skills"]):
         return []
-    if "narrative" not in resume_embeddings or "skills" not in resume_embeddings:
-        return []
-    if jobs is None:
-        jobs = job_manager.get_recent_jobs(days=days)
     if not jobs:
         return []
     try:
@@ -203,13 +175,12 @@ def match_jobs_to_resume(resume_embeddings: Dict[str, np.ndarray], jobs: Optiona
     matches = []
     for job in filtered_jobs:
         try:
-            if not hasattr(job, 'embedding_narrative') or not hasattr(job, 'embedding_skills'):
-                job_text = f"{job.title}\n{job.company}\n{job.description}"
-                if job.skills:
-                    job_text += "\nSkills: " + ", ".join(job.skills)
-                embeddings = generate_dual_embeddings(job_text)
-                job.embedding_narrative = embeddings["narrative"]
-                job.embedding_skills = embeddings["skills"]
+            job_text = f"{job.title}\n{job.company}\n{job.description}"
+            if job.skills:
+                job_text += "\nSkills: " + ", ".join(job.skills)
+            embeddings = generate_dual_embeddings(job_text)
+            job.embedding_narrative = embeddings["narrative"]
+            job.embedding_skills = embeddings["skills"]
             sim_narrative = calculate_similarity(resume_embeddings["narrative"], job.embedding_narrative)
             sim_skills = calculate_similarity(resume_embeddings["skills"], job.embedding_skills)
             similarity = (sim_narrative + sim_skills) / 2
@@ -219,74 +190,71 @@ def match_jobs_to_resume(resume_embeddings: Dict[str, np.ndarray], jobs: Optiona
             matches.append(JobMatch(job, similarity))
         except Exception as e:
             logger.error(f"Error matching job '{job.title}': {str(e)}")
-            continue
-    try:
-        matches.sort(key=lambda m: m.similarity_score, reverse=True)
-    except Exception as e:
-        logger.error(f"Error sorting matches: {str(e)}")
+    matches.sort(key=lambda m: m.similarity_score, reverse=True)
     return matches
-# API endpoint to match resume to jobs
+# Extract skills from job data
+def extract_skills_from_job(job_data: Dict, known_skills: Optional[Set[str]] = None) -> List[str]:
+    skills = []
+    if "category" in job_data and "tag" in job_data["category"]:
+        category = job_data["category"]["tag"].lower()
+        if any(k in category for k in ["it", "software", "developer"]):
+            tech_skills = DEFAULT_SKILLS
+            description = job_data.get("description", "").lower()
+            title = job_data.get("title", "").lower()
+            skills += [skill for skill in tech_skills if skill in description or skill in title]
+    if not skills and known_skills:
+        try:
+            from matching_engine import extract_skills as alt_extract
+            skills += list(alt_extract(job_data.get("description", ""), known_skills))
+        except ImportError:
+            logger.warning("Could not import extract_skills from matching_engine")
+    return list(set(skills))
 def match_jobs(data: dict) -> tuple[dict, int]:
     try:
         resume_id = data.get('resume_id')
         resume_text = data.get('resume_text', '')
         filters = data.get('filters', {})
         days = data.get('days', 30)
+        # === Get resume embeddings ===
         if resume_id:
-            try:
-                resume_metadata = resume_storage.get_resume(resume_id)
-                if not resume_metadata:
-                    return {"success": False, "error": f"Resume with ID {resume_id} not found"}, 404
-                resume_text = resume_storage.get_resume_content(resume_id) or ''
-                if resume_metadata.get('embedding_narrative') and resume_metadata.get('embedding_skills'):
-                    resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
-                    resume_embedding_skills = np.array(resume_metadata['embedding_skills'])
-                else:
-                    embeddings = generate_dual_embeddings(resume_text)
-                    resume_embedding_narrative = embeddings['narrative']
-                    resume_embedding_skills = embeddings['skills']
-                if not filters and resume_metadata.get('filters'):
-                    filters = resume_metadata['filters']
-            except Exception as e:
-                logger.error(f"Error retrieving resume {resume_id}: {str(e)}")
-                return {"success": False, "error": f"Error retrieving resume: {str(e)}"}, 500
-        else:
-            if not resume_text or len(resume_text.strip()) < 50:
-                return {"success": False, "error": "Resume text is too short. Please provide a complete resume."}, 400
-            try:
+            resume_metadata = resume_storage.get_resume(resume_id)
+            if not resume_metadata:
+                return {"success": False, "error": f"Resume with ID {resume_id} not found"}, 404
+            resume_text = resume_storage.get_resume_content(resume_id) or ''
+            if resume_metadata.get('embedding_narrative') and resume_metadata.get('embedding_skills'):
+                resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
+                resume_embedding_skills = np.array(resume_metadata['embedding_skills'])
+            else:
                 embeddings = generate_dual_embeddings(resume_text)
                 resume_embedding_narrative = embeddings['narrative']
                 resume_embedding_skills = embeddings['skills']
-            except Exception as e:
-                logger.error(f"Error generating embedding: {str(e)}")
-                return {"success": False, "error": f"Error analyzing resume content: {str(e)}"}, 500
-        try:
-            jobs = job_manager.get_recent_jobs(days=days)
-            if not jobs:
-                return {"success": False, "error": "No job data available to match against"}, 500
-        except Exception as e:
-            logger.error(f"Error retrieving job data: {str(e)}")
-            return {"success": False, "error": f"Error retrieving job data: {str(e)}"}, 500
-        try:
-            resume_embeddings = {
-                "narrative": resume_embedding_narrative,
-                "skills": resume_embedding_skills
-            }
-            matching_jobs = match_jobs_to_resume(
-                resume_embeddings, jobs, filters, resume_text=resume_text
-            )
-            if not matching_jobs:
-                return {
-                    "success": True,
-                    "matches": {},
-                    "message": "No matching jobs found based on your filters. Try adjusting your search criteria."
-                }, 200
-        except Exception as e:
-            logger.error(f"Error matching jobs: {str(e)}")
-            return {"success": False, "error": f"Error matching jobs: {str(e)}"}, 500
+            if not filters and resume_metadata.get('filters'):
+                filters = resume_metadata['filters']
+        else:
+            if not resume_text or len(resume_text.strip()) < 50:
+                return {"success": False, "error": "Resume text is too short. Please provide a complete resume."}, 400
+            embeddings = generate_dual_embeddings(resume_text)
+            resume_embedding_narrative = embeddings['narrative']
+            resume_embedding_skills = embeddings['skills']
+        # === Load job pool ===
+        jobs = get_recent_jobs(days=days)
+        if not jobs:
+            return {"success": False, "error": "No job data available to match against"}, 500
+        # === Match jobs ===
+        resume_embeddings = {
+            "narrative": resume_embedding_narrative,
+            "skills": resume_embedding_skills
+        }
+        matching_jobs = match_jobs_to_resume(resume_embeddings, jobs, filters, resume_text=resume_text)
+        if not matching_jobs:
+            return {
+                "success": True,
+                "matches": {},
+                "message": "No matching jobs found based on your filters. Try adjusting your search criteria."
+            }, 200
         matches_dict = {}
         for job_match in matching_jobs:
-            job_id = job_match.job.id if hasattr(job_match.job, 'id') else str(id(job_match.job))
+            job_id = getattr(job_match.job, 'id', str(id(job_match.job)))
             match_percentage = int(job_match.similarity_score * 100)
             matches_dict[job_id] = match_percentage
         return {

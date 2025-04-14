@@ -1,4 +1,4 @@
-# resumeHistory.py - Manages resume listing, storage, content access, and deletion logic
+# logic/a_resume/resumeHistory.py - Manages resume listing, storage, access, and deletion
 import os
 import json
 import uuid
@@ -13,25 +13,46 @@ resume_history_bp = Blueprint("resume_history", __name__)
 # === Storage Paths ===
 RESUME_DIR = os.path.join(os.path.dirname(__file__), '../../static/resumes')
 RESUME_INDEX_FILE = os.path.join(RESUME_DIR, 'index.json')
+ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
+ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
+# === Adzuna Job Storage ===
+# """Save the resume index to file"""
+def save_index(index: Dict) -> bool:
+    try:
+        with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
+            json.dump(index, f, indent=2)
+        logger.debug("Saved index to disk")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving index: {str(e)}")
+        return False
+# """Save a batch of jobs to disk."""
+def save_job_batch(jobs: List[Dict], batch_id: str) -> bool:
+    batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
+    try:
+        with open(batch_file, 'w', encoding='utf-8') as f:
+            json.dump(jobs, f, indent=2)
+        logger.debug(f"Saved batch {batch_id} with {len(jobs)} jobs")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving batch {batch_id}: {str(e)}")
+        return False
 # === Resume Access and Deletion ===
-"""Load the resume index from file"""
+# """Load the resume index from file"""
 def _load_index() -> Dict:
     try:
         if not os.path.exists(RESUME_INDEX_FILE):
             return {"resumes": {}, "count": 0, "last_added": None}
         with open(RESUME_INDEX_FILE, 'r', encoding='utf-8') as f:
             index = json.load(f)
-        if "resumes" not in index:
-            index["resumes"] = {}
-        if "count" not in index:
-            index["count"] = len(index["resumes"])
-        if "last_added" not in index:
-            index["last_added"] = None
+        index.setdefault("resumes", {})
+        index.setdefault("count", len(index["resumes"]))
+        index.setdefault("last_added", None)
         return index
     except Exception as e:
         logger.error(f"Error loading resume index: {str(e)}")
         return {"resumes": {}, "count": 0, "last_added": None}
-"""Save the resume index to file"""
+# """Save the resume index to file"""
 def _save_index(index: Dict = None):
     try:
         if index is None:
@@ -41,7 +62,7 @@ def _save_index(index: Dict = None):
     except Exception as e:
         logger.error(f"Error saving resume index: {str(e)}")
 # === Resume Access ===
-# Get all stored resumes
+# Get all stored resumes, sorted by upload date
 def get_all_resumes() -> List[Dict]:
     try:
         index = _load_index()
@@ -117,12 +138,12 @@ def delete_resume_route(resume_id):
         flash(f'Error deleting resume: {str(e)}', 'danger')
     return redirect(url_for('index'))
 # === Resume Storage Class ===
-"""Initialize the storage object"""
+# """Initialize the storage object"""
 class ResumeStorage:
     def __init__(self):
         self._index = {}
         self._initialize_resume_index()
-    """Ensure resume directory and index file exist"""
+    # """Ensure resume directory and index file exist"""
     def _initialize_resume_index(self):
         os.makedirs(RESUME_DIR, exist_ok=True)
         if not os.path.exists(RESUME_INDEX_FILE):
@@ -130,7 +151,7 @@ class ResumeStorage:
             self._save_index()
         else:
             self._load_index()
-    """Load resume index into memory"""
+    # """Load resume index into memory"""
     def _load_index(self):
         try:
             with open(RESUME_INDEX_FILE, 'r', encoding='utf-8') as f:
@@ -138,10 +159,10 @@ class ResumeStorage:
         except Exception as e:
             logger.error(f"Error loading resume index: {str(e)}")
             self._index = {"resumes": {}, "count": 0, "last_added": None}
-    """Save resume index from memory to disk"""
+    # """Save resume index from memory to disk"""
     def _save_index(self):
         _save_index(self._index)
-    """Scan for content files not in index and restore them"""
+    # """Scan for content files not in index and restore them"""
     def _recover_missing_resumes(self):
         try:
             content_files = [f for f in os.listdir(RESUME_DIR) if f.endswith('_content.txt')]
@@ -171,7 +192,7 @@ class ResumeStorage:
                 logger.info(f"Recovered resume {original_filename} with ID {resume_id}")
         except Exception as e:
             logger.error(f"Error recovering missing resumes: {str(e)}")
-    """Store a resume permanently and update index"""
+    # """Store a resume permanently and update index"""
     def store_resume(self, temp_filepath: str, filename: str, content: str, metadata: Optional[Dict] = None) -> str:
         try:
             resume_id = str(uuid.uuid4())

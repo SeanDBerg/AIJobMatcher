@@ -2,13 +2,11 @@
 import os
 import logging
 from flask import Flask, render_template, request, jsonify, session, send_from_directory
-from job_manager import JobManager
 from logic.a_resume.uploadResume import upload_resume_bp
 from logic.a_resume.resumeHistory import resume_history_bp
 from logic.b_jobs.jobHeading import job_heading_bp
 from logic.b_jobs.jobLayout import generate_table_context
 from logic.b_jobs.jobSync import job_sync_bp
-job_manager = JobManager()
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)
