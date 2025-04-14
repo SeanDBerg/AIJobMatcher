@@ -3,7 +3,6 @@ import logging
 import os
 import json
 from typing import List, Dict, Optional
-from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 import numpy as np
 from logic.a_resume.resumeHistory import get_all_resumes, get_resume
@@ -83,38 +82,7 @@ def get_all_jobs(force_refresh=False) -> List[Job]:
   except Exception as e:
     logger.error(f"Error retrieving all jobs: {str(e)}")
     return []
-# Get recent jobs with caching
-def get_recent_jobs(days=30, force_refresh=False) -> List[Job]:
-  all_jobs = get_all_jobs(force_refresh=force_refresh)
-  if not all_jobs:
-      return []
-  cutoff = datetime.now() - timedelta(days=days)
-  recent_jobs = []
-  for job in all_jobs:
-      try:
-          if isinstance(job.posted_date, str):
-              job_date = datetime.fromisoformat(job.posted_date[:10])
-          else:
-              job_date = job.posted_date
-          if job_date >= cutoff:
-              recent_jobs.append(job)
-      except Exception as e:
-          logger.warning(f"Date parsing error for job {job.title}: {str(e)}")
-          continue
-  return recent_jobs
 # === Table Context Generation ===
-# Utility to filter jobs by recent and remote
-def _filter_recent_jobs(jobs, days=7):
-  recent = []
-  for job in jobs:
-    if job.posted_date:
-      try:
-        job_date = datetime.fromisoformat(job.posted_date.split("T")[0]) if isinstance(job.posted_date, str) else job.posted_date
-        if (datetime.now() - job_date).days <= days:
-          recent.append(job)
-      except Exception:
-        continue
-  return recent
 # 
 def _filter_remote_jobs(jobs):
   return [job for job in jobs if job.is_remote]
@@ -137,10 +105,8 @@ def generate_table_context(session):
     keywords = session.get("keywords", "")
     location = session.get("location", "")
     country = session.get("country", "us")
-    max_days_old = session.get("max_days_old", "1")
     remote_only = session.get("remote_only", "") == "1"
-    jobs = get_recent_jobs(days=30)
-    recent_jobs = _filter_recent_jobs(jobs)
+    jobs = get_all_jobs(force_refresh=True)
     remote_jobs = _filter_remote_jobs(jobs)
     resume_id = session.get("resume_id")
     resume_embeddings = None
@@ -180,20 +146,16 @@ def generate_table_context(session):
     for job in jobs:
       job.match_percentage = match_map.get(job.url, 0)
     jobs_dict = {i: job.to_dict() for i, job in enumerate(jobs)}
-    recent_dict = {i: job.to_dict() for i, job in enumerate(recent_jobs)}
     remote_dict = {i: job.to_dict() for i, job in enumerate(remote_jobs)}
     return {
       "jobs": jobs_dict,
-      "recent_jobs_list": recent_dict,
       "remote_jobs_list": remote_dict,
       "stored_resumes": get_all_resumes(),
       "total_jobs": len(jobs),
-      "recent_jobs": len(recent_jobs),
       "next_sync": "Manual sync only",
       "keywords": keywords,
       "location": location,
       "country": country,
-      "max_days_old": max_days_old,
       "remote_only": remote_only,
       "keywords_list": session.get("keywords_list", [])
     }
@@ -206,7 +168,7 @@ def generate_table_context(session):
 def get_jobs():
   try:
     days = request.args.get("days", 30, type=int)
-    jobs = get_recent_jobs(days=days)
+    jobs = get_all_jobs(force_refresh=True)
     logger.debug("Retrieved %d jobs for API", len(jobs))
     return jsonify({"success": True, "jobs": [job.to_dict() for job in jobs]})
   except Exception as e:

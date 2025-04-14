@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Optional, Set
 from sklearn.feature_extraction.text import HashingVectorizer
 from logic.a_resume.resumeHistory import resume_storage
+from logic.b_jobs.jobLayout import get_all_jobs
 logger = logging.getLogger(__name__)
 # === Job Model ===
 class Job:
@@ -237,7 +238,7 @@ def match_jobs(data: dict) -> tuple[dict, int]:
             resume_embedding_narrative = embeddings['narrative']
             resume_embedding_skills = embeddings['skills']
         # === Load job pool ===
-        jobs = get_recent_jobs(days=days)
+        jobs = get_all_jobs(force_refresh=True)
         if not jobs:
             return {"success": False, "error": "No job data available to match against"}, 500
         # === Match jobs ===

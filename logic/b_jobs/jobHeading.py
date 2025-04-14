@@ -36,7 +36,7 @@ def get_adzuna_status():
         logger.error(f"Error getting Adzuna status: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 # Remove job batches from disk and index that are older than the max_age_days threshold.
-def cleanup_old_jobs_internal(max_age_days: int = 90) -> int:
+def cleanup_old_jobs_internal(max_age_days: int = 10) -> int:
     try:
         index = get_index(force_refresh=True)
         cutoff_date = (datetime.now() - timedelta(days=max_age_days)).isoformat()

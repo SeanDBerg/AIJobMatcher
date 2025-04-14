@@ -4,9 +4,6 @@
                 <button class="nav-link active" id="all-jobs-tab" data-bs-toggle="tab" data-bs-target="#all-jobs" type="button" role="tab" aria-controls="all-jobs" aria-selected="true">All Jobs</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="recent-tab" data-bs-toggle="tab" data-bs-target="#recent" type="button" role="tab" aria-controls="recent" aria-selected="false">Recent (7 Days)</button>
-            </li>
-            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="remote-tab" data-bs-toggle="tab" data-bs-target="#remote" type="button" role="tab" aria-controls="remote" aria-selected="false">Remote Only</button>
             </li>
             <li class="nav-item" role="presentation">
@@ -82,80 +79,6 @@
                             {% else %}
                                 <tr>
                                     <td colspan="8" class="text-center">No jobs found. <a href="#" onclick="syncJobsNow()">Sync jobs now</a>.</td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="tab-pane fade" id="recent" role="tabpanel" aria-labelledby="recent-tab">
-                <div class="table-responsive">
-                    <table class="table table-bordered job-table" id="recentJobsTable" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Company</th>
-                                <th>Location</th>
-                                <th>Remote</th>
-                                <th>Date Posted</th>
-                                <th>Salary</th>
-                                <th>Match %</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if recent_jobs_list %}
-                                {% for job_id, job in recent_jobs_list.items() %}
-                                    <tr class="job-row" data-job-id="recent-{{ job_id }}">
-                                        <td>{{ job.title }}</td>
-                                        <td>{{ job.company }}</td>
-                                        <td>{{ job.location }}</td>
-                                        <td>{{ 'Yes' if job.is_remote else 'No' }}</td>
-                                        <td>{{ job.posted_date }}</td>
-                                        <td>{{ job.salary_range|default('Not specified') }}</td>
-                                        <td>{{ (job.match_percentage|string ~ '%') if job.match_percentage is not none else '0%' }}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="recent-{{ job_id }}">
-                                                <i class="fas fa-eye"></i> View
-                                            </button>
-                                            <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Visit Job Listing">
-                                                <i class="fas fa-external-link-alt"></i> Apply
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    <!-- Collapsible job description row -->
-                                    <tr class="job-details-row d-none" id="job-details-recent-{{ job_id }}">
-                                        <td colspan="8">
-                                            <div class="job-details-content p-3">
-                                                <h5>{{ job.title }} at {{ job.company }}</h5>
-                                                {% if job.skills %}
-                                                    <div class="mb-3">
-                                                        <strong>Skills:</strong>
-                                                        <div class="mt-1">
-                                                            {% for skill in job.skills %}
-                                                                <span class="badge bg-secondary me-1 mb-1">{{ skill }}</span>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                {% endif %}
-                                                <div class="mb-3">
-                                                    <strong>Description:</strong>
-                                                    <div class="job-description mt-2">
-                                                        {{ job.description|safe }}
-                                                    </div>
-                                                </div>
-                                                <div class="text-end">
-                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-primary">
-                                                        <i class="fas fa-external-link-alt me-1"></i> Apply for This Position
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="8" class="text-center">No recent jobs found.</td>
                                 </tr>
                             {% endif %}
                         </tbody>

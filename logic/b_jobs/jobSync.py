@@ -5,7 +5,6 @@ import json
 from datetime import datetime
 from typing import List, Dict
 from flask import Blueprint, request, jsonify, redirect, url_for, session
-from logic.b_jobs.jobLayout import get_recent_jobs
 job_sync_bp = Blueprint('job_sync', __name__)
 logger = logging.getLogger(__name__)
 # === Paths and Constants ===
@@ -24,7 +23,6 @@ def sync_jobs():
         keywords_list = data.get('keywords_list', [])
         location = data.get('location', '')
         country = data.get('country', 'gb')
-        max_days_old = data.get('max_days_old', 30)
         total_jobs_found = 0
         all_jobs = []
         return jsonify({
@@ -51,13 +49,11 @@ def save_settings():
             keywords_list = []
         location = request.form.get('location', '')
         country = request.form.get('country', 'gb')
-        max_days_old = int(request.form.get('max_days_old', 30))
         remote_only = request.form.get('remote_only') == '1'
         sync_now = request.form.get('sync_now') == '1'
         session['job_search_keywords'] = keywords
         session['job_search_location'] = location
         session['job_search_country'] = country
-        session['job_search_max_days_old'] = str(max_days_old)
         session['job_search_remote_only'] = '1' if remote_only else ''
         logger.info("Returning with redirect to %s", "index" if sync_now else "settings")
         return redirect(url_for('index' if sync_now else 'settings'))
@@ -87,8 +83,7 @@ def config_adzuna():
 @job_sync_bp.route('/api/adzuna/jobs', methods=['GET'])
 def get_adzuna_jobs_endpoint():
     try:
-        days = request.args.get('days', 30, type=int)
-        jobs = get_recent_jobs(days=days)
+        jobs = get_all_jobs(force_refresh=True)
         return jsonify({
             "success": True,
             "jobs": [job.to_dict() for job in jobs],

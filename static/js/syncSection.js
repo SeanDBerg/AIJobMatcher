@@ -80,7 +80,7 @@ function syncJobs() {
     keywords_list: keywordsList,
     location: $('#location').val(),
     country: $('#country').val(),
-    max_days_old: parseInt($('#max_days_old').val()),
+    max_days_old: 1,
     remote_only: $('#remote_only').is(':checked'),
     max_pages: parseInt($('#maxPages').val())
   };
@@ -111,7 +111,6 @@ function saveJobSearch() {
     const keywords = $('#keywords').val();
     const location = $('#location').val();
     const country = $('#country').val();
-    const maxDaysOld = $('#max_days_old').val();
     const remoteOnly = $('#remote_only').is(':checked') ? '1' : '';
     const maxPages = $('#maxPages').val();
 
@@ -131,7 +130,6 @@ function saveJobSearch() {
     localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
     localStorage.setItem('job_search_location', location);
     localStorage.setItem('job_search_country', country);
-    localStorage.setItem('job_search_max_days_old', maxDaysOld);
     localStorage.setItem('job_search_remote_only', remoteOnly);
     localStorage.setItem('job_search_max_pages', maxPages);
 
@@ -149,7 +147,6 @@ function loadSavedSearch() {
     $('#keywords').val(localStorage.getItem('job_search_keywords') || '');
     $('#location').val(localStorage.getItem('job_search_location') || '');
     $('#country').val(localStorage.getItem('job_search_country') || '');
-    $('#max_days_old').val(localStorage.getItem('job_search_max_days_old') || '');
     $('#remote_only').prop('checked', localStorage.getItem('job_search_remote_only') === '1');
     $('#maxPages').val(localStorage.getItem('job_search_max_pages') || '');
 }
