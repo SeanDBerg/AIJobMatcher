@@ -5,7 +5,7 @@ import json
 from typing import List
 from flask import Blueprint, request, jsonify, redirect, url_for, session
 from job_manager import JobManager, AdzunaAPIError
-from models import Job
+from logic.b_jobs.jobMatch import Job
 job_sync_bp = Blueprint('job_sync', __name__)
 logger = logging.getLogger(__name__)
 job_manager = JobManager()
