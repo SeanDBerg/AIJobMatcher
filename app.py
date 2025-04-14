@@ -7,6 +7,7 @@ from logic.a_resume.resumeHistory import resume_history_bp
 from logic.b_jobs.jobHeading import job_heading_bp
 from logic.b_jobs.jobLayout import generate_table_context
 from logic.b_jobs.jobSync import job_sync_bp
+from logic.b_jobs.jobMatch import match_jobs
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s-%(name)s: [%(funcName)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ app.register_blueprint(job_sync_bp)
 # Route for the main page
 @app.route('/')
 def index():
+    logger.debug("Session contains resume_id: %s", session.get("resume_id"))
     status = generate_table_context(session)
     logger.debug("Rendering index with %d jobs", status.get("total_jobs", 0))
     return render_template('index.html', **status)
@@ -33,8 +35,8 @@ def resume_files(resume_id, filename):
     return send_from_directory(RESUME_DIR, f"{resume_id}_{filename}")
 
 @app.route('/api/match-jobs', methods=['POST'])
-def match_jobs():
+def match_jobs_api():  # Renamed the function to match_jobs_api
     if not request.is_json:
         return jsonify({"success": False, "error": "Request must be JSON"}), 400
-    response_json, status_code = match_jobs_api(request.json)
+    response_json, status_code = match_jobs(request.json)  # Use the imported function
     return jsonify(response_json), status_code

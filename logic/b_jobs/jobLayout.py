@@ -161,6 +161,7 @@ def format_salary_range(self, min_salary, max_salary) -> Optional[str]:
     return f"Up to £{max_salary:,.0f}"
   return None
 # Public function to assemble the context for index.html
+# Public function to assemble the context for index.html
 def generate_table_context(session):
   try:
     keywords = session.get("keywords", "")
@@ -178,18 +179,41 @@ def generate_table_context(session):
 
     if resume_id:
       active_resume = get_resume(resume_id)
-      if active_resume and "metadata" in active_resume:
-        metadata = active_resume["metadata"]
-        resume_embeddings = {
-          "narrative": np.array(metadata["embedding_narrative"]),
-          "skills": np.array(metadata["embedding_skills"])
-        }
+      if not active_resume:
+        logger.warning(f"Resume ID {resume_id} not found in storage")
+      else:
+        metadata = active_resume.get("metadata", {})
+        if "embedding_narrative" in metadata and "embedding_skills" in metadata:
+          resume_embeddings = {
+            "narrative": np.array(metadata["embedding_narrative"]),
+            "skills": np.array(metadata["embedding_skills"])
+          }
+          logger.debug(f"Loaded embeddings from metadata for resume_id {resume_id}")
+        else:
+          logger.warning(f"Missing embeddings in metadata for resume_id {resume_id}")
+          from logic.b_jobs.jobMatch import generate_dual_embeddings
+          from logic.a_resume.resumeHistory import resume_storage
+          resume_text = resume_storage.get_resume_content(resume_id)
+          if resume_text:
+            embeddings = generate_dual_embeddings(resume_text)
+            resume_embeddings = {
+              "narrative": embeddings["narrative"],
+              "skills": embeddings["skills"]
+            }
+            logger.debug(f"Generated new embeddings from resume text for resume_id {resume_id}")
+          else:
+            logger.warning(f"Could not load resume text for resume_id {resume_id}")
 
     if resume_embeddings:
       matches = match_jobs_to_resume(resume_embeddings, jobs=jobs)
       match_map = {m.job.url: int(m.similarity_score * 100) for m in matches}
-      for job in jobs:
-        job.match_percentage = match_map.get(job.url, 0)
+      logger.debug("Assigned match percentages for %d jobs", len(match_map))
+    else:
+      logger.warning("No resume embeddings available, match percentages will be 0")
+      match_map = {}
+
+    for job in jobs:
+      job.match_percentage = match_map.get(job.url, 0)
 
     jobs_dict = {i: job.to_dict() for i, job in enumerate(jobs)}
     recent_dict = {i: job.to_dict() for i, job in enumerate(recent_jobs)}
@@ -214,6 +238,7 @@ def generate_table_context(session):
   except Exception as e:
     logger.error(f"Error generating table context: {str(e)}")
     return {}
+
 # === API Routes ===
 # API endpoint to get job listings
 @layout_bp.route("/api/jobs", methods=["GET"])
