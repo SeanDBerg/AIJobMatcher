@@ -5,7 +5,7 @@ import uuid
 import logging
 import shutil
 from datetime import datetime
-from flask import Blueprint, redirect, url_for, flash
+from flask import Blueprint, redirect, url_for, flash, request, jsonify, session
 from typing import Optional, List, Dict
 # === Setup ===
 logger = logging.getLogger(__name__)
@@ -113,6 +113,20 @@ def delete_resume_route(resume_id):
         logger.error(f"Error deleting resume: {str(e)}")
         flash(f'Error deleting resume: {str(e)}', 'danger')
     return redirect(url_for('index'))
+# Set the active resume
+@resume_history_bp.route('/api/set_resume', methods=['POST'])
+def set_active_resume():
+    try:
+        data = request.get_json()
+        resume_id = data.get("resume_id")
+        if not resume_id or not get_resume(resume_id):
+            return jsonify({"success": False, "error": "Invalid or missing resume ID"}), 400
+        session["resume_id"] = resume_id
+        logger.info("Session updated with resume_id=%s", resume_id)
+        return jsonify({"success": True, "resume_id": resume_id})
+    except Exception as e:
+        logger.error(f"Error setting active resume: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 # === Resume Storage Class ===
 # """Initialize the storage object"""
 class ResumeStorage:

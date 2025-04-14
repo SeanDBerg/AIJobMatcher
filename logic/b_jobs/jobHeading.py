@@ -9,7 +9,7 @@ from logic.b_jobs.jobSync import save_index
 job_heading_bp = Blueprint('job_heading', __name__)
 logger = logging.getLogger(__name__)
 # Local copy of the Adzuna data directory path used for batch file storage
-ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), 'static', 'job_data', 'adzuna')
+ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static', 'job_data', 'adzuna')
 ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
 _index_cache = None
 _index_cache_timestamp = None

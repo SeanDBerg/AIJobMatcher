@@ -5,7 +5,7 @@ import json
 from typing import List, Dict, Optional
 from flask import Blueprint, jsonify, request
 from logic.a_resume.resumeHistory import get_all_resumes
-from logic.b_jobs.jobMatch import get_all_jobs
+from logic.b_jobs.jobMatch import get_all_jobs, get_match_percentages
 from logic.b_jobs.jobSync import save_index
 from logic.b_jobs.jobHeading import get_index
 logger = logging.getLogger(__name__)
@@ -75,9 +75,19 @@ def generate_table_context(session):
         remote_only = session.get("job_search_remote_only", "") == "1"
         jobs = get_all_jobs(force_refresh=True)
         remote_jobs = _filter_remote_jobs(jobs)
+        stored_resumes = get_all_resumes()
         resume_id = session.get("resume_id")
+        # Fallback if session resume_id is invalid
+        if resume_id and not any(r["id"] == resume_id for r in stored_resumes):
+            logger.warning(f"Session resume_id {resume_id} is invalid. Clearing it.")
+            session.pop("resume_id", None)
+            resume_id = None
+        # Use the first resume by default if available
+        if not resume_id and stored_resumes:
+            resume_id = stored_resumes[0]["id"]
+            session["resume_id"] = resume_id
+            logger.info(f"No resume_id in session. Defaulting to first available: {resume_id}")
         # Compute match percentages using centralized logic
-        from logic.b_jobs.jobMatch import get_match_percentages
         match_map = {}
         if resume_id:
             match_map = get_match_percentages(resume_id, jobs)
@@ -91,7 +101,7 @@ def generate_table_context(session):
         return {
             "jobs": jobs_dict,
             "remote_jobs_list": remote_dict,
-            "stored_resumes": get_all_resumes(),
+            "stored_resumes": stored_resumes,
             "total_jobs": len(jobs),
             "next_sync": "Manual sync only",
             "keywords": keywords,

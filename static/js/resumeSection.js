@@ -42,6 +42,16 @@ function selectResume(resumeId) {
 
   $('#syncStatus').show().removeClass('alert-success alert-danger').addClass('alert-info');
   $('#syncStatusText').text('Matching resume to jobs...');
+  // 🆕 Update session on server
+  fetch('/api/set_resume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resume_id: resumeId })
+  }).then(res => res.json()).then(data => {
+    if (!data.success) {
+      console.error("Failed to update resume_id in session:", data.error);
+    }
+  });
 
   getJobMatchesForResume(resumeId);
 

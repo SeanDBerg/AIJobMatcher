@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from typing import List, Dict, Optional, Set
 from sklearn.feature_extraction.text import HashingVectorizer
-from logic.a_resume.resumeHistory import resume_storage, get_resume_content
+from logic.a_resume.resumeHistory import get_resume_content, get_resume
 from logic.b_jobs.jobHeading import get_index
 logger = logging.getLogger(__name__)
 # === Job Model ===
@@ -175,7 +175,7 @@ def apply_filters(jobs, filters):
 # Assigns match percentage to each job based on resume embeddings
 def get_resume_embeddings(resume_id):
     try:
-        metadata = resume_storage.get_resume(resume_id)
+        metadata = get_resume_content(resume_id)
         if metadata and "metadata" in metadata:
             return {
                 "narrative": np.array(metadata["metadata"]["embedding_narrative"]),
@@ -250,7 +250,7 @@ def match_jobs(data: dict) -> tuple[dict, int]:
         days = data.get('days', 30)
         # === Get resume embeddings ===
         if resume_id:
-            resume_metadata = resume_storage.get_resume(resume_id)
+            resume_metadata = get_resume(resume_id)
             if not resume_metadata:
                 return {"success": False, "error": f"Resume with ID {resume_id} not found"}, 404
             resume_text = get_resume_content(resume_id) or ''
@@ -271,6 +271,7 @@ def match_jobs(data: dict) -> tuple[dict, int]:
             resume_embedding_skills = embeddings['skills']
         # === Load job pool ===
         jobs = get_all_jobs(force_refresh=True)
+        logger.debug(f"get_all_jobs returned {len(jobs)} jobs")
         if not jobs:
             return {"success": False, "error": "No job data available to match against"}, 500
         # === Match jobs ===
@@ -314,8 +315,18 @@ def get_match_percentages(resume_id: str, jobs: List[Job]) -> Dict[str, int]:
                 "narrative": embeddings["narrative"],
                 "skills": embeddings["skills"]
             }
+            # Persist regenerated embeddings back into resume index
+            from logic.a_resume.resumeHistory import get_resume, resume_storage
+            metadata = get_resume(resume_id)
+            if metadata:
+                metadata["embedding_narrative"] = resume_embeddings["narrative"].tolist()
+                metadata["embedding_skills"] = resume_embeddings["skills"].tolist()
+                resume_storage._index["resumes"][resume_id] = metadata
+                resume_storage._save_index()
+                logger.info(f"Stored regenerated embeddings for resume ID {resume_id}")
         matches = match_jobs_to_resume(resume_embeddings, jobs)
         return {m.job.url: int(m.similarity_score * 100) for m in matches}
     except Exception as e:
         logger.error(f"Error computing match percentages: {str(e)}")
         return {}
+
