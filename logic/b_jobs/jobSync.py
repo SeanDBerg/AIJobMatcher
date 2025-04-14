@@ -11,8 +11,7 @@ from logic.b_jobs.jobMatch import get_all_jobs
 job_sync_bp = Blueprint('job_sync', __name__)
 logger = logging.getLogger(__name__)
 # === Paths and Constants ===
-ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
-ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
+# Using ADZUNA_DATA_DIR from jobUtils
 ADZUNA_API_BASE_URL = "https://api.adzuna.com/v1/api"
 # === Public Routes ===
 # """Sync jobs from Adzuna using keywords or keyword list."""

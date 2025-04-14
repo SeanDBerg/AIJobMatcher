@@ -24,6 +24,9 @@ class Job:
         self.skills = skills or []
         self.salary_range = salary_range or ""
         self.match_percentage = match_percentage
+        # Initialize embedding vectors as None
+        self.embedding_narrative = None
+        self.embedding_skills = None
     def to_dict(self, include_embeddings=False):
         return {
             'title': self.title,
