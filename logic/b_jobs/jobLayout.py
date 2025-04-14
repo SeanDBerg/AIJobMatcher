@@ -6,12 +6,14 @@ from typing import List, Dict, Optional
 from flask import Blueprint, jsonify, request
 from logic.a_resume.resumeHistory import get_all_resumes
 from logic.b_jobs.jobMatch import get_all_jobs, get_match_percentages
-from logic.b_jobs.jobUtils import save_index, get_index, ADZUNA_DATA_DIR
+from logic.b_jobs.jobSync import save_index
+from logic.b_jobs.jobHeading import get_index
 logger = logging.getLogger(__name__)
 # Define the blueprint
 layout_bp = Blueprint("layout_bp", __name__)
 # === Constants ===
-# Using ADZUNA_DATA_DIR from jobUtils
+ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
+ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
 # === Job Retrieval ===
 # Load a batch of jobs from disk
 def _load_job_batch(batch_id: str) -> List[Dict]:
@@ -41,7 +43,8 @@ def delete_batch(batch_id):
             index["last_batch"] = None
             if index["batches"]:
                 index["last_batch"] = max(index["batches"].items(), key=lambda x: x[1]["timestamp"])[0]
-        save_index(index)
+        with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
+            json.dump(index, f, indent=2)
         return True
     except Exception as e:
         logger.error(f"Error deleting batch {batch_id}: {str(e)}")

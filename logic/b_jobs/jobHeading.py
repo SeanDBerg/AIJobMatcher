@@ -5,10 +5,15 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, Any
 from flask import Blueprint, request, jsonify
-from logic.b_jobs.jobUtils import save_index, get_index, ADZUNA_DATA_DIR
+from logic.b_jobs.jobSync import save_index
 job_heading_bp = Blueprint('job_heading', __name__)
 logger = logging.getLogger(__name__)
-# We use shared constants from jobUtils module now
+# Local copy of the Adzuna data directory path used for batch file storage
+ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static', 'job_data', 'adzuna')
+ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
+_index_cache = None
+_index_cache_timestamp = None
+INDEX_CACHE_TTL_SECONDS = 10
 # === API Routes ===
 # Remove job batches older than max_age days.
 @job_heading_bp.route('/api/adzuna/cleanup', methods=['POST'])
@@ -78,4 +83,32 @@ def get_adzuna_status_internal() -> Dict[str, Any]:
     }
     logger.debug(f"Storage status: {job_count} jobs in {batch_count} batches")
     return status
-# === Index Management is now handled in jobUtils.py ===
+# === Index Management ===
+# Load the Adzuna job index from disk with optional caching. Used for batch tracking, job count, last sync, and display.
+def get_index(force_refresh=False) -> Dict:
+    global _index_cache, _index_cache_timestamp
+    if not force_refresh and _index_cache and _index_cache_timestamp:
+        age = (datetime.now() - _index_cache_timestamp).total_seconds()
+        if age < INDEX_CACHE_TTL_SECONDS:
+            return _index_cache
+    try:
+        if not os.path.exists(ADZUNA_INDEX_FILE):
+            logger.warning("Index file not found. Creating empty index.")
+            _index_cache = {"batches": {}, "job_count": 0, "last_sync": None, "last_batch": None}
+            save_index(_index_cache)
+            _index_cache_timestamp = datetime.now()
+            return _index_cache
+        with open(ADZUNA_INDEX_FILE, 'r', encoding='utf-8') as f:
+            index = json.load(f)
+        index.setdefault("batches", {})
+        index.setdefault("job_count", 0)
+        index.setdefault("last_sync", None)
+        index.setdefault("last_batch", None)
+        _index_cache = index
+        _index_cache_timestamp = datetime.now()
+        return index
+    except Exception as e:
+        logger.error(f"Error loading job index: {str(e)}")
+        _index_cache = {"batches": {}, "job_count": 0, "last_sync": None, "last_batch": None}
+        _index_cache_timestamp = datetime.now()
+        return _index_cache

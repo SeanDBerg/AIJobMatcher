@@ -2,13 +2,11 @@
 import logging
 import numpy as np
 import re
-import os
-import json
 from datetime import datetime
 from typing import List, Dict, Optional, Set
 from sklearn.feature_extraction.text import HashingVectorizer
 from logic.a_resume.resumeHistory import get_resume_content, get_resume
-from logic.b_jobs.jobUtils import get_index, ADZUNA_DATA_DIR
+from logic.b_jobs.jobHeading import get_index
 logger = logging.getLogger(__name__)
 # === Job Model ===
 class Job:
@@ -24,9 +22,6 @@ class Job:
         self.skills = skills or []
         self.salary_range = salary_range or ""
         self.match_percentage = match_percentage
-        # Initialize embedding vectors as None
-        self.embedding_narrative = None
-        self.embedding_skills = None
     def to_dict(self, include_embeddings=False):
         return {
             'title': self.title,
