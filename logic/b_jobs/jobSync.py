@@ -37,6 +37,8 @@ def sync_jobs():
 # """Save user settings for job sync and optionally trigger sync."""
 @job_sync_bp.route('/save_settings', methods=['POST'])
 def save_settings():
+    for key in ["keywords", "location", "country", "remote_only"]:
+        session.pop(key, None)
     try:
         job_sources = request.form.getlist('job_sources')
         keywords = request.form.get('keywords', '')
@@ -56,6 +58,7 @@ def save_settings():
         session['job_search_country'] = country
         session['job_search_remote_only'] = '1' if remote_only else ''
         logger.info("Returning with redirect to %s", "index" if sync_now else "settings")
+        logger.debug("Session keys at context generation: %s", list(session.keys()))
         return redirect(url_for('index' if sync_now else 'settings'))
     except Exception as e:
         logger.error(f"Error saving settings: {str(e)}")

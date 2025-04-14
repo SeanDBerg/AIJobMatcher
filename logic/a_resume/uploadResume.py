@@ -6,6 +6,7 @@ import logging
 from flask import Blueprint, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from logic.a_resume.resumeHistory import resume_storage
+from logic.b_jobs.jobMatch import generate_dual_embeddings
 logger = logging.getLogger(__name__)
 upload_resume_bp = Blueprint("upload_resume", __name__)
 # === Configuration ===
@@ -132,6 +133,9 @@ def upload_resume():
                 "keywords": request.form.get("keywords", "")
             }
         }
+        embeddings = generate_dual_embeddings(resume_text)
+        metadata["embedding_narrative"] = embeddings["narrative"].tolist()
+        metadata["embedding_skills"] = embeddings["skills"].tolist()
         resume_id = resume_storage.store_resume(
             temp_filepath=filepath,
             filename=filename,

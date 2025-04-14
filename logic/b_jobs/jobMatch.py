@@ -5,8 +5,8 @@ import re
 from datetime import datetime
 from typing import List, Dict, Optional, Set
 from sklearn.feature_extraction.text import HashingVectorizer
-from logic.a_resume.resumeHistory import resume_storage
-from logic.b_jobs.jobLayout import get_all_jobs
+from logic.a_resume.resumeHistory import resume_storage, get_resume_content
+from logic.b_jobs.jobHeading import get_index
 logger = logging.getLogger(__name__)
 # === Job Model ===
 class Job:
@@ -38,6 +38,38 @@ class Job:
 # === Embedding Utilities ===
 EMBEDDING_DIM = 384 # Default embedding dimension for the all-MiniLM-L6-v2 model
 vectorizer = HashingVectorizer(n_features=384, alternate_sign=False, norm='l2', stop_words='english', lowercase=True)
+# Get all jobs from all batches
+def get_all_jobs(force_refresh=False) -> List[Job]:
+    try:
+        index = get_index(force_refresh=force_refresh)
+        all_jobs = []
+        for batch_id in index["batches"]:
+            path = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
+            if not os.path.exists(path):
+                continue
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    job_dicts = json.load(f)
+                    for job_dict in job_dicts:
+                        job = Job(
+                            title=job_dict["title"],
+                            company=job_dict["company"],
+                            description=job_dict["description"],
+                            location=job_dict["location"],
+                            is_remote=job_dict.get("is_remote", False),
+                            posted_date=job_dict.get("posted_date"),
+                            url=job_dict.get("url", ""),
+                            skills=job_dict.get("skills", []),
+                            salary_range=job_dict.get("salary_range")
+                        )
+                        all_jobs.append(job)
+            except Exception as e:
+                logger.error(f"Error loading batch {batch_id}: {str(e)}")
+                continue
+        return all_jobs
+    except Exception as e:
+        logger.error(f"Error retrieving all jobs: {str(e)}")
+        return []
 # Normalize text for embedding: Lowercase, Remove non-alphanumerics, Collapse whitespace
 def clean_text(text: str) -> str:
     text = text.lower()
@@ -221,7 +253,7 @@ def match_jobs(data: dict) -> tuple[dict, int]:
             resume_metadata = resume_storage.get_resume(resume_id)
             if not resume_metadata:
                 return {"success": False, "error": f"Resume with ID {resume_id} not found"}, 404
-            resume_text = resume_storage.get_resume_content(resume_id) or ''
+            resume_text = get_resume_content(resume_id) or ''
             if resume_metadata.get('embedding_narrative') and resume_metadata.get('embedding_skills'):
                 resume_embedding_narrative = np.array(resume_metadata['embedding_narrative'])
                 resume_embedding_skills = np.array(resume_metadata['embedding_skills'])
@@ -267,3 +299,23 @@ def match_jobs(data: dict) -> tuple[dict, int]:
     except Exception as e:
         logger.error(f"Unexpected error in match_jobs: {str(e)}")
         return {"success": False, "error": f"Unexpected error: {str(e)}"}, 500
+# Returns {job.url: match_percentage} mapping for a given resume and job list
+def get_match_percentages(resume_id: str, jobs: List[Job]) -> Dict[str, int]:
+    try:
+        resume_text = get_resume_content(resume_id)
+        if not resume_text:
+            logger.warning(f"No resume content found for ID {resume_id}")
+            return {}
+        resume_embeddings = get_resume_embeddings(resume_id)
+        if not resume_embeddings:
+            logger.warning(f"No embeddings found for resume ID {resume_id}, generating...")
+            embeddings = generate_dual_embeddings(resume_text)
+            resume_embeddings = {
+                "narrative": embeddings["narrative"],
+                "skills": embeddings["skills"]
+            }
+        matches = match_jobs_to_resume(resume_embeddings, jobs)
+        return {m.job.url: int(m.similarity_score * 100) for m in matches}
+    except Exception as e:
+        logger.error(f"Error computing match percentages: {str(e)}")
+        return {}
