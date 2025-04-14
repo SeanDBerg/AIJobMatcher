@@ -5,6 +5,9 @@ import json
 from datetime import datetime
 from typing import List, Dict
 from flask import Blueprint, request, jsonify, redirect, url_for, session
+from logic.b_jobs.jobUtils import save_index, get_index, ADZUNA_DATA_DIR
+# Import this after jobUtils to avoid circular dependencies
+from logic.b_jobs.jobMatch import get_all_jobs
 job_sync_bp = Blueprint('job_sync', __name__)
 logger = logging.getLogger(__name__)
 # === Paths and Constants ===
@@ -18,18 +21,134 @@ def sync_jobs():
     try:
         if not request.is_json:
             return jsonify({"success": False, "error": "Request must be JSON"}), 400
+        
+        # Get request parameters
         data = request.get_json()
         keywords = data.get('keywords', '')
         keywords_list = data.get('keywords_list', [])
         location = data.get('location', '')
         country = data.get('country', 'gb')
-        total_jobs_found = 0
+        max_pages = int(data.get('max_pages', 1))
+        remote_only = data.get('remote_only', False)
+        
+        # Make sure Adzuna credentials are available
+        if not check_api_status():
+            return jsonify({"success": False, "error": "Adzuna API credentials not configured"}), 400
+            
+        app_id, api_key = get_api_credentials()
+        
+        # Prepare search parameters
+        search_terms = keywords_list if keywords_list else [keywords] if keywords else []
+        if not search_terms:
+            return jsonify({"success": False, "error": "No search keywords provided"}), 400
+            
+        # Load existing index
+        import uuid
+        import requests
+        from datetime import datetime
+        
+        try:
+            index = get_index(force_refresh=True)
+        except Exception as e:
+            logger.error(f"Error loading index: {str(e)}")
+            index = {"batches": {}, "job_count": 0, "last_sync": None, "last_batch": None}
+        
+        # Create a new batch ID
+        batch_id = str(uuid.uuid4())
         all_jobs = []
+        total_jobs_found = 0
+        
+        # Process each keyword
+        for keyword in search_terms:
+            if not keyword.strip():
+                continue
+                
+            # Build API request
+            params = {
+                "app_id": app_id,
+                "app_key": api_key,
+                "results_per_page": 20,
+                "what": keyword,
+                "content-type": "application/json"
+            }
+            
+            if location:
+                params["where"] = location
+                
+            # Add remote filter if requested
+            if remote_only:
+                params["remote"] = 1
+            
+            # Request jobs for this keyword
+            for page in range(1, max_pages + 1):
+                params["page"] = page
+                logger.info(f"Requesting page {page} for keyword '{keyword}'")
+                
+                try:
+                    url = f"{ADZUNA_API_BASE_URL}/jobs/{country}/search/{page}"
+                    response = requests.get(url, params=params)
+                    
+                    if response.status_code != 200:
+                        logger.error(f"API error: {response.status_code} - {response.text}")
+                        continue
+                        
+                    data = response.json()
+                    jobs = data.get("results", [])
+                    
+                    # Process each job
+                    for job in jobs:
+                        # Extract job details
+                        job_data = {
+                            "title": job.get("title", "No Title"),
+                            "company": job.get("company", {}).get("display_name", "Unknown Company"),
+                            "description": job.get("description", "No description available"),
+                            "location": job.get("location", {}).get("display_name", "Unknown Location"),
+                            "is_remote": "remote" in job.get("title", "").lower() or "remote" in job.get("description", "").lower(),
+                            "posted_date": job.get("created", datetime.now().isoformat()),
+                            "url": job.get("redirect_url", ""),
+                            "salary_range": "",
+                            "skills": []
+                        }
+                        
+                        # Process salary info if available
+                        if "salary_min" in job and "salary_max" in job:
+                            job_data["salary_range"] = f"{job.get('salary_min', 0):,.0f} - {job.get('salary_max', 0):,.0f} {job.get('salary_currency', 'GBP')}/year"
+                        
+                        all_jobs.append(job_data)
+                        total_jobs_found += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error processing page {page} for {keyword}: {str(e)}")
+                    continue
+        
+        # Save the jobs batch
+        if all_jobs:
+            if save_job_batch(all_jobs, batch_id):
+                # Update the index
+                timestamp = datetime.now().isoformat()
+                index["batches"][batch_id] = {
+                    "timestamp": timestamp,
+                    "job_count": len(all_jobs),
+                    "keywords": ", ".join(search_terms),
+                    "location": location
+                }
+                index["job_count"] = sum(batch["job_count"] for batch in index["batches"].values())
+                index["last_sync"] = timestamp
+                index["last_batch"] = batch_id
+                
+                # Save updated index
+                save_index(index)
+                
+                logger.info(f"Successfully synced {total_jobs_found} jobs in batch {batch_id}")
+            else:
+                logger.error(f"Failed to save batch {batch_id}")
+        
         return jsonify({
             "success": True,
             "message": f"Retrieved {total_jobs_found} jobs",
             "jobs_count": total_jobs_found,
-            "keywords_searched": keywords_list if keywords_list else [keywords] if keywords else []
+            "keywords_searched": search_terms,
+            "batch_id": batch_id if all_jobs else None
         })
     except Exception as e:
         logger.error(f"Unexpected sync error: {str(e)}")
@@ -96,19 +215,6 @@ def get_adzuna_jobs_endpoint():
         logger.error(f"Error getting jobs: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 # === Internal Utilities ===
-# Save job index to disk and update cache
-def save_index(index: Dict) -> bool:
-    global _index_cache, _index_cache_timestamp
-    try:
-        with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
-            json.dump(index, f, indent=2)
-        _index_cache = index
-        _index_cache_timestamp = datetime.now()
-        logger.debug("Saved job index to disk")
-        return True
-    except Exception as e:
-        logger.error(f"Error saving job index: {str(e)}")
-        return False
 # """Save a batch of job listings to disk."""
 def save_job_batch(jobs: List[Dict], batch_id: str) -> bool:
     batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
@@ -120,15 +226,7 @@ def save_job_batch(jobs: List[Dict], batch_id: str) -> bool:
     except Exception as e:
         logger.error(f"Error saving batch {batch_id}: {str(e)}")
         return False
-# """Create an empty job index file"""
-def _create_empty_index(self) -> None:
-    empty_index = {"batches": {}, "job_count": 0, "last_sync": None, "last_batch": None}
-    try:
-        with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
-            json.dump(empty_index, f, indent=2)
-        logger.debug("Created new empty index file")
-    except Exception as e:
-        logger.error(f"Error creating index file: {str(e)}")
+
 # Retrieve Adzuna API credentials from environment variables
 def get_api_credentials() -> tuple:
     app_id = os.environ.get('ADZUNA_APP_ID')

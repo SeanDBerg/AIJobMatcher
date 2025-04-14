@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, Any
 from flask import Blueprint, request, jsonify
-from logic.b_jobs.jobSync import save_index
+from logic.b_jobs.jobUtils import save_index, get_index, ADZUNA_DATA_DIR
 job_heading_bp = Blueprint('job_heading', __name__)
 logger = logging.getLogger(__name__)
 # Local copy of the Adzuna data directory path used for batch file storage
