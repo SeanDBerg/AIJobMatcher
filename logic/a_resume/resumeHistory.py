@@ -13,30 +13,6 @@ resume_history_bp = Blueprint("resume_history", __name__)
 # === Storage Paths ===
 RESUME_DIR = os.path.join(os.path.dirname(__file__), '../../static/resumes')
 RESUME_INDEX_FILE = os.path.join(RESUME_DIR, 'index.json')
-ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
-ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
-# === Adzuna Job Storage ===
-# """Save the resume index to file"""
-def save_index(index: Dict) -> bool:
-    try:
-        with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
-            json.dump(index, f, indent=2)
-        logger.debug("Saved index to disk")
-        return True
-    except Exception as e:
-        logger.error(f"Error saving index: {str(e)}")
-        return False
-# """Save a batch of jobs to disk."""
-def save_job_batch(jobs: List[Dict], batch_id: str) -> bool:
-    batch_file = os.path.join(ADZUNA_DATA_DIR, f"batch_{batch_id}.json")
-    try:
-        with open(batch_file, 'w', encoding='utf-8') as f:
-            json.dump(jobs, f, indent=2)
-        logger.debug(f"Saved batch {batch_id} with {len(jobs)} jobs")
-        return True
-    except Exception as e:
-        logger.error(f"Error saving batch {batch_id}: {str(e)}")
-        return False
 # === Resume Access and Deletion ===
 # """Load the resume index from file"""
 def _load_index() -> Dict:

@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify, session, send_from_d
 from logic.a_resume.uploadResume import upload_resume_bp
 from logic.a_resume.resumeHistory import resume_history_bp
 from logic.b_jobs.jobHeading import job_heading_bp
-from logic.b_jobs.jobLayout import generate_table_context
+from logic.b_jobs.jobLayout import generate_table_context, layout_bp
 from logic.b_jobs.jobSync import job_sync_bp
 from logic.b_jobs.jobMatch import match_jobs
 # Set up logging
@@ -20,6 +20,7 @@ app.register_blueprint(upload_resume_bp)
 app.register_blueprint(resume_history_bp)
 app.register_blueprint(job_heading_bp)
 app.register_blueprint(job_sync_bp)
+app.register_blueprint(layout_bp)
 # Route for the main page
 @app.route('/')
 def index():

@@ -1,12 +1,10 @@
 # logic/b_jobs/jobSync.py - Consolidated Adzuna sync logic
 import os
 import logging
-import uuid
 import json
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Dict
 from flask import Blueprint, request, jsonify, redirect, url_for, session
-from logic.b_jobs.jobMatch import Job
 from logic.b_jobs.jobLayout import get_recent_jobs
 job_sync_bp = Blueprint('job_sync', __name__)
 logger = logging.getLogger(__name__)
@@ -29,10 +27,6 @@ def sync_jobs():
         max_days_old = data.get('max_days_old', 30)
         total_jobs_found = 0
         all_jobs = []
-        if keywords_list and isinstance(keywords_list, list):
-            for keyword in keywords_list:
-                if not keyword:
-                    continue
         return jsonify({
             "success": True,
             "message": f"Retrieved {total_jobs_found} jobs",
@@ -105,17 +99,17 @@ def get_adzuna_jobs_endpoint():
         return jsonify({"success": False, "error": str(e)}), 500
 # === Internal Utilities ===
 # Save job index to disk and update cache
-def save_index(self, index: Dict) -> bool:
+def save_index(index: Dict) -> bool:
+    global _index_cache, _index_cache_timestamp
     try:
         with open(ADZUNA_INDEX_FILE, 'w', encoding='utf-8') as f:
             json.dump(index, f, indent=2)
-        # Update cache
-        self._index_cache = index
-        self._index_cache_timestamp = datetime.now()
-        logger.debug("Saved index to disk")
+        _index_cache = index
+        _index_cache_timestamp = datetime.now()
+        logger.debug("Saved job index to disk")
         return True
     except Exception as e:
-        logger.error(f"Error saving index: {str(e)}")
+        logger.error(f"Error saving job index: {str(e)}")
         return False
 # """Save a batch of job listings to disk."""
 def save_job_batch(jobs: List[Dict], batch_id: str) -> bool:
@@ -151,4 +145,3 @@ def check_api_status() -> bool:
         return True
     except Exception:
         return False
-
