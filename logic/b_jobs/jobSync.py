@@ -67,8 +67,7 @@ def sync_jobs():
                 "app_id": app_id,
                 "app_key": api_key,
                 "results_per_page": 20,
-                "what": keyword,
-                "content-type": "application/json"
+                "what": keyword
             }
             
             if location:
