@@ -1,202 +1,212 @@
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Job Matcher Dashboard</title>
-  <!-- Bootstrap CSS (Replit-themed) -->
-  <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- DataTables -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Job Matcher</title>
+    <!-- Bootstrap CSS (Replit-themed) -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-  <div class="container-fluid mt-3">
-    <h2 class="mb-3"><i class="fas fa-search me-2"></i>AI Job Matcher</h1>
-    <!-- Alert Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-briefcase"></i> AI Job Matcher
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#navbarNav" aria-controls="navbarNav" 
+                    aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('index') }}">
+                            <i class="fas fa-home me-1"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('resume_manager') }}">
+                            <i class="fas fa-file-alt me-1"></i> Resume Manager
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('job_tracker') }}">
+                            <i class="fas fa-search me-1"></i> Job Tracker
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('settings') }}">
+                            <i class="fas fa-cog me-1"></i> Settings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-lg-12 text-center mb-5">
+                <h1 class="display-4 fw-bold">AI-Powered Job Matching</h1>
+                <p class="lead">Find the perfect job opportunities that match your skills and experience</p>
+            </div>
+        </div>
+        
+        <!-- Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Feature Cards -->
+        <div class="row">
+            <!-- Resume Manager Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-gradient text-white fs-2 mb-3 p-3 rounded-circle">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <h2 class="card-title h4">Resume Manager</h2>
+                        <p class="card-text">Upload and analyze your resume to find matching job opportunities based on your skills and experience.</p>
+                        <a href="{{ url_for('resume_manager') }}" class="btn btn-primary mt-3">
+                            <i class="fas fa-upload me-1"></i> Upload Resume
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Job Tracker Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-gradient text-white fs-2 mb-3 p-3 rounded-circle">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h2 class="card-title h4">Job Tracker</h2>
+                        <p class="card-text">Monitor job listings from multiple sources. View, filter, and search through available positions.</p>
+                        <a href="{{ url_for('job_tracker') }}" class="btn btn-primary mt-3">
+                            <i class="fas fa-list me-1"></i> Browse Jobs
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-gradient text-white fs-2 mb-3 p-3 rounded-circle">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <h2 class="card-title h4">Settings</h2>
+                        <p class="card-text">Configure job search preferences, data sources, and automated job synchronization schedules.</p>
+                        <a href="{{ url_for('settings') }}" class="btn btn-primary mt-3">
+                            <i class="fas fa-sliders-h me-1"></i> Configure
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- How It Works -->
+        <div class="row mt-5">
+            <div class="col-lg-12">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h2 class="h4 mb-0">How It Works</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="feature-icon">
+                                    <i class="fas fa-file-upload fa-3x mb-3 text-primary"></i>
+                                </div>
+                                <h5>1. Upload Resume</h5>
+                                <p>Upload your resume in PDF, DOCX, or TXT format</p>
+                            </div>
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="feature-icon">
+                                    <i class="fas fa-brain fa-3x mb-3 text-primary"></i>
+                                </div>
+                                <h5>2. AI Analysis</h5>
+                                <p>Our AI analyzes your resume and compares it to job listings</p>
+                            </div>
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="feature-icon">
+                                    <i class="fas fa-list-check fa-3x mb-3 text-primary"></i>
+                                </div>
+                                <h5>3. Get Matches</h5>
+                                <p>View jobs ranked by how well they match your skills</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Job Sources -->
+        <div class="row mt-4">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h3 class="h5 mb-0">Integrated Job Sources</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="d-inline-flex align-items-center justify-content-center bg-success bg-gradient text-white fs-4 me-3 p-2 rounded">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="h6 mb-0">Adzuna API</h4>
+                                        <p class="small text-muted mb-0">Active and configured</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="d-inline-flex align-items-center justify-content-center bg-secondary bg-gradient text-white fs-4 me-3 p-2 rounded">
+                                        <i class="fas fa-minus"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="h6 mb-0">Other Job Sources</h4>
+                                        <p class="small text-muted mb-0">Configure in settings</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     {% include 'resume/resumeSection.html' %}
-    {% include 'jobs/jobSection.html' %}
     {% include 'jobs/tableSection.html' %}        
-    {% include 'sync/syncSection.html' %}        
+    {% include 'sync/syncSection.html' %}   
     <footer class="bg-dark text-center text-white p-3 mt-5">
-      <div class="container">
-        <p class="mb-0">© 2025 AI Job Matcher | Powered by Adzuna API</p>
-      </div>
+        <div class="container">
+            <p class="mb-0">© 2025 AI Job Matcher | Powered by Adzuna API</p>
+        </div>
     </footer>
+
     <!-- Bootstrap JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- DataTables -->
-    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
-    <script src="{{ url_for('static', filename='js/jobSection.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/syncSection.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/resumeSection.js') }}"></script>
-    <script>
-      // Global variables to store current tables and jobs data
-      let jobTables = {};
-      // Initialize everything when document is ready
-      $(document).ready(function() {
-        // Add event handler for batch deletion
-        $(document).on('click', '.delete-batch', function() {
-          const batchId = $(this).data('batch-id');
-          if (confirm('Are you sure you want to delete this batch? This action cannot be undone.')) {
-            deleteBatch(batchId);
-          }
-        });
-        // Initialize saved search
-        loadSavedSearch();
-        // Initialize tables
-        initializeJobTables();
-        // === Inserted from main.js ===
-        $(document).on('click', '.toggle-job-details', function() {
-          const jobId = $(this).data('job-id');
-          const detailsRow = $('#job-details-' + jobId);
-          detailsRow.toggleClass('d-none');
-        });
-      });
-      // Initialize job tables with proper configuration
-      // Function to delete a batch
-      function deleteBatch(batchId) {
-        $('#syncStatus').show().removeClass('alert-success alert-danger').addClass('alert-info');
-        $('#syncStatusText').text('Deleting batch...');
-        
-        $.ajax({
-          url: `/api/adzuna/batch/${batchId}`,
-          method: 'DELETE',
-          success: function(response) {
-            if (response.success) {
-              $('#syncStatus').removeClass('alert-info').addClass('alert-success');
-              $('#syncStatusText').html(`<i class="fas fa-check-circle"></i> Batch deleted successfully.`);
-              // Remove the row from the table
-              $(`button.delete-batch[data-batch-id="${batchId}"]`).closest('tr').remove();
-              // Reload the page after a short delay to refresh the data
-              setTimeout(function() {
-                location.reload();
-              }, 2000);
-            } else {
-              $('#syncStatus').removeClass('alert-info').addClass('alert-danger');
-              $('#syncStatusText').html(`<i class="fas fa-exclamation-circle"></i> Error: ${response.error || 'Unknown error'}`);
-            }
-          },
-          error: function(xhr, status, error) {
-            $('#syncStatus').removeClass('alert-info').addClass('alert-danger');
-            let errorMsg = 'Unknown error';
-            
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-              errorMsg = xhr.responseJSON.error;
-            } else if (error) {
-              errorMsg = error;
-            }
-            
-            $('#syncStatusText').html(`<i class="fas fa-times-circle"></i> Error: ${errorMsg}`);
-          }
-        });
-      }
-      function initializeJobTables() {
-        try {
-          // Wait for the DOM to be fully ready
-          $(document).ready(function() {
-            // Super basic configuration - minimum features to ensure it works
-            const tableConfig = {
-              pageLength: 10,
-              processing: true,
-              retrieve: true // Allow the table to be retrieved again
-            };
-            // Special config for job tables (with match percentage)
-            const jobTableConfig = {
-              ...tableConfig,
-              order: [[6, 'desc']], // Sort by match percentage column by default
-              columnDefs: [
-                {
-                  targets: 6, // Match percentage column
-                  render: function(data, type, row) {
-                    if (type === 'sort' || type === 'type') {
-                      // Extract numeric part for sorting
-                      return parseFloat(data) || 0;
-                    }
-                    return data;
-                  }
-                }
-              ]
-            };
-            // Special config for batch summary table
-            const batchTableConfig = {
-              ...tableConfig,
-              order: [[1, 'desc']], // Sort by timestamp by default
-              columnDefs: []
-            };
-            // Initialize all tables with a delay to ensure DOM is ready
-            setTimeout(function() {
-              $('.job-table').each(function() {
-                // Skip if table has no rows besides the empty message
-                if ($(this).find('tbody tr').length === 0 || 
-                  ($(this).find('tbody tr').length === 1 && 
-                   $(this).find('tbody tr:first td').length === 1) ||
-                  ($(this).find('tbody tr:first td:first').text().trim() === 'No jobs found' ||
-                   $(this).find('tbody tr:first td:first').text().trim() === 'No recent jobs found' ||
-                   $(this).find('tbody tr:first td:first').text().trim() === 'No remote jobs found' ||
-                   $(this).find('tbody tr:first td:first').text().trim() === 'No data available')) {
-                  console.log("Skipping empty table:", $(this).attr('id'));
-                  return;
-                }
-                try {
-                  const tableId = '#' + $(this).attr('id');
-                  // Destroy existing table if it exists
-                  if ($.fn.DataTable.isDataTable(tableId)) {
-                    $(tableId).DataTable().destroy();
-                  }
-                  // Check if table has a header row
-                  if ($(tableId + ' thead tr th').length === 0) {
-                    console.log("Table has no header row:", tableId);
-                    return;
-                  }
-                  // Create new table with safer configuration and error handling
-                  try {
-                    let config = tableConfig;
-                    // Use appropriate config based on table type
-                    if (tableId === '#batchSummaryTable') {
-                      config = batchTableConfig;
-                    } else if (['#jobsTable', '#recentJobsTable', '#remoteJobsTable'].includes(tableId)) {
-                      config = jobTableConfig;
-                    }
-                    const table = $(tableId).DataTable({
-                      ...config,
-                      // Handle errors gracefully
-                      language: {
-                        emptyTable: tableId === '#batchSummaryTable' ? "No batches available" : "No job data available"
-                      }
-                    });
-                    jobTables[tableId] = table;
-                    console.log("Table initialized:", tableId);
-                  } catch (dtError) {
-                    console.error("DataTables initialization error:", dtError);
-                  }
-                } catch (tableError) {
-                  console.error("Error initializing table:", $(this).attr('id'), tableError);
-                }
-              });
-            });
-            console.log("Tables initialization complete");
-          }, 500);
-        } catch (error) {
-          console.error("Error in table initialization function:", error);
-        }
-      }
-    </script>
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

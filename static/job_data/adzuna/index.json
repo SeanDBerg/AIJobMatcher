@@ -1,6 +1,36 @@
 {
-  "batches": {},
-  "job_count": 0,
-  "last_sync": null,
-  "last_batch": null
+  "last_sync": "2025-04-15T03:22:54.780053",
+  "total_jobs": 0,
+  "jobs": [],
+  "batches": {
+    "f6d88272-40a7-457b-ba05-5db3ef79ab80": {
+      "id": "f6d88272-40a7-457b-ba05-5db3ef79ab80",
+      "timestamp": "2025-04-10T05:27:42.869111",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "f29803c8-b3c2-41a9-bb21-e4b1ae66a22c": {
+      "id": "f29803c8-b3c2-41a9-bb21-e4b1ae66a22c",
+      "timestamp": "2025-04-10T21:33:20.152394",
+      "keywords": "",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 50,
+      "max_days_old": 1
+    },
+    "aafd584d-d535-4e50-b09f-31028fb44720": {
+      "id": "aafd584d-d535-4e50-b09f-31028fb44720",
+      "timestamp": "2025-04-15T03:22:54.780021",
+      "keywords": "python",
+      "location": "Northampton, PA",
+      "country": "us",
+      "job_count": 2,
+      "max_days_old": 1
+    }
+  },
+  "job_count": 1302,
+  "last_batch": "aafd584d-d535-4e50-b09f-31028fb44720"
 }

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - AI Job Matcher</title>
+    <!-- Bootstrap CSS (Replit-themed) -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-briefcase"></i> AI Job Matcher
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#navbarNav" aria-controls="navbarNav" 
+                    aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-home me-1"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('resume_manager') }}">
+                            <i class="fas fa-file-alt me-1"></i> Resume Manager
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('job_tracker') }}">
+                            <i class="fas fa-search me-1"></i> Job Tracker
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('settings') }}">
+                            <i class="fas fa-cog me-1"></i> Settings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1 class="mb-4"><i class="fas fa-cog me-2"></i>Settings</h1>
+        
+        <!-- Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Job Source Settings</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('save_settings') }}">
+                            <h4 class="mb-3">Data Sources</h4>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="adzuna_enabled" name="job_sources" value="adzuna" checked>
+                                        <label class="form-check-label" for="adzuna_enabled">
+                                            <strong>Adzuna API</strong>
+                                        </label>
+                                    </div>
+                                    <p class="text-muted small ms-4">
+                                        <i class="fas fa-check-circle text-success"></i> API credentials configured
+                                    </p>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="github_jobs_enabled" name="job_sources" value="github_jobs">
+                                        <label class="form-check-label" for="github_jobs_enabled">
+                                            <strong>GitHub Jobs</strong>
+                                        </label>
+                                    </div>
+                                    <p class="text-muted small ms-4">
+                                        <i class="fas fa-info-circle text-info"></i> No API key required
+                                    </p>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="remoteok_enabled" name="job_sources" value="remoteok">
+                                        <label class="form-check-label" for="remoteok_enabled">
+                                            <strong>RemoteOK</strong>
+                                        </label>
+                                    </div>
+                                    <p class="text-muted small ms-4">
+                                        <i class="fas fa-info-circle text-info"></i> No API key required
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <h4 class="mb-3">Adzuna Search Parameters</h4>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="location" class="form-label">Location</label>
+                                        <input type="text" class="form-control" id="location" name="location" placeholder="e.g., London, New York" value="{{ config.location if config else 'London' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="country" class="form-label">Country Code</label>
+                                        <select class="form-select" id="country" name="country">
+                                            <option value="gb" {% if not config or config.country == 'gb' %}selected{% endif %}>United Kingdom (gb)</option>
+                                            <option value="us" {% if config and config.country == 'us' %}selected{% endif %}>United States (us)</option>
+                                            <option value="ca" {% if config and config.country == 'ca' %}selected{% endif %}>Canada (ca)</option>
+                                            <option value="de" {% if config and config.country == 'de' %}selected{% endif %}>Germany (de)</option>
+                                            <option value="fr" {% if config and config.country == 'fr' %}selected{% endif %}>France (fr)</option>
+                                            <option value="au" {% if config and config.country == 'au' %}selected{% endif %}>Australia (au)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="job_title" class="form-label">Job Title Keywords</label>
+                                        <input type="text" class="form-control" id="job_title" name="keywords" placeholder="e.g., Python Developer" value="{{ config.keywords if config else '' }}">
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="max_days_old" class="form-label">Max Days Old</label>
+                                        <select class="form-select" id="max_days_old" name="max_days_old">
+                                            <option value="1" {% if config and config.max_days_old == 1 %}selected{% endif %}>1 day</option>
+                                            <option value="3" {% if config and config.max_days_old == 3 %}selected{% endif %}>3 days</option>
+                                            <option value="7" {% if config and config.max_days_old == 7 %}selected{% endif %}>1 week</option>
+                                            <option value="14" {% if config and config.max_days_old == 14 %}selected{% endif %}>2 weeks</option>
+                                            <option value="30" {% if not config or config.max_days_old == 30 %}selected{% endif %}>30 days</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="remote_only" name="remote_only" value="1" {% if config and config.remote_only %}checked{% endif %}>
+                                        <label class="form-check-label" for="remote_only">
+                                            Remote Jobs Only
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row" id="search_terms_container">
+                                <div class="col-12 mb-3">
+                                    <h5>Search Terms</h5>
+                                    <p class="text-muted small">Add specific search terms to refine job results.</p>
+                                    
+                                    <div class="d-flex mb-2">
+                                        <input type="text" class="form-control me-2" id="new_search_term" placeholder="Add a search term">
+                                        <button type="button" class="btn btn-secondary" onclick="addSearchTerm()">
+                                            <i class="fas fa-plus"></i> Add
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="search_terms_list" class="mb-3">
+                                        <!-- Search terms will be displayed here -->
+                                        {% if config and config.search_terms %}
+                                            {% for term in config.search_terms %}
+                                                <div class="badge bg-secondary p-2 me-2 mb-2">
+                                                    {{ term }}
+                                                    <input type="hidden" name="search_terms" value="{{ term }}">
+                                                    <button type="button" class="btn-close btn-close-white ms-1" onclick="removeSearchTerm(this)" aria-label="Remove"></button>
+                                                </div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h4 class="mb-3">API Sync Settings</h4>
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="call_delay" class="form-label">API Call Delay (seconds)</label>
+                                        <input type="number" class="form-control" id="call_delay" name="call_delay" min="0" max="60" value="{{ scraper_config.call_delay|default(3) }}">
+                                        <div class="form-text">Delay between API calls. Higher value reduces server load but slows sync.</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="rate_limit_calls" class="form-label">Max Calls Per Period</label>
+                                        <input type="number" class="form-control" id="rate_limit_calls" name="rate_limit_calls" min="1" max="100" value="{{ scraper_config.rate_limit_calls|default(20) }}">
+                                        <div class="form-text">Maximum number of API calls per period (default: 20 per minute)</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="rate_limit_period" class="form-label">Rate Limit Period (seconds)</label>
+                                        <input type="number" class="form-control" id="rate_limit_period" name="rate_limit_period" min="30" max="600" value="{{ scraper_config.rate_limit_period|default(60) }}">
+                                        <div class="form-text">Period for rate limiting in seconds (default: 60 seconds)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h4 class="mb-3">Job Sync Schedule</h4>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="scheduler_enabled" name="scheduler_enabled" value="1" {% if config and config.scheduler_enabled %}checked{% endif %}>
+                                        <label class="form-check-label" for="scheduler_enabled">
+                                            Enable Daily Job Sync
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="sync_time" class="form-label">Sync Time (24-hour format)</label>
+                                        <input type="time" class="form-control" id="sync_time" name="daily_sync_time" value="{{ config.daily_sync_time if config else '02:00' }}">
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="cleanup_old_jobs" name="cleanup_old_jobs" value="1" {% if not config or config.cleanup_old_jobs %}checked{% endif %}>
+                                        <label class="form-check-label" for="cleanup_old_jobs">
+                                            Automatically Clean Up Old Jobs
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="cleanup_days" class="form-label">Delete Jobs Older Than</label>
+                                        <select class="form-select" id="cleanup_days" name="cleanup_days">
+                                            <option value="30" {% if config and config.cleanup_days == 30 %}selected{% endif %}>30 days</option>
+                                            <option value="60" {% if config and config.cleanup_days == 60 %}selected{% endif %}>60 days</option>
+                                            <option value="90" {% if not config or config.cleanup_days == 90 %}selected{% endif %}>90 days</option>
+                                            <option value="180" {% if config and config.cleanup_days == 180 %}selected{% endif %}>180 days</option>
+                                            <option value="365" {% if config and config.cleanup_days == 365 %}selected{% endif %}>1 year</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-save"></i> Save Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">API Status</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="flex-shrink-0">
+                                <span class="badge bg-success p-2">
+                                    <i class="fas fa-check-circle fa-lg"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-0">Adzuna API</h5>
+                                <p class="text-muted mb-0">Connected and configured</p>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Adzuna API Usage:</strong> Limited to 20 calls per minute
+                        </div>
+                        
+                        <p class="text-muted small">
+                            Job data is retrieved from the Adzuna API and stored locally for faster access.
+                            The scheduler will automatically refresh job listings based on your settings.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">System Info</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-2">Last Sync: {{ last_sync|default('Never') }}</p>
+                        <p class="text-muted mb-2">Total Jobs: {{ total_jobs|default('0') }}</p>
+                        <p class="text-muted mb-2">Next Scheduled Sync: {{ next_sync|default('Not scheduled') }}</p>
+                        
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="syncNowBtn">
+                                <i class="fas fa-sync me-1"></i> Sync Jobs Now
+                            </button>
+                            
+                            <!-- Hidden form to submit when Sync Now is clicked -->
+                            <form id="syncNowForm" action="{{ url_for('save_settings') }}" method="post" style="display:none;">
+                                <input type="hidden" name="sync_now" value="1">
+                                <input type="hidden" name="keywords" value="{{ config.keywords }}">
+                                <input type="hidden" name="location" value="{{ config.location }}">
+                                <input type="hidden" name="country" value="{{ config.country }}">
+                                <input type="hidden" name="max_days_old" value="{{ config.max_days_old|default(30) }}">
+                                <input type="hidden" name="remote_only" value="{{ '1' if config.remote_only else '0' }}">
+                                <input type="hidden" name="scheduler_enabled" value="{{ '1' if config.enabled else '0' }}">
+                                <input type="hidden" name="daily_sync_time" value="{{ config.daily_sync_time }}">
+                                <input type="hidden" name="cleanup_old_jobs" value="{{ '1' if config.cleanup_old_jobs else '0' }}">
+                                <input type="hidden" name="cleanup_days" value="{{ config.cleanup_days }}">
+                                {% for term in config.search_terms %}
+                                <input type="hidden" name="search_terms" value="{{ term }}">
+                                {% endfor %}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-center text-white p-3 mt-5">
+        <div class="container">
+            <p class="mb-0">© 2025 AI Job Matcher | Powered by Adzuna API</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Submit the sync now form when the button is clicked
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('syncNowBtn').addEventListener('click', function() {
+                document.getElementById('syncNowForm').submit();
+            });
+        });
+        
+        // Add a search term
+        function addSearchTerm() {
+            const inputElem = document.getElementById('new_search_term');
+            const term = inputElem.value.trim();
+            
+            if (term) {
+                const termsList = document.getElementById('search_terms_list');
+                
+                // Create badge with the term
+                const badge = document.createElement('div');
+                badge.className = 'badge bg-secondary p-2 me-2 mb-2';
+                badge.innerHTML = `
+                    ${term}
+                    <input type="hidden" name="search_terms" value="${term}">
+                    <button type="button" class="btn-close btn-close-white ms-1" onclick="removeSearchTerm(this)" aria-label="Remove"></button>
+                `;
+                
+                termsList.appendChild(badge);
+                inputElem.value = '';
+            }
+        }
+        
+        // Remove a search term
+        function removeSearchTerm(button) {
+            const badge = button.parentElement;
+            badge.remove();
+        }
+        
+        // Event listener for adding search terms with Enter key
+        document.getElementById('new_search_term').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addSearchTerm();
+            }
+        });
+    </script>
+</body>
+</html>

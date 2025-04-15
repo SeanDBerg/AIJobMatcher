@@ -1,0 +1,125 @@
+import logging
+import os
+from sklearn.feature_extraction.text import HashingVectorizer
+import numpy as np  # Use real numpy here unless you're simulating
+import re
+from scipy.sparse import csr_matrix  # for type hinting (optional)
+
+logger = logging.getLogger(__name__)
+
+# Set up the vectorizer once
+vectorizer = HashingVectorizer(
+    n_features=384,
+    alternate_sign=False,
+    norm='l2',
+    stop_words='english',
+    lowercase=True
+)
+
+def clean_text(text: str) -> str:
+    """
+    Normalize text for embedding:
+    - Lowercase
+    - Remove non-alphanumerics
+    - Collapse whitespace
+    """
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9\s]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+# Default embedding dimension for the all-MiniLM-L6-v2 model
+EMBEDDING_DIM = 384
+# Get the API token from environment variable
+def get_api_token():
+    api_token = os.environ.get("API_TOKEN")
+    if not api_token:
+        logger.warning("API_TOKEN environment variable not found")
+        return None
+    return api_token
+
+
+# Generate embedding vector for the input text using deterministic hashing
+def generate_embedding(text: str) -> np.ndarray:
+    cleaned = clean_text(text)
+    if not cleaned or len(cleaned) < 10:
+        return np.zeros(384)
+
+    try:
+        embedding_sparse: csr_matrix = vectorizer.transform([cleaned])
+        return embedding_sparse.toarray()[0]
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Embedding generation failed: {e}")
+        return np.zeros(384)
+
+def batch_generate_embeddings(texts):
+    """
+    Generate embeddings for a batch of texts
+    
+    Args:
+        texts: List of input texts to embed
+        
+    Returns:
+        List of arrays containing the embedding vectors
+    """
+    logger.debug(f"Generating embeddings for {len(texts)} texts")
+    
+    embeddings = [generate_embedding(text) for text in texts]
+    
+    logger.debug(f"Generated {len(embeddings)} embeddings")
+    
+    return embeddings
+
+def chunk_text(text, max_length=512, overlap=50):
+    """
+    Sentence-aware chunking that splits text into chunks close to max_length.
+    """
+    logger.debug(f"Chunking text of length {len(text)}")
+
+    # Split into sentences using punctuation
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    chunks = []
+    current_chunk = ""
+
+    for sentence in sentences:
+        if len(current_chunk) + len(sentence) + 1 > max_length:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+
+            if overlap > 0 and len(current_chunk) > overlap:
+                overlap_text = current_chunk[-overlap:]
+                current_chunk = overlap_text + " " + sentence
+            else:
+                current_chunk = sentence
+        else:
+            current_chunk += " " + sentence
+
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+
+    logger.debug(f"Chunked text into {len(chunks)} chunks")
+    return chunks
+
+
+def generate_embedding_for_long_text(text, max_length=512, overlap=50):
+    cleaned = clean_text(text)
+
+    if len(cleaned) <= max_length:
+        return generate_embedding(cleaned)
+
+    chunks = chunk_text(cleaned, max_length, overlap)
+    embeddings = []
+
+    for chunk in chunks:
+        if len(chunk.strip()) < 10:
+            continue  # skip meaningless or empty chunks
+        emb = generate_embedding(chunk)
+        if np.linalg.norm(emb) > 0:
+            embeddings.append(emb)
+
+    if not embeddings:
+        logger.warning("No valid chunks found for embedding")
+        return np.zeros(384)
+
+    return np.mean(embeddings, axis=0)

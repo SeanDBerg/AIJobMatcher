@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Job Scraper</title>
+    <!-- Bootstrap CSS (Replit-themed) -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-briefcase"></i> AI Job Matcher
+            </a>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}">
+                        <i class="fas fa-home"></i> Home
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3>Job Scraper Admin</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="alert-container"></div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100 mb-4">
+                                    <div class="card-header">
+                                        <h5>Scrape from URL</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="url-scrape-form">
+                                            <div class="mb-3">
+                                                <label for="job-url" class="form-label">Job Posting URL</label>
+                                                <input type="url" class="form-control" id="job-url" required placeholder="https://example.com/job-posting">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="job-title" class="form-label">Job Title</label>
+                                                <input type="text" class="form-control" id="job-title" required placeholder="Software Engineer">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="job-company" class="form-label">Company</label>
+                                                <input type="text" class="form-control" id="job-company" required placeholder="Example Corp">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="job-location" class="form-label">Location</label>
+                                                <input type="text" class="form-control" id="job-location" placeholder="New York, NY">
+                                            </div>
+                                            <div class="mb-3 form-check">
+                                                <input type="checkbox" class="form-check-input" id="job-remote">
+                                                <label class="form-check-label" for="job-remote">Remote Position</label>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="job-salary" class="form-label">Salary Range (Optional)</label>
+                                                <input type="text" class="form-control" id="job-salary" placeholder="$100,000 - $150,000">
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-download"></i> Scrape Job
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <!-- Adzuna API Configuration -->
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5>Adzuna API Configuration</h5>
+                                        <span class="badge bg-info">Premium Source</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Configure your Adzuna API credentials to enable this data source.</p>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> Adzuna offers access to millions of job listings. You'll need to register for an API key at <a href="https://developer.adzuna.com/" target="_blank" class="text-info">developer.adzuna.com</a>
+                                        </div>
+                                        
+                                        <p><strong>API Credentials</strong></p>
+                                        <p>These credentials are stored in environment variables and not in the code.</p>
+                                        
+                                        <div class="mb-3">
+                                            <label for="adzuna-app-id" class="form-label">App ID</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="adzuna-app-id" placeholder="Your Adzuna App ID">
+                                                <button class="btn btn-outline-secondary" type="button" id="save-app-id">Save</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="adzuna-api-key" class="form-label">API Key</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="adzuna-api-key" placeholder="Your Adzuna API Key">
+                                                <button class="btn btn-outline-secondary" type="button" id="save-api-key">Save</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-sm btn-outline-info" id="check-adzuna-status">
+                                                <i class="fas fa-check-circle"></i> Check API Status
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5>Scrape from All Sources</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>This will scrape job listings from all configured job boards and add them to the database.</p>
+                                        <p><strong>Sources:</strong></p>
+                                        <ul>
+                                            <li>GitHub Jobs</li>
+                                            <li>RemoteOK</li>
+                                            <li>Adzuna (requires API credentials)</li>
+                                        </ul>
+                                        <p>This operation may take some time to complete.</p>
+                                        <button id="scrape-all-btn" class="btn btn-primary">
+                                            <i class="fas fa-sync"></i> Scrape All Sources
+                                        </button>
+                                        <div id="scrape-results" class="mt-3 d-none">
+                                            <h6>Results:</h6>
+                                            <pre id="results-json" class="bg-dark text-light p-3 rounded" style="max-height: 200px; overflow-y: auto;"></pre>
+                                        </div>
+                                        
+                                        <hr class="my-4">
+                                        
+                                        <h5>Adzuna Specific Search</h5>
+                                        <p>Search for jobs from Adzuna with specific criteria.</p>
+                                        <form id="adzuna-search-form">
+                                            <div class="mb-3">
+                                                <label for="adzuna-keywords" class="form-label">Keywords</label>
+                                                <input type="text" class="form-control" id="adzuna-keywords" placeholder="e.g. Python Developer">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="adzuna-location" class="form-label">Location</label>
+                                                <input type="text" class="form-control" id="adzuna-location" placeholder="e.g. London">
+                                            </div>
+                                            <button type="submit" class="btn btn-primary" id="adzuna-search-btn">
+                                                <i class="fas fa-search"></i> Search Adzuna
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- New Adzuna Bulk Scraper Card -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h4>Adzuna Bulk Job Scraper</h4>
+                                        <span class="badge bg-primary">Enhanced Feature</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> The bulk scraper uses rate limiting (20 calls per minute) 
+                                            and pagination (50 results per page) to fetch large numbers of jobs efficiently.
+                                        </div>
+                                        
+                                        <ul class="nav nav-tabs" id="adzunaTabs" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="sync-tab" data-bs-toggle="tab" data-bs-target="#sync-tab-pane" 
+                                                        type="button" role="tab" aria-controls="sync-tab-pane" aria-selected="true">
+                                                    Bulk Sync
+                                                </button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage-tab-pane" 
+                                                        type="button" role="tab" aria-controls="manage-tab-pane" aria-selected="false">
+                                                    Manage Jobs
+                                                </button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="status-tab" data-bs-toggle="tab" data-bs-target="#status-tab-pane" 
+                                                        type="button" role="tab" aria-controls="status-tab-pane" aria-selected="false">
+                                                    Storage Status
+                                                </button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="scheduler-tab" data-bs-toggle="tab" data-bs-target="#scheduler-tab-pane" 
+                                                        type="button" role="tab" aria-controls="scheduler-tab-pane" aria-selected="false">
+                                                    Auto Scheduler
+                                                </button>
+                                            </li>
+                                        </ul>
+                                        
+                                        <div class="tab-content p-3 border border-top-0 rounded-bottom" id="adzunaTabsContent">
+                                            <!-- Bulk Sync Tab -->
+                                            <div class="tab-pane fade show active" id="sync-tab-pane" role="tabpanel" aria-labelledby="sync-tab" tabindex="0">
+                                                <h5>Sync Jobs from Adzuna API</h5>
+                                                <p>Perform a bulk sync of jobs with automatic pagination and rate limiting (20 calls per minute).</p>
+                                                
+                                                <form id="adzuna-bulk-sync-form" class="mb-4">
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <div class="mb-3">
+                                                                <label for="bulk-keywords" class="form-label">Keywords</label>
+                                                                <input type="text" class="form-control" id="bulk-keywords" placeholder="e.g. Python Developer">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="mb-3">
+                                                                <label for="bulk-location" class="form-label">Location</label>
+                                                                <input type="text" class="form-control" id="bulk-location" placeholder="e.g. London">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <div class="mb-3">
+                                                                <label for="bulk-country" class="form-label">Country</label>
+                                                                <select class="form-select" id="bulk-country">
+                                                                    <option value="gb" selected>United Kingdom (GB)</option>
+                                                                    <option value="us">United States (US)</option>
+                                                                    <option value="au">Australia (AU)</option>
+                                                                    <option value="ca">Canada (CA)</option>
+                                                                    <option value="de">Germany (DE)</option>
+                                                                    <option value="fr">France (FR)</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="mb-3">
+                                                                <label for="bulk-max-pages" class="form-label">Max Pages to Fetch</label>
+                                                                <input type="number" class="form-control" id="bulk-max-pages" placeholder="Leave empty for all pages" min="1">
+                                                                <div class="form-text">Each page contains 50 results. Leave empty to fetch all available pages.</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary" id="bulk-sync-btn">
+                                                        <i class="fas fa-sync"></i> Start Bulk Sync
+                                                    </button>
+                                                </form>
+                                                
+                                                <div id="bulk-sync-progress" class="d-none">
+                                                    <div class="alert alert-info">
+                                                        <i class="fas fa-spinner fa-spin"></i> Syncing jobs from Adzuna API. This may take several minutes...
+                                                    </div>
+                                                    <div class="progress mb-3">
+                                                        <div id="bulk-sync-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                            role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div id="bulk-sync-results" class="mt-3 d-none">
+                                                    <h6>Sync Results:</h6>
+                                                    <pre id="bulk-results-json" class="bg-dark text-light p-3 rounded" style="max-height: 200px; overflow-y: auto;"></pre>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Manage Jobs Tab -->
+                                            <div class="tab-pane fade" id="manage-tab-pane" role="tabpanel" aria-labelledby="manage-tab" tabindex="0">
+                                                <h5>Manage Adzuna Jobs</h5>
+                                                <div class="row mb-4">
+                                                    <div class="col-md-6">
+                                                        <div class="card h-100">
+                                                            <div class="card-header">
+                                                                <h6>Import Jobs to Main Storage</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <p>Import jobs from Adzuna storage to the main job storage for matching with resumes.</p>
+                                                                <form id="import-jobs-form">
+                                                                    <div class="mb-3">
+                                                                        <label for="import-days" class="form-label">Import Jobs Posted Within</label>
+                                                                        <div class="input-group">
+                                                                            <input type="number" class="form-control" id="import-days" value="30" min="1">
+                                                                            <span class="input-group-text">days</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button type="submit" class="btn btn-primary" id="import-jobs-btn">
+                                                                        <i class="fas fa-file-import"></i> Import Jobs
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="card h-100">
+                                                            <div class="card-header">
+                                                                <h6>Cleanup Old Jobs</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <p>Remove old job listings from Adzuna storage to save space.</p>
+                                                                <form id="cleanup-jobs-form">
+                                                                    <div class="mb-3">
+                                                                        <label for="cleanup-days" class="form-label">Remove Jobs Older Than</label>
+                                                                        <div class="input-group">
+                                                                            <input type="number" class="form-control" id="cleanup-days" value="90" min="30">
+                                                                            <span class="input-group-text">days</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button type="submit" class="btn btn-danger" id="cleanup-jobs-btn">
+                                                                        <i class="fas fa-trash-alt"></i> Clean Up Old Jobs
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="card mt-3">
+                                                    <div class="card-header">
+                                                        <h6>View Recent Jobs</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <form id="view-jobs-form" class="mb-3">
+                                                            <div class="row">
+                                                                <div class="col-md-8">
+                                                                    <div class="input-group">
+                                                                        <span class="input-group-text">Show jobs from last</span>
+                                                                        <input type="number" class="form-control" id="view-days" value="30" min="1">
+                                                                        <span class="input-group-text">days</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-4">
+                                                                    <button type="submit" class="btn btn-primary w-100" id="view-jobs-btn">
+                                                                        <i class="fas fa-eye"></i> View Jobs
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </form>
+                                                        
+                                                        <div id="job-list-container" class="d-none">
+                                                            <div class="d-flex justify-content-between mb-2">
+                                                                <span id="job-count" class="text-muted"></span>
+                                                                <button id="refresh-jobs-btn" class="btn btn-sm btn-outline-secondary">
+                                                                    <i class="fas fa-sync"></i> Refresh
+                                                                </button>
+                                                            </div>
+                                                            <div class="table-responsive">
+                                                                <table class="table table-striped table-hover">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>Title</th>
+                                                                            <th>Company</th>
+                                                                            <th>Location</th>
+                                                                            <th>Posted Date</th>
+                                                                            <th>Actions</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody id="job-list-body">
+                                                                        <!-- Jobs will be populated here -->
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Storage Status Tab -->
+                                            <div class="tab-pane fade" id="status-tab-pane" role="tabpanel" aria-labelledby="status-tab" tabindex="0">
+                                                <h5>Adzuna Storage Status</h5>
+                                                <p>View the current state of the Adzuna job storage.</p>
+                                                
+                                                <button id="refresh-status-btn" class="btn btn-outline-primary mb-3">
+                                                    <i class="fas fa-sync"></i> Refresh Status
+                                                </button>
+                                                
+                                                <div class="card">
+                                                    <div class="card-body">
+                                                        <div id="storage-status">
+                                                            <div class="text-center p-4">
+                                                                <div class="spinner-border text-primary" role="status">
+                                                                    <span class="visually-hidden">Loading...</span>
+                                                                </div>
+                                                                <p class="mt-2">Loading storage status...</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Scheduler Tab -->
+                                            <div class="tab-pane fade" id="scheduler-tab-pane" role="tabpanel" aria-labelledby="scheduler-tab" tabindex="0">
+                                                <h5>Automated Job Sync Scheduler</h5>
+                                                <p>Configure automated daily job synchronization to keep your job database up-to-date.</p>
+                                                
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle"></i> The scheduler automatically syncs jobs daily with <code>max_days_old=1</code> to avoid duplicate entries.
+                                                </div>
+                                                
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="card h-100 mb-4">
+                                                            <div class="card-header">
+                                                                <h6>Scheduler Controls</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div id="scheduler-status" class="mb-3">
+                                                                    <div class="text-center">
+                                                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                                            <span class="visually-hidden">Loading...</span>
+                                                                        </div>
+                                                                        <span class="ms-2">Loading scheduler status...</span>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div class="d-flex gap-2">
+                                                                    <button id="start-scheduler-btn" class="btn btn-success flex-fill">
+                                                                        <i class="fas fa-play"></i> Start
+                                                                    </button>
+                                                                    <button id="stop-scheduler-btn" class="btn btn-danger flex-fill">
+                                                                        <i class="fas fa-stop"></i> Stop
+                                                                    </button>
+                                                                    <button id="restart-scheduler-btn" class="btn btn-warning flex-fill">
+                                                                        <i class="fas fa-sync"></i> Restart
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="col-md-6">
+                                                        <div class="card h-100 mb-4">
+                                                            <div class="card-header">
+                                                                <h6>Scheduler Information</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div id="scheduler-info">
+                                                                    <div class="placeholder-glow">
+                                                                        <span class="placeholder col-12"></span>
+                                                                        <span class="placeholder col-10"></span>
+                                                                        <span class="placeholder col-8"></span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Scheduler Configuration</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <form id="scheduler-config-form">
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <div class="mb-3">
+                                                                        <div class="form-check form-switch">
+                                                                            <input class="form-check-input" type="checkbox" id="scheduler-enabled">
+                                                                            <label class="form-check-label" for="scheduler-enabled">Enable Daily Sync</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div class="mb-3">
+                                                                        <label for="sync-time" class="form-label">Daily Sync Time (24h format)</label>
+                                                                        <input type="time" class="form-control" id="sync-time" value="02:00">
+                                                                        <div class="form-text">Schedule sync at a time when server load is likely to be low.</div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div class="col-md-6">
+                                                                    <div class="mb-3">
+                                                                        <label for="scheduler-keywords" class="form-label">Keywords</label>
+                                                                        <input type="text" class="form-control" id="scheduler-keywords" placeholder="e.g. python developer">
+                                                                    </div>
+                                                                    
+                                                                    <div class="mb-3">
+                                                                        <label for="scheduler-location" class="form-label">Location</label>
+                                                                        <input type="text" class="form-control" id="scheduler-location" placeholder="e.g. london">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <div class="mb-3">
+                                                                        <label for="scheduler-country" class="form-label">Country</label>
+                                                                        <select class="form-select" id="scheduler-country">
+                                                                            <option value="gb" selected>United Kingdom (GB)</option>
+                                                                            <option value="us">United States (US)</option>
+                                                                            <option value="au">Australia (AU)</option>
+                                                                            <option value="ca">Canada (CA)</option>
+                                                                            <option value="de">Germany (DE)</option>
+                                                                            <option value="fr">France (FR)</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div class="col-md-6">
+                                                                    <div class="mb-3">
+                                                                        <div class="form-check form-switch">
+                                                                            <input class="form-check-input" type="checkbox" id="cleanup-enabled" checked>
+                                                                            <label class="form-check-label" for="cleanup-enabled">Clean up old jobs automatically</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div class="mb-3">
+                                                                        <label for="cleanup-age" class="form-label">Remove Jobs Older Than</label>
+                                                                        <div class="input-group">
+                                                                            <input type="number" class="form-control" id="cleanup-age" value="90" min="30">
+                                                                            <span class="input-group-text">days</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div class="text-end">
+                                                                <button type="submit" class="btn btn-primary" id="save-scheduler-config-btn">
+                                                                    <i class="fas fa-save"></i> Save Configuration
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-center text-white p-3 mt-5">
+        <div class="container">
+            <p class="mb-0">© 2023 AI Job Matcher | Admin</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Admin Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show alerts
+            function showAlert(message, type = 'success') {
+                const alertContainer = document.getElementById('alert-container');
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                alertContainer.appendChild(alertDiv);
+                
+                // Auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alertDiv);
+                    bsAlert.close();
+                }, 5000);
+            }
+            
+            // URL Scrape Form
+            const urlScrapeForm = document.getElementById('url-scrape-form');
+            if (urlScrapeForm) {
+                urlScrapeForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    // Get form values
+                    const url = document.getElementById('job-url').value;
+                    const title = document.getElementById('job-title').value;
+                    const company = document.getElementById('job-company').value;
+                    const location = document.getElementById('job-location').value;
+                    const isRemote = document.getElementById('job-remote').checked;
+                    const salaryRange = document.getElementById('job-salary').value;
+                    
+                    // Disable submit button
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    const originalBtnText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scraping...';
+                    
+                    try {
+                        // Send request
+                        const response = await fetch('/api/scrape/url', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                url,
+                                title,
+                                company,
+                                location,
+                                is_remote: isRemote,
+                                salary_range: salaryRange
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                            // Reset form
+                            urlScrapeForm.reset();
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        // Re-enable submit button
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                });
+            }
+            
+            // Scrape All Button
+            const scrapeAllBtn = document.getElementById('scrape-all-btn');
+            if (scrapeAllBtn) {
+                scrapeAllBtn.addEventListener('click', async function() {
+                    // Disable button
+                    const originalBtnText = this.innerHTML;
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scraping...';
+                    
+                    try {
+                        // Send request
+                        const response = await fetch('/api/scrape/all', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                            
+                            // Display results
+                            const resultsContainer = document.getElementById('scrape-results');
+                            const resultsJson = document.getElementById('results-json');
+                            resultsContainer.classList.remove('d-none');
+                            resultsJson.textContent = JSON.stringify(data.results, null, 2);
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        // Re-enable button
+                        this.disabled = false;
+                        this.innerHTML = originalBtnText;
+                    }
+                });
+            }
+            
+            // Adzuna API Configuration
+            const saveAppIdBtn = document.getElementById('save-app-id');
+            const saveApiKeyBtn = document.getElementById('save-api-key');
+            const checkAdzunaStatusBtn = document.getElementById('check-adzuna-status');
+            const adzunaSearchForm = document.getElementById('adzuna-search-form');
+            
+            // Save App ID
+            if (saveAppIdBtn) {
+                saveAppIdBtn.addEventListener('click', async function() {
+                    const appIdInput = document.getElementById('adzuna-app-id');
+                    const appId = appIdInput.value.trim();
+                    
+                    if (!appId) {
+                        showAlert('<strong>Error:</strong> Please enter an App ID', 'danger');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/api/config/adzuna', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                app_id: appId
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert('<strong>Success!</strong> Adzuna App ID saved', 'success');
+                            appIdInput.value = '';
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    }
+                });
+            }
+            
+            // Save API Key
+            if (saveApiKeyBtn) {
+                saveApiKeyBtn.addEventListener('click', async function() {
+                    const apiKeyInput = document.getElementById('adzuna-api-key');
+                    const apiKey = apiKeyInput.value.trim();
+                    
+                    if (!apiKey) {
+                        showAlert('<strong>Error:</strong> Please enter an API Key', 'danger');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/api/config/adzuna', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                api_key: apiKey
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert('<strong>Success!</strong> Adzuna API Key saved', 'success');
+                            apiKeyInput.value = '';
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    }
+                });
+            }
+            
+            // Check Adzuna API Status
+            if (checkAdzunaStatusBtn) {
+                checkAdzunaStatusBtn.addEventListener('click', async function() {
+                    const originalBtnText = this.innerHTML;
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+                    
+                    try {
+                        const response = await fetch('/api/config/adzuna/status', {
+                            method: 'GET'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> Adzuna API is properly configured and working`, 'success');
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        this.disabled = false;
+                        this.innerHTML = originalBtnText;
+                    }
+                });
+            }
+            
+            // Adzuna Search Form
+            if (adzunaSearchForm) {
+                adzunaSearchForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const keywords = document.getElementById('adzuna-keywords').value.trim();
+                    const location = document.getElementById('adzuna-location').value.trim();
+                    
+                    if (!keywords && !location) {
+                        showAlert('<strong>Error:</strong> Please enter at least keywords or location', 'danger');
+                        return;
+                    }
+                    
+                    const searchBtn = this.querySelector('button[type="submit"]');
+                    const originalBtnText = searchBtn.innerHTML;
+                    searchBtn.disabled = true;
+                    searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+                    
+                    try {
+                        const response = await fetch('/api/scrape/adzuna', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                keywords,
+                                location
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> Found and saved ${data.count} jobs from Adzuna`, 'success');
+                            this.reset();
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        searchBtn.disabled = false;
+                        searchBtn.innerHTML = originalBtnText;
+                    }
+                });
+            }
+            
+            // Adzuna Bulk Sync
+            const bulkSyncForm = document.getElementById('adzuna-bulk-sync-form');
+            if (bulkSyncForm) {
+                bulkSyncForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const keywordsInput = document.getElementById('bulk-keywords');
+                    const locationInput = document.getElementById('bulk-location');
+                    const countryInput = document.getElementById('bulk-country');
+                    const maxPagesInput = document.getElementById('bulk-max-pages');
+                    
+                    const keywords = keywordsInput.value.trim();
+                    const location = locationInput.value.trim();
+                    const country = countryInput.value;
+                    const maxPages = maxPagesInput.value.trim() !== '' ? parseInt(maxPagesInput.value.trim()) : null;
+                    
+                    const bulkSyncBtn = document.getElementById('bulk-sync-btn');
+                    bulkSyncBtn.disabled = true;
+                    bulkSyncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting Sync...';
+                    
+                    // Show progress indicator
+                    const progressDiv = document.getElementById('bulk-sync-progress');
+                    progressDiv.classList.remove('d-none');
+                    
+                    // Hide results if previously shown
+                    const resultsDiv = document.getElementById('bulk-sync-results');
+                    resultsDiv.classList.add('d-none');
+                    
+                    try {
+                        const response = await fetch('/api/adzuna/bulk-sync', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                keywords: keywords,
+                                location: location,
+                                country: country,
+                                max_pages: maxPages
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        // Show results
+                        const resultsJsonPre = document.getElementById('bulk-results-json');
+                        resultsJsonPre.textContent = JSON.stringify(data, null, 2);
+                        resultsDiv.classList.remove('d-none');
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        bulkSyncBtn.disabled = false;
+                        bulkSyncBtn.innerHTML = '<i class="fas fa-sync"></i> Start Bulk Sync';
+                        progressDiv.classList.add('d-none');
+                    }
+                });
+            }
+            
+            // Import Jobs Form
+            const importJobsForm = document.getElementById('import-jobs-form');
+            if (importJobsForm) {
+                importJobsForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const daysInput = document.getElementById('import-days');
+                    const days = parseInt(daysInput.value.trim());
+                    
+                    const importBtn = document.getElementById('import-jobs-btn');
+                    importBtn.disabled = true;
+                    importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+                    
+                    try {
+                        const response = await fetch('/api/adzuna/import', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                days: days
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        importBtn.disabled = false;
+                        importBtn.innerHTML = '<i class="fas fa-file-import"></i> Import Jobs';
+                    }
+                });
+            }
+            
+            // Cleanup Jobs Form
+            const cleanupJobsForm = document.getElementById('cleanup-jobs-form');
+            if (cleanupJobsForm) {
+                cleanupJobsForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    if (!confirm('Are you sure you want to remove old jobs? This action cannot be undone.')) {
+                        return;
+                    }
+                    
+                    const daysInput = document.getElementById('cleanup-days');
+                    const days = parseInt(daysInput.value.trim());
+                    
+                    const cleanupBtn = document.getElementById('cleanup-jobs-btn');
+                    cleanupBtn.disabled = true;
+                    cleanupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cleaning up...';
+                    
+                    try {
+                        const response = await fetch('/api/adzuna/cleanup', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                max_age_days: days
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                        } else {
+                            showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                    } finally {
+                        cleanupBtn.disabled = false;
+                        cleanupBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Clean Up Old Jobs';
+                    }
+                });
+            }
+            
+            // View Jobs Form
+            const viewJobsForm = document.getElementById('view-jobs-form');
+            if (viewJobsForm) {
+                viewJobsForm.addEventListener('submit', fetchAdzunaJobs);
+                
+                // Also handle refresh button
+                const refreshJobsBtn = document.getElementById('refresh-jobs-btn');
+                if (refreshJobsBtn) {
+                    refreshJobsBtn.addEventListener('click', fetchAdzunaJobs);
+                }
+            }
+            
+            // Function to fetch and display Adzuna jobs
+            async function fetchAdzunaJobs(e) {
+                e.preventDefault();
+                
+                const daysInput = document.getElementById('view-days');
+                const days = parseInt(daysInput.value.trim());
+                
+                const viewBtn = e.currentTarget.querySelector('button[type="submit"]') || this;
+                viewBtn.disabled = true;
+                viewBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                
+                try {
+                    const response = await fetch(`/api/adzuna/jobs?days=${days}`);
+                    const data = await response.json();
+                    
+                    const jobList = document.getElementById('job-list-container');
+                    const jobListBody = document.getElementById('job-list-body');
+                    const jobCount = document.getElementById('job-count');
+                    
+                    if (data.success) {
+                        // Show job list container
+                        jobList.classList.remove('d-none');
+                        
+                        // Update job count
+                        jobCount.textContent = `Found ${data.count} jobs`;
+                        
+                        // Clear existing jobs
+                        jobListBody.innerHTML = '';
+                        
+                        // Add jobs to table
+                        if (data.jobs.length > 0) {
+                            data.jobs.forEach(job => {
+                                const row = document.createElement('tr');
+                                
+                                // Format date
+                                let postedDate = 'Unknown';
+                                if (job.posted_date) {
+                                    try {
+                                        const date = new Date(job.posted_date);
+                                        postedDate = date.toLocaleDateString();
+                                    } catch (e) {
+                                        postedDate = job.posted_date;
+                                    }
+                                }
+                                
+                                row.innerHTML = `
+                                    <td>${job.title}</td>
+                                    <td>${job.company}</td>
+                                    <td>${job.location} ${job.is_remote ? '<span class="badge bg-info">Remote</span>' : ''}</td>
+                                    <td>${postedDate}</td>
+                                    <td>
+                                        <a href="${job.url}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    </td>
+                                `;
+                                
+                                jobListBody.appendChild(row);
+                            });
+                        } else {
+                            // No jobs found
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td colspan="5" class="text-center">No jobs found</td>
+                            `;
+                            jobListBody.appendChild(row);
+                        }
+                    } else {
+                        showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                    }
+                } catch (error) {
+                    showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                } finally {
+                    viewBtn.disabled = false;
+                    viewBtn.innerHTML = '<i class="fas fa-eye"></i> View Jobs';
+                }
+            }
+            
+            // Storage Status Tab
+            const refreshStatusBtn = document.getElementById('refresh-status-btn');
+            if (refreshStatusBtn) {
+                refreshStatusBtn.addEventListener('click', fetchStorageStatus);
+                
+                // Fetch storage status on tab show
+                const statusTab = document.getElementById('status-tab');
+                if (statusTab) {
+                    statusTab.addEventListener('shown.bs.tab', fetchStorageStatus);
+                }
+            }
+            
+            // Function to fetch and display storage status
+            async function fetchStorageStatus() {
+                const statusContainer = document.getElementById('storage-status');
+                if (!statusContainer) return;
+                
+                statusContainer.innerHTML = `
+                    <div class="text-center p-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading storage status...</p>
+                    </div>
+                `;
+                
+                try {
+                    const response = await fetch('/api/adzuna/status');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const status = data.status;
+                        
+                        // Format date
+                        let lastSync = 'Never';
+                        if (status.last_sync) {
+                            try {
+                                const date = new Date(status.last_sync);
+                                lastSync = date.toLocaleString();
+                            } catch (e) {
+                                lastSync = status.last_sync;
+                            }
+                        }
+                        
+                        // Build status HTML
+                        let statusHtml = `
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">Storage Status</h6>
+                                    <table class="table">
+                                        <tr>
+                                            <th>Last Sync</th>
+                                            <td>${lastSync}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Total Jobs</th>
+                                            <td>${status.total_jobs}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Last Batch</th>
+                                            <td>${status.last_batch || 'None'}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                        
+                        statusContainer.innerHTML = statusHtml;
+                    } else {
+                        statusContainer.innerHTML = `
+                            <div class="alert alert-danger">
+                                <strong>Error:</strong> ${data.error}
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    statusContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Error:</strong> ${error.message}
+                        </div>
+                    `;
+                }
+            }
+            
+            // Scheduler Tab
+            const schedulerTab = document.getElementById('scheduler-tab');
+            if (schedulerTab) {
+                schedulerTab.addEventListener('shown.bs.tab', fetchSchedulerStatus);
+            }
+            
+            // Scheduler Control Buttons
+            const startSchedulerBtn = document.getElementById('start-scheduler-btn');
+            const stopSchedulerBtn = document.getElementById('stop-scheduler-btn');
+            const restartSchedulerBtn = document.getElementById('restart-scheduler-btn');
+            
+            if (startSchedulerBtn && stopSchedulerBtn && restartSchedulerBtn) {
+                startSchedulerBtn.addEventListener('click', () => controlScheduler('start'));
+                stopSchedulerBtn.addEventListener('click', () => controlScheduler('stop'));
+                restartSchedulerBtn.addEventListener('click', () => controlScheduler('restart'));
+            }
+            
+            // Scheduler Configuration Form
+            const schedulerConfigForm = document.getElementById('scheduler-config-form');
+            if (schedulerConfigForm) {
+                schedulerConfigForm.addEventListener('submit', saveSchedulerConfig);
+                
+                // Load current config when tab is shown
+                schedulerTab.addEventListener('shown.bs.tab', fetchSchedulerConfig);
+            }
+            
+            // Function to fetch and display scheduler status
+            async function fetchSchedulerStatus() {
+                const statusContainer = document.getElementById('scheduler-status');
+                const infoContainer = document.getElementById('scheduler-info');
+                
+                if (!statusContainer || !infoContainer) return;
+                
+                try {
+                    const response = await fetch('/api/adzuna/scheduler/status');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const status = data.status;
+                        
+                        // Update status badge
+                        let statusBadge = '';
+                        if (status.is_running) {
+                            statusBadge = `<span class="badge bg-success">Active</span>`;
+                        } else if (status.enabled) {
+                            statusBadge = `<span class="badge bg-warning">Enabled but not running</span>`;
+                        } else {
+                            statusBadge = `<span class="badge bg-secondary">Disabled</span>`;
+                        }
+                        
+                        statusContainer.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Scheduler Status:</span>
+                                ${statusBadge}
+                            </div>
+                        `;
+                        
+                        // Build info HTML
+                        let infoHtml = `
+                            <table class="table">
+                                <tr>
+                                    <th>Next Scheduled Run</th>
+                                    <td>${status.next_run_formatted || 'Not scheduled'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Last Run</th>
+                                    <td>${status.last_run_formatted || 'Never'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Daily Sync Time</th>
+                                    <td>${status.daily_sync_time}</td>
+                                </tr>
+                                <tr>
+                                    <th>Job Count</th>
+                                    <td>${status.job_count}</td>
+                                </tr>
+                            </table>
+                        `;
+                        
+                        infoContainer.innerHTML = infoHtml;
+                    } else {
+                        statusContainer.innerHTML = `
+                            <div class="alert alert-danger">
+                                <strong>Error:</strong> ${data.error}
+                            </div>
+                        `;
+                        infoContainer.innerHTML = '';
+                    }
+                } catch (error) {
+                    statusContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Error:</strong> ${error.message}
+                        </div>
+                    `;
+                    infoContainer.innerHTML = '';
+                }
+            }
+            
+            // Function to fetch and populate scheduler config form
+            async function fetchSchedulerConfig() {
+                try {
+                    const response = await fetch('/api/adzuna/scheduler/config');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const config = data.config;
+                        
+                        // Populate form fields
+                        document.getElementById('scheduler-enabled').checked = config.enabled;
+                        document.getElementById('sync-time').value = config.daily_sync_time;
+                        document.getElementById('scheduler-keywords').value = config.keywords || '';
+                        document.getElementById('scheduler-location').value = config.location || '';
+                        document.getElementById('scheduler-country').value = config.country || 'gb';
+                        document.getElementById('cleanup-enabled').checked = config.cleanup_old_jobs;
+                        document.getElementById('cleanup-age').value = config.cleanup_days || 90;
+                    } else {
+                        showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                    }
+                } catch (error) {
+                    showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                }
+            }
+            
+            // Function to save scheduler configuration
+            async function saveSchedulerConfig(e) {
+                e.preventDefault();
+                
+                const saveBtn = document.getElementById('save-scheduler-config-btn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                
+                try {
+                    const config = {
+                        enabled: document.getElementById('scheduler-enabled').checked,
+                        daily_sync_time: document.getElementById('sync-time').value,
+                        keywords: document.getElementById('scheduler-keywords').value.trim(),
+                        location: document.getElementById('scheduler-location').value.trim(),
+                        country: document.getElementById('scheduler-country').value,
+                        cleanup_old_jobs: document.getElementById('cleanup-enabled').checked,
+                        cleanup_days: parseInt(document.getElementById('cleanup-age').value)
+                    };
+                    
+                    const response = await fetch('/api/adzuna/scheduler/config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(config)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showAlert(`<strong>Success!</strong> Scheduler configuration updated`, 'success');
+                        
+                        // Refresh status
+                        fetchSchedulerStatus();
+                    } else {
+                        showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                    }
+                } catch (error) {
+                    showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Configuration';
+                }
+            }
+            
+            // Function to control the scheduler (start/stop/restart)
+            async function controlScheduler(action) {
+                // Get the button for the action
+                let actionBtn;
+                if (action === 'start') {
+                    actionBtn = document.getElementById('start-scheduler-btn');
+                } else if (action === 'stop') {
+                    actionBtn = document.getElementById('stop-scheduler-btn');
+                } else if (action === 'restart') {
+                    actionBtn = document.getElementById('restart-scheduler-btn');
+                }
+                
+                if (!actionBtn) return;
+                
+                // Disable button and show loading state
+                const originalText = actionBtn.innerHTML;
+                actionBtn.disabled = true;
+                actionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Working...';
+                
+                try {
+                    const response = await fetch('/api/adzuna/scheduler/control', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ action })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showAlert(`<strong>Success!</strong> ${data.message}`, 'success');
+                        
+                        // Refresh status
+                        fetchSchedulerStatus();
+                    } else {
+                        showAlert(`<strong>Error:</strong> ${data.error}`, 'danger');
+                    }
+                } catch (error) {
+                    showAlert(`<strong>Error:</strong> ${error.message}`, 'danger');
+                } finally {
+                    actionBtn.disabled = false;
+                    actionBtn.innerHTML = originalText;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
