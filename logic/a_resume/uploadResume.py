@@ -79,7 +79,7 @@ def parse_resume(file_path):
     else:
         raise FileParsingError(f"Unsupported file type: {ext}")
 # === Internal Utility ===
-"""Return True if the filename is a supported file type"""
+# """Return True if the filename is a supported file type"""
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 # """Save the resume index with embedded arrays converted to lists"""

@@ -1,0 +1,152 @@
+[
+  {
+    "tag": "accounting-finance-jobs",
+    "label": "Accounting & Finance Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "tag": "it-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "IT Jobs"
+  },
+  {
+    "label": "Sales Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "tag": "sales-jobs"
+  },
+  {
+    "label": "Customer Services Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "tag": "customer-services-jobs"
+  },
+  {
+    "tag": "engineering-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Engineering Jobs"
+  },
+  {
+    "tag": "hr-jobs",
+    "label": "HR & Recruitment Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "tag": "healthcare-nursing-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Healthcare & Nursing Jobs"
+  },
+  {
+    "tag": "hospitality-catering-jobs",
+    "label": "Hospitality & Catering Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "label": "PR, Advertising & Marketing Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "tag": "pr-advertising-marketing-jobs"
+  },
+  {
+    "tag": "logistics-warehouse-jobs",
+    "label": "Logistics & Warehouse Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Teaching Jobs",
+    "tag": "teaching-jobs"
+  },
+  {
+    "tag": "trade-construction-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Trade & Construction Jobs"
+  },
+  {
+    "label": "Admin Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "tag": "admin-jobs"
+  },
+  {
+    "label": "Legal Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "tag": "legal-jobs"
+  },
+  {
+    "tag": "creative-design-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Creative & Design Jobs"
+  },
+  {
+    "tag": "graduate-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Graduate Jobs"
+  },
+  {
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Retail Jobs",
+    "tag": "retail-jobs"
+  },
+  {
+    "tag": "consultancy-jobs",
+    "label": "Consultancy Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "tag": "manufacturing-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Manufacturing Jobs"
+  },
+  {
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Scientific & QA Jobs",
+    "tag": "scientific-qa-jobs"
+  },
+  {
+    "tag": "social-work-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Social work Jobs"
+  },
+  {
+    "tag": "travel-jobs",
+    "label": "Travel Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Energy, Oil & Gas Jobs",
+    "tag": "energy-oil-gas-jobs"
+  },
+  {
+    "tag": "property-jobs",
+    "label": "Property Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "tag": "charity-voluntary-jobs",
+    "label": "Charity & Voluntary Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "tag": "domestic-help-cleaning-jobs",
+    "label": "Domestic help & Cleaning Jobs",
+    "__CLASS__": "Adzuna::API::Response::Category"
+  },
+  {
+    "tag": "maintenance-jobs",
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Maintenance Jobs"
+  },
+  {
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Part time Jobs",
+    "tag": "part-time-jobs"
+  },
+  {
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Other/General Jobs",
+    "tag": "other-general-jobs"
+  },
+  {
+    "__CLASS__": "Adzuna::API::Response::Category",
+    "label": "Unknown",
+    "tag": "unknown"
+  }
+]

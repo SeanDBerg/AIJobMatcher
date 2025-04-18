@@ -4,7 +4,7 @@
 let keywordsList = [];
 
 function tryLoadKeywords() {
-  const saved = $('#keywordsListData').val();
+  const saved = localStorage.getItem('job_search_keywords_list');
   if (saved) {
     try {
       keywordsList = JSON.parse(saved);
@@ -14,6 +14,7 @@ function tryLoadKeywords() {
     }
   }
 }
+
 
 function attachEventHandlers() {
   $('#addKeywordBtn').click(addKeyword);
@@ -33,7 +34,22 @@ function attachEventHandlers() {
   });
 
   $('#syncJobsBtn').click(syncJobs);
-  $('#cleanupBtn').click(cleanupOldJobs);
+}
+
+function populateCategoryDropdown() {
+  const categorySelect = $('#category');
+  const stored = localStorage.getItem('job_search_category');
+
+  $.getJSON('/static/job_data/adzuna/adzuna_categories.json', function (categories) {
+    categorySelect.empty();
+    categorySelect.append(`<option value="">All Categories</option>`);
+    categories.forEach(cat => {
+      const selected = (stored && stored === cat.tag) ? 'selected' : '';
+      categorySelect.append(`<option value="${cat.tag}" ${selected}>${cat.label}</option>`);
+    });
+  }).fail(function () {
+    categorySelect.empty().append(`<option value="">[Error loading categories]</option>`);
+  });
 }
 
 function addKeyword() {
@@ -52,7 +68,7 @@ function renderKeywords() {
   const $container = $('#keywordsList');
   $container.empty();
   keywordsList.forEach((keyword, index) => {
-    const badge = `<div class="badge bg-primary me-2 mb-2 p-2">
+    const badge = `<div class="badge bg-primary me-2 p-2 d-inline-flex align-items-center">
       ${keyword}
       <button type="button" class="btn-close btn-close-white ms-2" data-index="${index}"></button>
     </div>`;
@@ -63,7 +79,12 @@ function renderKeywords() {
 
 function persistKeywords() {
   localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
-  $.post('/api/save_keywords_list', JSON.stringify({ keywords_list: keywordsList }), 'json');
+  $.ajax({
+    url: '/api/save_keywords_list',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ keywords_list: keywordsList })
+  });
 }
 
 function showStatus(message, type = 'info') {
@@ -82,7 +103,8 @@ function syncJobs() {
     country: $('#country').val(),
     max_days_old: 1,
     remote_only: $('#remote_only').is(':checked'),
-    max_pages: parseInt($('#maxPages').val())
+    max_pages: parseInt($('#maxPages').val()),
+    category: $('#category').val()
   };
   showStatus('Syncing jobs...', 'info');
   $.ajax({
@@ -107,23 +129,26 @@ function syncJobs() {
 
 // Save job search parameters
 function saveJobSearch() {
+    renderKeywords();
     // Get form values
     const keywords = $('#keywords').val();
     const location = $('#location').val();
     const country = $('#country').val();
     const remoteOnly = $('#remote_only').is(':checked') ? '1' : '';
     const maxPages = $('#maxPages').val();
-
+    const category = $('#category').val();
+    localStorage.setItem('job_search_category', category);
+  
     // Get keywords list from hidden input
-    let keywordsList = [];
     try {
-        const keywordsListData = $('#keywordsListData').val();
-        if (keywordsListData) {
-            keywordsList = JSON.parse(keywordsListData);
-        }
+      const keywordsListData = $('#keywordsListData').val();
+      if (keywordsListData) {
+          keywordsList = JSON.parse(keywordsListData);  // Uses existing global variable
+      }
     } catch (e) {
-        console.error("Error parsing keywords list in saveJobSearch:", e);
+      console.error("Error parsing keywords list in saveJobSearch:", e);
     }
+  
 
     // Store values in session/browser storage for persistence
     localStorage.setItem('job_search_keywords', keywords);
@@ -149,10 +174,16 @@ function loadSavedSearch() {
     $('#country').val(localStorage.getItem('job_search_country') || '');
     $('#remote_only').prop('checked', localStorage.getItem('job_search_remote_only') === '1');
     $('#maxPages').val(localStorage.getItem('job_search_max_pages') || '');
+    $('#category').val(localStorage.getItem('job_search_category') || '');
 }
 
 $(document).ready(function () {
+  console.log('✅ syncSection.js loaded and DOM ready');
   tryLoadKeywords();
   attachEventHandlers();
+  loadSavedSearch(); // Initialize saved search
   renderKeywords(); // ensure visibility
+  populateCategoryDropdown(); // Load Adzuna categories
 });
+
+

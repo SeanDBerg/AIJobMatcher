@@ -73,34 +73,46 @@ def get_resume_content(resume_id: str) -> Optional[str]:
 # Delete a resume
 def delete_resume(resume_id: str) -> bool:
     try:
-        index = _load_index()
+        index = resume_storage._index  # ✅ Use the singleton directly
+
         if resume_id not in index["resumes"]:
             logger.warning(f"Resume ID {resume_id} not found in index")
             return False
+
         metadata = index["resumes"][resume_id]
         stored_filename = metadata.get("stored_filename")
         content_filename = f"{resume_id}_content.txt"
+
+        # Delete the actual files
         if stored_filename:
             file_path = os.path.join(RESUME_DIR, stored_filename)
             if os.path.exists(file_path):
                 os.remove(file_path)
+
         content_path = os.path.join(RESUME_DIR, content_filename)
         if os.path.exists(content_path):
             os.remove(content_path)
+
+        # Update the in-memory index
         del index["resumes"][resume_id]
-        index["count"] -= 1
-        if index["last_added"] == resume_id:
+        index["count"] = max(0, len(index["resumes"]))  # Defensive
+
+        if index.get("last_added") == resume_id:
             if index["resumes"]:
                 newest = max(index["resumes"].values(), key=lambda r: r.get("upload_date", ""))
                 index["last_added"] = newest["id"]
             else:
                 index["last_added"] = None
-        _save_index(index)
+
+        # ✅ Save the updated in-memory state
+        resume_storage._save_index()
+
         logger.info(f"Deleted resume ID {resume_id}")
         return True
     except Exception as e:
         logger.error(f"Error deleting resume {resume_id}: {str(e)}")
         return False
+
 # Delete a resume
 @resume_history_bp.route('/delete_resume/<resume_id>', methods=['POST'])
 def delete_resume_route(resume_id):

@@ -1,3 +1,4 @@
+# models.py - Data models for the job matching application
 from datetime import datetime
 
 # This file would normally contain SQLAlchemy models

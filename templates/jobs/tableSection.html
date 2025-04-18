@@ -46,35 +46,7 @@
                                             </a>
                                         </td>
                                     </tr>
-                                    <!-- Collapsible job description row -->
-                                    <tr class="job-details-row d-none" id="job-details-{{ job_id }}">
-                                        <td colspan="8">
-                                            <div class="job-details-content p-3">
-                                                <h5>{{ job.title }} at {{ job.company }}</h5>
-                                                {% if job.skills %}
-                                                    <div class="mb-3">
-                                                        <strong>Skills:</strong>
-                                                        <div class="mt-1">
-                                                            {% for skill in job.skills %}
-                                                                <span class="badge bg-secondary me-1 mb-1">{{ skill }}</span>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                {% endif %}
-                                                <div class="mb-3">
-                                                    <strong>Description:</strong>
-                                                    <div class="job-description mt-2">
-                                                        {{ job.description|safe }}
-                                                    </div>
-                                                </div>
-                                                <div class="text-end">
-                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-primary">
-                                                        <i class="fas fa-external-link-alt me-1"></i> Apply for This Position
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    
                                 {% endfor %}
                             {% else %}
                                 <tr>
@@ -83,6 +55,18 @@
                             {% endif %}
                         </tbody>
                     </table>
+                    
+
+                    <div class="row text-center mb-2 small">
+                        <div class="col">
+                            <span class="text-muted">Current Page: </span>
+                            <span class="currentPageValue">0</span>/<span class="totalPagesValue">0</span>
+                        </div>
+                        <div class="col">
+                            <span class="text-muted">Jobs Found: </span>
+                            <span class="jobsFoundValue">0</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="tab-pane fade" id="remote" role="tabpanel" aria-labelledby="remote-tab">
@@ -120,35 +104,7 @@
                                             </a>
                                         </td>
                                     </tr>
-                                    <!-- Collapsible job description row -->
-                                    <tr class="job-details-row d-none" id="job-details-remote-{{ job_id }}">
-                                        <td colspan="7">
-                                            <div class="job-details-content p-3">
-                                                <h5>{{ job.title }} at {{ job.company }}</h5>
-                                                {% if job.skills %}
-                                                    <div class="mb-3">
-                                                        <strong>Skills:</strong>
-                                                        <div class="mt-1">
-                                                            {% for skill in job.skills %}
-                                                                <span class="badge bg-secondary me-1 mb-1">{{ skill }}</span>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                {% endif %}
-                                                <div class="mb-3">
-                                                    <strong>Description:</strong>
-                                                    <div class="job-description mt-2">
-                                                        {{ job.description|safe }}
-                                                    </div>
-                                                </div>
-                                                <div class="text-end">
-                                                    <a href="{{ job.url }}" target="_blank" class="btn btn-primary">
-                                                        <i class="fas fa-external-link-alt me-1"></i> Apply for This Position
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    
                                 {% endfor %}
                             {% else %}
                                 <tr>
@@ -157,6 +113,16 @@
                             {% endif %}
                         </tbody>
                     </table>
+                    <div class="row text-center mb-2 small">
+                        <div class="col">
+                            <span class="text-muted">Current Page: </span>
+                            <span class="currentPageValue">0</span>/<span class="totalPagesValue">0</span>
+                        </div>
+                        <div class="col">
+                            <span class="text-muted">Jobs Found: </span>
+                            <span class="jobsFoundValue">0</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="tab-pane fade" id="batch-summary" role="tabpanel" aria-labelledby="batch-summary-tab">
@@ -195,6 +161,18 @@
                             {% endif %}
                         </tbody>
                     </table>
+                    
+                    <div class="row text-center mb-2 small">
+                        <div class="col">
+                            <span class="text-muted">Current Page: </span>
+                            <span class="currentPageValue">0</span>/<span class="totalPagesValue">0</span>
+                        </div>
+                        <div class="col">
+                            <span class="text-muted">Jobs Found: </span>
+                            <span class="jobsFoundValue">0</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -221,3 +199,8 @@
         </div>
     </div>
 </div>
+
+<script>
+  window.allJobs = {{ jobs|tojson }};
+  window.remoteJobs = {{ remote_jobs_list|tojson }};
+</script>

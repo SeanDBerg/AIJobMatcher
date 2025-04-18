@@ -24,7 +24,19 @@
                     <label for="location" class="form-label">Location</label>
                     <input type="text" class="form-control" id="location" name="location" value="{{ location|default('') }}" placeholder="e.g., London, New York">
                 </div>
+                <div class="col-md-3">
+                    <label for="maxPages" class="form-label">Max Pages</label>
+                    <input type="number" class="form-control" id="maxPages" name="max_pages" value="{{ max_pages|default('5') }}" min="1" max="20">
+                    <small class="text-muted">1-20 pages (50 jobs per page)</small>
+                </div>
                 <div class="col-md-4">
+                  <label for="category" class="form-label">Job Category</label>
+                  <select class="form-select" id="category" name="category">
+                    <option value="">Loading categories...</option>
+                  </select>
+                </div>
+
+                <div class="col-md-12">
                     <label for="keywords" class="form-label">Keywords</label>
                     <div class="input-group">
                         <input type="text" class="form-control" id="keywords" name="keywords" value="" placeholder="e.g., Python Developer">
@@ -35,27 +47,12 @@
                     </div>
                     <input type="hidden" id="keywordsListData" name="keywordsListData" value='{{ keywords_list|default("[]")|tojson }}'>
                 </div>
-                <div class="col-md-3">
-                    <label for="maxPages" class="form-label">Max Pages</label>
-                    <input type="number" class="form-control" id="maxPages" name="max_pages" value="{{ max_pages|default('5') }}" min="1" max="20">
-                    <small class="text-muted">1-20 pages (50 jobs per page)</small>
-                </div>
-                <div class="col-md-3">
-                    <div class="mt-4">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="remote_only" name="remote_only" value="1" {% if remote_only %}checked{% endif %}>
-                            <label class="form-check-label" for="remote_only">
-                                Remote Jobs Only
-                            </label>
-                        </div>
-                    </div>
-                </div>
                 <!-- Scheduler UI elements removed -->
                 <div class="col-12 mt-2">
                     <button type="button" class="btn btn-primary" onclick="saveJobSearch()">
                         <i class="fas fa-save me-1"></i> Save Settings
                     </button>
-                    <button type="button" class="btn btn-success ms-2" onclick="startJobSync()">
+                    <button type="button" class="btn btn-success ms-2" onclick="syncJobs()">
                         <i class="fas fa-sync-alt me-1"></i> Sync Jobs
                     </button>
                 </div>
