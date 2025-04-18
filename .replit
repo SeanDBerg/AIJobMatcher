@@ -1,14 +1,10 @@
 modules = ["python-3.11"]
-
 [nix]
 channel = "stable-24_05"
-
-[deployment]
-deploymentTarget = "autoscale"
-run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app", "--log-level warning", "--timeout", "120"]
+packages = ["cacert", "glibcLocales", "libxcrypt", "pkg-config", "xcodebuild", "xsimd", "zlib"]
 
 [workflows]
-runButton = "Start Flask App"
+runButton = "Start application"
 
 [[workflows.workflow]]
 name = "Project"
@@ -37,7 +33,3 @@ waitForPort = 5000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[env]
-LOGLEVEL = "warning"
-
