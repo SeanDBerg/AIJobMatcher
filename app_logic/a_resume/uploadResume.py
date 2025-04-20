@@ -3,7 +3,7 @@ import os
 import tempfile
 import json
 import logging
-from flask import Blueprint, request, redirect, url_for, flash
+from flask import Blueprint, request, redirect, url_for, flash, session
 from werkzeug.utils import secure_filename
 from app_logic.a_resume.resumeHistory import resume_storage
 from app_logic.b_jobs.jobMatch import generate_dual_embeddings
@@ -106,17 +106,21 @@ def export_resume_index_with_embeddings(resume_storage_instance) -> None:
 # """Route for handling resume file upload and processing"""
 @upload_resume_bp.route("/upload_resume", methods=["POST"])
 def upload_resume():
+    from flask import session  # ✅ Ensure session is imported locally
     if "resume" not in request.files:
         flash("No file part", "danger")
         return redirect(url_for("index"))
+
     file = request.files["resume"]
     if file.filename == "":
         flash("No file selected", "danger")
         return redirect(url_for("index"))
+
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         filepath = os.path.join(TEMP_FOLDER, filename)
         file.save(filepath)
+
         try:
             resume_text = parse_resume(filepath)
         except FileParsingError as e:
@@ -126,6 +130,7 @@ def upload_resume():
             logger.exception("Unexpected resume parsing error")
             flash(f"Unexpected error: {str(e)}", "danger")
             return redirect(url_for("index"))
+
         metadata = {
             "filters": {
                 "remote": request.form.get("remote", "") == "on",
@@ -133,16 +138,31 @@ def upload_resume():
                 "keywords": request.form.get("keywords", "")
             }
         }
+
+        # ✅ Generate embeddings
         embeddings = generate_dual_embeddings(resume_text)
         metadata["embedding_narrative"] = embeddings["narrative"].tolist()
         metadata["embedding_skills"] = embeddings["skills"].tolist()
-        resume_id = resume_storage.store_resume(
-            temp_filepath=filepath,
-            filename=filename,
-            content=resume_text,
-            metadata=metadata
-        )
-        flash(f'Resume "{filename}" successfully uploaded and stored', "success")
+
+        # ✅ Track who is uploading
+        user_id = session.get("user_id")
+        logger.debug(f"[upload_resume] Uploading resume for user_id={user_id}")
+
+        try:
+            resume_id = resume_storage.store_resume(
+                temp_filepath=filepath,
+                filename=filename,
+                content=resume_text,
+                metadata=metadata,
+                user_id=user_id
+            )
+            logger.info(f"[upload_resume] Stored resume with ID {resume_id}")
+            flash(f'Resume "{filename}" successfully uploaded and stored', "success")
+        except Exception as e:
+            logger.exception("Failed to store resume")
+            flash(f"Resume storage error: {str(e)}", "danger")
+
         return redirect(url_for("index"))
+
     flash("Invalid file type", "danger")
     return redirect(url_for("index"))

@@ -10,6 +10,13 @@ from typing import Optional, List, Dict
 # === Setup ===
 logger = logging.getLogger(__name__)
 resume_history_bp = Blueprint("resume_history", __name__)
+# === Template Filters ===
+def datetimeformat(value, format='%B %d, %Y'):
+    try:
+        return datetime.fromisoformat(value).strftime(format)
+    except Exception:
+        return value  # fallback if invalid format
+resume_history_bp.add_app_template_filter(datetimeformat, name='datetimeformat')
 # === Storage Paths ===
 RESUME_DIR = os.path.join(os.path.dirname(__file__), '../../static/resumes')
 RESUME_INDEX_FILE = os.path.join(RESUME_DIR, 'index.json')
@@ -39,12 +46,13 @@ def _save_index(index: Dict = None):
         logger.error(f"Error saving resume index: {str(e)}")
 # === Resume Access ===
 # Get all stored resumes, sorted by upload date
-def get_all_resumes() -> List[Dict]:
+def get_all_resumes(user_id: Optional[str] = None) -> List[Dict]:
     try:
         index = _load_index()
         resumes = list(index["resumes"].values())
+        if user_id:
+            resumes = [r for r in resumes if r.get("user_id") == user_id]
         resumes.sort(key=lambda r: r.get("upload_date", ""), reverse=True)
-        logger.info("get_all_resumes returning with %d resumes", len(resumes))
         return resumes
     except Exception as e:
         logger.error(f"Error fetching all resumes: {str(e)}")
@@ -125,6 +133,24 @@ def delete_resume_route(resume_id):
         logger.error(f"Error deleting resume: {str(e)}")
         flash(f'Error deleting resume: {str(e)}', 'danger')
     return redirect(url_for('index'))
+# === Demo Resume ===
+def generate_demo_resumes() -> List[Dict]:
+    return [
+        {
+            "id": "demo-tech",
+            "original_filename": "Tech Resume",
+            "upload_date": "2025-04-17T10:00:00",
+            "content_preview": "Experienced Python developer with expertise in Flask, React, and automation tools...",
+            "file_extension": ".txt",
+        },
+        {
+            "id": "demo-sales",
+            "original_filename": "Sales Resume",
+            "upload_date": "2025-04-16T14:30:00",
+            "content_preview": "Proven track record in B2B sales, CRM management, and customer retention strategies...",
+            "file_extension": ".txt",
+        }
+    ]
 # Set the active resume
 @resume_history_bp.route('/api/set_resume', methods=['POST'])
 def set_active_resume():
@@ -195,7 +221,7 @@ class ResumeStorage:
         except Exception as e:
             logger.error(f"Error recovering missing resumes: {str(e)}")
     # """Store a resume permanently and update index"""
-    def store_resume(self, temp_filepath: str, filename: str, content: str, metadata: Optional[Dict] = None) -> str:
+    def store_resume(self, temp_filepath: str, filename: str, content: str, metadata: Optional[Dict] = None, user_id: Optional[str] = None) -> str:
         try:
             resume_id = str(uuid.uuid4())
             if metadata is None:
@@ -209,6 +235,9 @@ class ResumeStorage:
                 "file_extension": os.path.splitext(filename)[1].lower(),
                 **metadata
             }
+            if user_id:
+                resume_metadata["user_id"] = user_id
+            logger.debug(f"[store_resume] Stored resume for user_id={user_id}")
             dest_filepath = os.path.join(RESUME_DIR, resume_metadata["stored_filename"])
             shutil.copy2(temp_filepath, dest_filepath)
             content_filepath = os.path.join(RESUME_DIR, f"{resume_id}_content.txt")

@@ -1,6 +1,8 @@
 // syncSection.js
 
 // Stores the current list of keywords
+let keywordProfiles = {};
+let activeProfile = '';
 let keywordsList = [];
 
 function tryLoadKeywords() {
@@ -18,18 +20,18 @@ function tryLoadKeywords() {
 function attachEventHandlers() {
   $('#addKeywordBtn').click(addKeyword);
 
-  $('#keywords').keypress(function(e) {
+  $('#keywords').keypress(function (e) {
     if (e.which === 13) {
       e.preventDefault();
       addKeyword();
     }
   });
-  
+
   $(document).on('click', '#keywordsList .btn-close', function () {
     const index = $(this).data('index');
     keywordsList.splice(index, 1);
     renderKeywords();
-    persistKeywords();
+    persistProfiles(); // 🟢 Updated
   });
 
   $('#syncJobsBtn').off('click').on('click', function (e) {
@@ -40,7 +42,19 @@ function attachEventHandlers() {
       syncJobs();
     }
   });
+
+  // 🔽 New for profile support
+  $('#addProfileBtn').click(addProfile);
+  $('#profileDropdown').change(function () {
+    activeProfile = $(this).val();
+    keywordsList = keywordProfiles[activeProfile] || [];
+    renderKeywords();
+  });
+
+  // 🔽 Load profiles on startup
+  loadProfiles();
 }
+
 
 function populateCategoryDropdown() {
   const categorySelect = $('#category');
@@ -65,7 +79,7 @@ function addKeyword() {
     renderKeywords();
 
     if (!window.APP_CONTEXT?.isDemo) {
-      persistKeywords();
+        persistProfiles();
     } else {
       showStatus('Keyword added (demo only — not saved).', 'info');
     }
@@ -212,6 +226,68 @@ function updateJobsTable() {
   initJobTables();           // reapply DataTables
   handleJobToggleEvents();   // reapply toggle logic
 }
+
+function loadProfiles() {
+  const storedProfiles = localStorage.getItem('job_search_keyword_profiles');
+  if (storedProfiles) {
+    try {
+      keywordProfiles = JSON.parse(storedProfiles);
+    } catch (e) {
+      console.error("Failed to parse profiles:", e);
+      keywordProfiles = {};
+    }
+  }
+
+  const storedActive = localStorage.getItem('job_search_active_profile');
+  activeProfile = storedActive || Object.keys(keywordProfiles)[0] || 'default';
+
+  if (!keywordProfiles[activeProfile]) {
+    keywordProfiles[activeProfile] = [];
+  }
+
+  keywordsList = keywordProfiles[activeProfile];
+  renderProfileDropdown();
+  renderKeywords();
+}
+
+function renderProfileDropdown() {
+  const $dropdown = $('#profileDropdown');
+  $dropdown.empty();
+
+  Object.keys(keywordProfiles).forEach(name => {
+    const selected = name === activeProfile ? 'selected' : '';
+    $dropdown.append(`<option value="${name}" ${selected}>${name}</option>`);
+  });
+}
+
+function addProfile() {
+  const name = $('#profileName').val().trim();
+  if (name && !keywordProfiles[name]) {
+    keywordProfiles[name] = [];
+    activeProfile = name;
+    keywordsList = [];
+    persistProfiles();
+    renderProfileDropdown();
+    renderKeywords();
+    showStatus(`Profile '${name}' created.`, 'success');
+    $('#profileName').val('');
+  } else {
+    showStatus('Profile name already exists or is empty.', 'warning');
+  }
+}
+
+$('#profileDropdown').on('change', function () {
+  activeProfile = $(this).val();
+  keywordsList = keywordProfiles[activeProfile] || [];
+  renderKeywords();
+});
+
+function persistProfiles() {
+  keywordProfiles[activeProfile] = keywordsList;
+  localStorage.setItem('job_search_keyword_profiles', JSON.stringify(keywordProfiles));
+  localStorage.setItem('job_search_active_profile', activeProfile);
+}
+
 
 // Save job search parameters
 function saveJobSearch() {

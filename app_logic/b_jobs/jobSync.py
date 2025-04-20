@@ -210,47 +210,48 @@ def _load_demo_jobs(count=8) -> List[Dict]:
         return []
 # === Core Sync Function ===
 # Pull jobs from Adzuna API and store them as batch
+# sync_jobs_from_adzuna - Pull jobs from Adzuna API and store them without exclusions
 def sync_jobs_from_adzuna(
     keywords: Optional[List[str]] = None,
     location: Optional[str] = None,
     country: str = "us",
     max_pages: Optional[int] = None,
     max_days_old: int = 1,
-    category: Optional[str] = None  # ← add this
+    category: Optional[str] = None
 ) -> Dict[str, Any]:
     try:
         get_api_credentials()
     except AdzunaAPIError as e:
         return {"status": "error", "error": str(e)}
-    # === Normalize Keywords & Remote Behavior ===
+
+    # === Normalize input ===
     keywords = list(set(filter(None, [kw.strip().lower() for kw in (keywords or [])])))
-    keyword_counts = {kw: 0 for kw in keywords}
     location = location.strip().lower() if location else ""
     if location == "remote":
         logger.info("🌐 Interpreting 'remote' location as remote-style job filter")
-        location = ""  # Avoid passing 'remote' as a geographic location
+        location = ""
         remote_keywords = ["remote", "work from home", "telecommute", "virtual", "distributed"]
         keywords.extend(remote_keywords)
         keywords = list(set(keywords))
+
     logger.info(f"🔍 Starting job sync: location={location}, keywords={keywords}")
+
+    # === Prepare deduplication ===
     dedupe_index = set()
     index = _load_index()
     for batch in index.get("batches", {}).values():
         for job in batch.get("jobs", []):
             if isinstance(job, dict) and "url" in job:
                 dedupe_index.add(job["url"])
-    exclusion_keywords = [
-        "nurse", "rn", "lpn", "med/surg", "icu", "surgical", "hospital", "auditor",
-        "classroom", "teacher", "clinical", "rehab", "pharmacy", "therapist", "case manager"
-    ]
-    # === Exclusion Keyword Filter -- TO BE MADE CONFIGURABLE ===
+
+    # === Begin sync ===
     page = 1
     total_fetched = 0
-    total_jobs_kept = 0
     all_jobs: List[Job] = []
     seen_urls = set()
     total_pages = 1
     start_time = time.time()
+
     while page <= total_pages and (max_pages is None or page <= max_pages):
         try:
             result, total_pages = search_jobs(
@@ -265,23 +266,14 @@ def sync_jobs_from_adzuna(
             logger.info(f"📄 Fetched page {page}/{total_pages}, jobs returned: {len(result)}")
             page += 1
             total_fetched += len(result)
+
             for job in result:
                 if job.url in dedupe_index or job.url in seen_urls:
                     continue
                 seen_urls.add(job.url)
-                fulltext = f"{job.title.lower()} {job.description.lower()}"
-                # Skip if exclusion keywords found
-                if any(ex_kw in fulltext for ex_kw in exclusion_keywords):
-                    logger.debug(f"⛔ Excluding by EXCLUSION_KEYWORDS: {job.title}")
-                    continue
-                matched = [kw for kw in keyword_counts if kw in fulltext]
-                if not matched:
-                    logger.debug(f"⛔ Excluding job with 0 keyword matches: {job.title}")
-                    continue
-                for kw in matched:
-                    keyword_counts[kw] += 1
-                job.matched_keywords = matched
+                job.matched_keywords = []  # Retained for structure compatibility
                 all_jobs.append(job)
+
             time.sleep(3)
         except AdzunaAPIError as e:
             logger.error(f"Adzuna error: {str(e)}")
@@ -289,9 +281,11 @@ def sync_jobs_from_adzuna(
         except Exception as e:
             logger.error(f"Unexpected error on page {page}: {str(e)}")
             break
+
     if not all_jobs:
         logger.warning("❌ No new jobs retrieved from Adzuna.")
         return {"status": "error", "error": "No new jobs retrieved from Adzuna"}
+
     job_dicts = []
     for job in all_jobs:
         try:
@@ -300,10 +294,12 @@ def sync_jobs_from_adzuna(
             job_dicts.append(job_dict)
         except Exception as e:
             logger.error(f"❌ Failed to convert job to dict: {str(e)} -- {repr(job)}")
+
     batch_id = str(uuid.uuid4())
     saved = _save_batch(job_dicts, batch_id)
     if not saved:
         return {"status": "error", "error": "Failed to write job batch"}
+
     index["batches"][batch_id] = {
         "id": batch_id,
         "timestamp": datetime.now().isoformat(),
@@ -312,24 +308,26 @@ def sync_jobs_from_adzuna(
         "country": country,
         "job_count": len(job_dicts),
         "max_days_old": max_days_old,
-        "match_summary": dict(sorted(keyword_counts.items(), key=lambda item: item[1], reverse=True)),
+        "match_summary": {},  # Empty since filtering is removed
         "jobs": job_dicts
     }
     index["job_count"] += len(job_dicts)
     index["last_sync"] = datetime.now().isoformat()
     index["last_batch"] = batch_id
     _save_index(index)
+
     logger.info(f"✅ Sync complete: {len(job_dicts)} new jobs kept (fetched {total_fetched} total) in {round(time.time() - start_time, 2)}s")
-    logger.info(f"🧠 Keyword match summary: {json.dumps(dict(sorted(keyword_counts.items(), key=lambda item: item[1], reverse=True)), indent=2)}")
     logger.info(f"🗂️ Batch ID: {batch_id}")
+
     return {
         "status": "success",
         "pages_fetched": page - 1,
         "total_jobs": len(job_dicts),
         "batch_id": batch_id,
         "time_taken_seconds": round(time.time() - start_time, 2),
-        "match_summary": dict(sorted(keyword_counts.items(), key=lambda item: item[1], reverse=True))
+        "match_summary": {}
     }
+
 # === API Endpoint Sync Route ===
 @job_sync_bp.route('/sync', methods=['POST'])
 def sync_jobs_api():

@@ -28,8 +28,18 @@ app.register_blueprint(user_login_bp)
 def index():
     is_demo = not session.get("authenticated")
     session["demo"] = is_demo
+
+    # ✅ Use real or demo resumes
+    if is_demo:
+        from app_logic.a_resume.resumeHistory import generate_demo_resumes
+        resumes = generate_demo_resumes()
+    else:
+        resumes = get_all_resumes(user_id=session.get("user_id"))
+
     context = generate_table_context(session)
-    context["stored_resumes"] = get_all_resumes()
+    context["stored_resumes"] = resumes
     context["is_demo"] = is_demo
+
     return render_template("index.html", **context)
+
 

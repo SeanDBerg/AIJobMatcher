@@ -47,6 +47,18 @@
                     </div>
                     <input type="hidden" id="keywordsListData" name="keywordsListData" value='{{ keywords_list|default("[]")|tojson }}'>
                 </div>
+                <div class="mb-3">
+                  <label for="profileName" class="form-label">New Profile Name</label>
+                  <div class="input-group">
+                    <input type="text" id="profileName" class="form-control" placeholder="Enter profile name">
+                    <button id="addProfileBtn" class="btn btn-outline-secondary">Add Profile</button>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="profileDropdown" class="form-label">Active Profile</label>
+                  <select id="profileDropdown" class="form-select"></select>
+                </div>
                 <!-- Scheduler UI elements removed -->
                 <div class="col-12 mt-2">
                     <button type="button" class="btn btn-primary" onclick="saveJobSearch()">
