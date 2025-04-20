@@ -2,68 +2,113 @@
 import logging
 import os
 import json
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
 from typing import Optional
-from flask import Blueprint, jsonify, request
-from logic.a_resume.resumeHistory import get_all_resumes
-from logic.b_jobs.jobMatch import get_all_jobs, get_match_percentages
+from flask import Blueprint, jsonify
+from app_logic.a_resume.resumeHistory import get_all_resumes
+from app_logic.b_jobs.jobMatch import get_all_jobs, get_match_percentages
 logger = logging.getLogger(__name__)
 # Define the blueprint
 layout_bp = Blueprint("layout_bp", __name__)
 # === Constants ===
 ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
 ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
-# === Job Retrieval ===
-
 # === Table Context Generation ===
 # 
 def _filter_remote_jobs(jobs):
-    return [job for job in jobs if job.is_remote]
+    return [job for job in jobs if job.get("is_remote")]
+#
+def _random_date_within(days: int) -> str:
+    return (datetime.now() - timedelta(days=random.randint(0, days))).isoformat()
+# 
+def _load_jobs_from_batches(count=25):
+    jobs = []
+    try:
+        for filename in os.listdir(ADZUNA_DATA_DIR):
+            if filename.startswith("batch_") and filename.endswith(".json"):
+                path = os.path.join(ADZUNA_DATA_DIR, filename)
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for job in data:
+                        job_copy = job.copy()
+                        job_copy["posted_date"] = _random_date_within(10)
+                        jobs.append(job_copy)
+                        if len(jobs) >= count:
+                            return jobs
+    except Exception as e:
+        logger.error(f"Error loading demo batch jobs: {str(e)}")
+    return jobs[:count]
+# Normalize any job to a dictionary (Job object or dict)
+def normalize_job(job):
+    try:
+        if isinstance(job, dict):
+            return job
+        if hasattr(job, "to_dict"):
+            return job.to_dict()
+    except Exception as e:
+        logger.error(f"[normalize_job] Failed to convert job: {e}")
+    return {"title": "Unknown", "url": "", "match_percentage": 0}
 # Format salary range as a human-readable string
 def format_salary_range(min_salary, max_salary) -> Optional[str]:
     if min_salary is None and max_salary is None:
         return None
     if min_salary and max_salary:
         if min_salary == max_salary:
-            return f"\u00a3{min_salary:,.0f}"
-        return f"\u00a3{min_salary:,.0f} - \u00a3{max_salary:,.0f}"
+            return f"${min_salary:,.0f}"
+        return f"${min_salary:,.0f} - £{max_salary:,.0f}"
     elif min_salary:
-        return f"\u00a3{min_salary:,.0f}+"
+        return f"${min_salary:,.0f}+"
     elif max_salary:
-        return f"Up to \u00a3{max_salary:,.0f}"
+        return f"Up to ${max_salary:,.0f}"
     return None
 # Public function to assemble the context for index.html
 def generate_table_context(session):
     try:
+        is_demo = session.get("demo", False)
         keywords = session.get("job_search_keywords", "")
         location = session.get("job_search_location", "")
         country = session.get("job_search_country", "us")
         remote_only = session.get("job_search_remote_only", "") == "1"
-        jobs = get_all_jobs(force_refresh=True)
-        remote_jobs = _filter_remote_jobs(jobs)
+
+        if is_demo:
+            jobs = _load_jobs_from_batches()
+        else:
+            jobs = get_all_jobs(force_refresh=True)
+
         stored_resumes = get_all_resumes()
         resume_id = session.get("resume_id")
-        # Fallback if session resume_id is invalid
         if resume_id and not any(r["id"] == resume_id for r in stored_resumes):
             logger.warning(f"Session resume_id {resume_id} is invalid. Clearing it.")
             session.pop("resume_id", None)
             resume_id = None
-        # Use the first resume by default if available
+
         if not resume_id and stored_resumes:
             resume_id = stored_resumes[0]["id"]
             session["resume_id"] = resume_id
             logger.info(f"No resume_id in session. Defaulting to first available: {resume_id}")
-        # Compute match percentages using centralized logic
+
         match_map = {}
         if resume_id:
             match_map = get_match_percentages(resume_id, jobs)
             logger.debug("Match percentages applied to %d jobs", len(match_map))
         else:
             logger.warning("No resume ID provided, match percentages will be 0")
-        for job in jobs:
-            job.match_percentage = match_map.get(job.url, 0)
-        jobs_dict = {i: job.to_dict() for i, job in enumerate(jobs)}
-        remote_dict = {i: job.to_dict() for i, job in enumerate(remote_jobs)}
+
+        # Normalize and clean all jobs before use
+        jobs = [
+            {
+                **normalize_job(job),
+                "match_percentage": match_map.get(normalize_job(job).get("url") or "", 0),
+                "posted_date": str(normalize_job(job).get("posted_date") or "")
+            }
+            for job in jobs
+        ]
+
+        remote_jobs = _filter_remote_jobs(jobs)
+        jobs_dict = {i: job for i, job in enumerate(jobs)}
+        remote_dict = {i: job for i, job in enumerate(remote_jobs)}
+
         return {
             "jobs": jobs_dict,
             "remote_jobs_list": remote_dict,
@@ -85,10 +130,9 @@ def generate_table_context(session):
 @layout_bp.route("/api/jobs", methods=["GET"])
 def get_jobs():
     try:
-        days = request.args.get("days", 30, type=int)
         jobs = get_all_jobs(force_refresh=True)
         logger.debug("Retrieved %d jobs for API", len(jobs))
-        return jsonify({"success": True, "jobs": [job.to_dict() for job in jobs]})
+        return jsonify({"success": True, "jobs": [normalize_job(job) for job in jobs]})
     except Exception as e:
         logger.error(f"Error fetching jobs: {str(e)}")
         return jsonify({"success": False, "error": str(e)})
@@ -106,7 +150,7 @@ def delete_batch(batch_id):
     except Exception as e:
         logger.error(f"Error deleting batch {batch_id}: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
-# 
+# Batch metadata summarization for frontend display
 def get_storage_status() -> dict:
     batches = {}
     try:
@@ -115,14 +159,11 @@ def get_storage_status() -> dict:
                 continue
             batch_id = filename.removeprefix("batch_").removesuffix(".json")
             path = os.path.join(ADZUNA_DATA_DIR, filename)
-
-            # ✅ Use actual file creation timestamp
             try:
                 file_ctime = os.path.getctime(path)
                 timestamp_str = datetime.fromtimestamp(file_ctime).strftime("%Y-%m-%d %I:%M %p")
             except Exception:
                 timestamp_str = "Unknown"
-
             with open(path, 'r', encoding='utf-8') as f:
                 jobs = json.load(f)
                 job_count = len(jobs)

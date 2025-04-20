@@ -154,10 +154,18 @@ function handleJobToggleEvents() {
 // ✅ Attach handlers after DOM is ready
 $(document).ready(function () {
   console.log('✅ jobSection.js loaded and DOM ready');
+
   initBatchDeleteHandlers();
-  initJobTables();           
-  handleJobToggleEvents();   
+
+  // ✅ Safely skip table reinit in demo mode
+  if (!window.APP_CONTEXT || !window.APP_CONTEXT.isDemo) {
+    initJobTables();
+  }
+
+  handleJobToggleEvents();
 });
+
+
 
 
 

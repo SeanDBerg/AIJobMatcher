@@ -1,13 +1,14 @@
-# app.py - Main application file for job matching application
+# main.py - Main application file for job matching application
 import os
 import logging
 from flask import Flask, render_template, session
-from logic.b_jobs.jobLayout import generate_table_context
-from logic.a_resume.uploadResume import upload_resume_bp
-from logic.a_resume.resumeHistory import resume_history_bp
-from logic.a_resume.resumeHistory import get_all_resumes
-from logic.b_jobs.jobLayout import layout_bp
-from logic.b_jobs.jobSync import job_sync_bp
+from app_logic.b_jobs.jobLayout import generate_table_context
+from app_logic.a_resume.uploadResume import upload_resume_bp
+from app_logic.a_resume.resumeHistory import resume_history_bp
+from app_logic.a_resume.resumeHistory import get_all_resumes
+from app_logic.b_jobs.jobLayout import layout_bp
+from app_logic.b_jobs.jobSync import job_sync_bp
+from app_logic.c_user.userLogin import user_login_bp
 
 # Set up logging
 logging.basicConfig(
@@ -21,9 +22,14 @@ app.register_blueprint(upload_resume_bp)
 app.register_blueprint(resume_history_bp)
 app.register_blueprint(layout_bp)
 app.register_blueprint(job_sync_bp)
+app.register_blueprint(user_login_bp)
 
 @app.route('/')
 def index():
+    is_demo = not session.get("authenticated")
+    session["demo"] = is_demo
     context = generate_table_context(session)
     context["stored_resumes"] = get_all_resumes()
+    context["is_demo"] = is_demo
     return render_template("index.html", **context)
+

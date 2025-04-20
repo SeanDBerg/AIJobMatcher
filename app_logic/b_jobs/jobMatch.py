@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 from typing import List, Dict, Optional, Set
 from sklearn.feature_extraction.text import HashingVectorizer
-from logic.a_resume.resumeHistory import get_resume_content, get_resume
+from app_logic.a_resume.resumeHistory import get_resume_content, get_resume
 logger = logging.getLogger(__name__)
 ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
 # === Job Model ===
@@ -316,7 +316,7 @@ def get_match_percentages(resume_id: str, jobs: List[Job]) -> Dict[str, int]:
                 "skills": embeddings["skills"]
             }
             # Persist regenerated embeddings back into resume index
-            from logic.a_resume.resumeHistory import get_resume, resume_storage
+            from app_logic.a_resume.resumeHistory import get_resume, resume_storage
             metadata = get_resume(resume_id)
             if metadata:
                 metadata["embedding_narrative"] = resume_embeddings["narrative"].tolist()

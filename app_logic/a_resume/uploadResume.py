@@ -5,8 +5,8 @@ import json
 import logging
 from flask import Blueprint, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
-from logic.a_resume.resumeHistory import resume_storage
-from logic.b_jobs.jobMatch import generate_dual_embeddings
+from app_logic.a_resume.resumeHistory import resume_storage
+from app_logic.b_jobs.jobMatch import generate_dual_embeddings
 logger = logging.getLogger(__name__)
 upload_resume_bp = Blueprint("upload_resume", __name__)
 # === Configuration ===

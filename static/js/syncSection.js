@@ -15,7 +15,6 @@ function tryLoadKeywords() {
   }
 }
 
-
 function attachEventHandlers() {
   $('#addKeywordBtn').click(addKeyword);
 
@@ -25,7 +24,7 @@ function attachEventHandlers() {
       addKeyword();
     }
   });
-
+  
   $(document).on('click', '#keywordsList .btn-close', function () {
     const index = $(this).data('index');
     keywordsList.splice(index, 1);
@@ -33,7 +32,14 @@ function attachEventHandlers() {
     persistKeywords();
   });
 
-  $('#syncJobsBtn').click(syncJobs);
+  $('#syncJobsBtn').off('click').on('click', function (e) {
+    e.preventDefault();
+    if (window.APP_CONTEXT?.isDemo) {
+      demoSyncJobs();
+    } else {
+      syncJobs();
+    }
+  });
 }
 
 function populateCategoryDropdown() {
@@ -57,10 +63,16 @@ function addKeyword() {
   if (keyword && !keywordsList.includes(keyword)) {
     keywordsList.push(keyword);
     renderKeywords();
-    persistKeywords();
+
+    if (!window.APP_CONTEXT?.isDemo) {
+      persistKeywords();
+    } else {
+      showStatus('Keyword added (demo only — not saved).', 'info');
+    }
+
     $('#keywords').val('');
   } else {
-    showStatus('Keyword already in list.', 'warning');
+    showStatus('Keyword already in list or empty.', 'warning');
   }
 }
 
@@ -79,12 +91,22 @@ function renderKeywords() {
 
 function persistKeywords() {
   localStorage.setItem('job_search_keywords_list', JSON.stringify(keywordsList));
-  $.ajax({
-    url: '/api/save_keywords_list',
-    method: 'POST',
-    contentType: 'application/json',
-    data: JSON.stringify({ keywords_list: keywordsList })
-  });
+  // Only call API in non-demo mode
+  if (!window.APP_CONTEXT?.isDemo) {
+    $.ajax({
+      url: '/api/jobs/save_keywords_list',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ keywords_list: keywordsList }),
+      success: (res) => {
+        showStatus(res.message || "Settings saved.", res.success ? "success" : "warning");
+      },
+      error: (xhr) => {
+        const msg = xhr.responseJSON?.error || xhr.statusText || 'Unknown error';
+        showStatus(`Error saving settings: ${msg}`, 'danger');
+      }
+    });
+  }
 }
 
 function showStatus(message, type = 'info') {
@@ -114,10 +136,10 @@ function syncJobs() {
     data: JSON.stringify(payload),
     success: (res) => {
       if (res.success) {
-        showStatus('Sync complete. Reloading...', 'success');
+        showStatus("Sync complete. Reloading...", "success");
         setTimeout(() => location.reload(), 3000);
       } else {
-        showStatus(`Error: ${res.error}`, 'danger');
+        showStatus(`Error: ${res.error}`, "danger");
       }
     },
     error: (xhr) => {
@@ -125,6 +147,70 @@ function syncJobs() {
       showStatus(`Error: ${msg}`, 'danger');
     }
   });
+}
+
+function renderRemoteJobs() {
+  const $remoteTbody = $('#remoteJobsTable tbody');
+  $remoteTbody.empty();
+
+  Object.entries(window.remoteJobs || {}).forEach(([jobId, job]) => {
+    const tr = `
+      <tr class="job-row" data-job-id="${jobId}">
+        <td>${job.title}</td>
+        <td>${job.company}</td>
+        <td>${job.location}</td>
+        <td>${job.is_remote ? 'Yes' : 'No'}</td>
+        <td>${job.posted_date}</td>
+        <td>${job.salary_range || 'Not specified'}</td>
+        <td>${job.match_percentage || 0}%</td>
+        <td>
+          <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="${jobId}">
+            <i class="fas fa-eye"></i> View
+          </button>
+          <a href="${job.url}" target="_blank" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-external-link-alt"></i> Apply
+          </a>
+        </td>
+      </tr>`;
+    $remoteTbody.append(tr);
+  });
+
+  if ($.fn.DataTable.isDataTable('#remoteJobsTable')) {
+    $('#remoteJobsTable').DataTable().clear().destroy();
+  }
+
+  initJobTables();
+}
+
+
+function updateJobsTable() {
+  const $tbody = $('#jobsTable tbody');
+  $tbody.empty();
+
+  Object.entries(window.allJobs || {}).forEach(([id, job]) => {
+    const row = `
+      <tr class="job-row" data-job-id="${id}">
+        <td>${job.title}</td>
+        <td>${job.company}</td>
+        <td>${job.location}</td>
+        <td>${job.is_remote ? 'Yes' : 'No'}</td>
+        <td>${job.posted_date}</td>
+        <td>${job.salary_range || 'Not specified'}</td>
+        <td>${job.match_percentage || 0}%</td>
+        <td>
+          <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="${id}">
+            <i class="fas fa-eye"></i> View
+          </button>
+          <a href="${job.url}" target="_blank" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Visit Job Listing">
+            <i class="fas fa-external-link-alt"></i> Apply
+          </a>
+        </td>
+      </tr>`;
+    $tbody.append(row);
+  });
+
+  initJobTables();           // reapply DataTables
+  handleJobToggleEvents();   // reapply toggle logic
 }
 
 // Save job search parameters
@@ -159,13 +245,12 @@ function saveJobSearch() {
     localStorage.setItem('job_search_max_pages', maxPages);
 
     // Show confirmation message
-    $('#syncStatus').show().removeClass('alert-info alert-danger').addClass('alert-success');
-    $('#syncStatusText').html('<i class="fas fa-check-circle"></i> Settings saved successfully.');
-
-    // Auto-hide after a few seconds
-    setTimeout(function() {
-        $('#syncStatus').fadeOut();
-    }, 3000);
+    showStatus(
+      window.APP_CONTEXT?.isDemo
+        ? '<i class="fas fa-info-circle"></i> Settings accepted (demo mode only).'
+        : '<i class="fas fa-check-circle"></i> Settings saved successfully.',
+      'success'
+    );
 }
 
 function loadSavedSearch() {

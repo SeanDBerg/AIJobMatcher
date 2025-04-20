@@ -4,10 +4,11 @@ import json
 import uuid
 import time
 import logging
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Tuple
 import requests
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from logging.handlers import RotatingFileHandler
 # === Adzuna API Constants ===
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -187,6 +188,26 @@ def _save_batch(jobs: List[Dict], batch_id: str) -> bool:
         logger.error(f"Failed to save batch {batch_id}: {str(e)}")
         logger.debug(f"Batch save failed for ID {batch_id}, data length: {len(jobs)}")
         return False
+# 
+def _load_demo_jobs(count=8) -> List[Dict]:
+    jobs = []
+    try:
+        for filename in os.listdir(ADZUNA_DATA_DIR):
+            if filename.startswith("batch_") and filename.endswith(".json"):
+                with open(os.path.join(ADZUNA_DATA_DIR, filename), "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for job in data:
+                        job_copy = job.copy()
+                        job_copy["posted_date"] = (
+                            datetime.now() - timedelta(days=random.randint(0, 9))
+                        ).isoformat()
+                        job_copy["match_percentage"] = random.choice([65, 70, 75, 80, 85, 90])
+                        jobs.append(job_copy)
+        random.shuffle(jobs)
+        return jobs[:count]
+    except Exception as e:
+        logger.error(f"[demo_sync] Failed to load demo jobs: {str(e)}")
+        return []
 # === Core Sync Function ===
 # Pull jobs from Adzuna API and store them as batch
 def sync_jobs_from_adzuna(
@@ -330,16 +351,27 @@ def sync_jobs_api():
         max_pages = data.get('max_pages', None)
         max_days_old = data.get('max_days_old', 1)
         category = data.get('category', None)
-
-        results = sync_jobs_from_adzuna(
-            keywords=keywords_list,
-            location=location,
-            country=country,
-            max_pages=max_pages,
-            max_days_old=max_days_old,
-            category=category
-        )
-
+        # Check if demo mode is enabled to load demo jobs instead of real sync
+        if session.get("demo", False):
+            # Simulate demo job sync
+            jobs = _load_demo_jobs(count=random.randint(6, 9))
+            results = {
+                "status": "success",
+                "pages_fetched": 1,
+                "total_jobs": len(jobs),
+                "batch_id": "demo-mode",
+                "time_taken_seconds": round(random.uniform(1.0, 2.5), 2),
+                "match_summary": {kw: random.randint(1, 3) for kw in keywords_list}
+            }
+        else:
+            results = sync_jobs_from_adzuna(
+                keywords=keywords_list,
+                location=location,
+                country=country,
+                max_pages=max_pages,
+                max_days_old=max_days_old,
+                category=category
+            )
         if results.get('status') != 'success':
             return jsonify({
                 "success": False,
@@ -356,12 +388,21 @@ def sync_jobs_api():
     except Exception as e:
         logger.error(f"Unexpected sync error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
-# Save Keywords List
+# API endpoint to save keyword list persistently in index.json
 @job_sync_bp.route('/save_keywords_list', methods=['POST'])
 def save_keywords_list():
-    """API endpoint to save keyword list persistently in index.json"""
     if not request.is_json:
         return jsonify({"success": False, "error": "Request must be JSON"}), 400
+
+    # ✅ Check for demo mode BEFORE modifying the index
+    if session.get("demo", False):
+        data = request.get_json()
+        keywords_list = data.get("keywords_list", [])
+        return jsonify({
+            "success": True,
+            "message": "Settings saved (demo mode only, will reset after session).",
+            "count": len(keywords_list)
+        })
 
     try:
         data = request.get_json()
@@ -388,3 +429,4 @@ def save_keywords_list():
             "error": "Exception while saving keyword list",
             "details": str(e)
         }), 500
+
