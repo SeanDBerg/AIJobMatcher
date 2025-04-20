@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 from typing import List, Dict, Optional, Set
 from sklearn.feature_extraction.text import HashingVectorizer
-from app_logic.a_resume.resumeHistory import get_resume_content, get_resume
+from app_logic.a_resume.resumeHistory import get_resume_content, get_resume, resume_storage
 logger = logging.getLogger(__name__)
 ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
 # === Job Model ===
@@ -301,32 +301,47 @@ def match_jobs(data: dict) -> tuple[dict, int]:
         logger.error(f"Unexpected error in match_jobs: {str(e)}")
         return {"success": False, "error": f"Unexpected error: {str(e)}"}, 500
 # Returns {job.url: match_percentage} mapping for a given resume and job list
+# Returns {job.url: match_percentage} mapping for a given resume and job list
 def get_match_percentages(resume_id: str, jobs: List[Job]) -> Dict[str, int]:
     try:
         resume_text = get_resume_content(resume_id)
         if not resume_text:
             logger.warning(f"No resume content found for ID {resume_id}")
             return {}
-        resume_embeddings = get_resume_embeddings(resume_id)
-        if not resume_embeddings:
-            logger.warning(f"No embeddings found for resume ID {resume_id}, generating...")
+
+        resume_metadata = resume_storage._index["resumes"].get(resume_id)
+        if not resume_metadata:
+            logger.warning(f"No metadata found for resume ID {resume_id}")
+            return {}
+
+        emb_narr = resume_metadata.get("embedding_narrative")
+        emb_skill = resume_metadata.get("embedding_skills")
+
+        if emb_narr and emb_skill and len(emb_narr) == 384 and len(emb_skill) == 384:
+            resume_embeddings = {
+                "narrative": np.array(emb_narr),
+                "skills": np.array(emb_skill)
+            }
+        else:
+            logger.warning(f"[get_match_percentages] No valid embeddings for resume ID {resume_id}, generating...")
             embeddings = generate_dual_embeddings(resume_text)
             resume_embeddings = {
                 "narrative": embeddings["narrative"],
                 "skills": embeddings["skills"]
             }
-            # Persist regenerated embeddings back into resume index
-            from app_logic.a_resume.resumeHistory import get_resume, resume_storage
-            metadata = get_resume(resume_id)
-            if metadata:
-                metadata["embedding_narrative"] = resume_embeddings["narrative"].tolist()
-                metadata["embedding_skills"] = resume_embeddings["skills"].tolist()
-                resume_storage._index["resumes"][resume_id] = metadata
-                resume_storage._save_index()
-                logger.info(f"Stored regenerated embeddings for resume ID {resume_id}")
+            # Save regenerated embeddings
+            resume_metadata["embedding_narrative"] = embeddings["narrative"].tolist()
+            resume_metadata["embedding_skills"] = embeddings["skills"].tolist()
+            resume_storage._index["resumes"][resume_id] = resume_metadata
+            resume_storage._save_index()
+            logger.info(f"[get_match_percentages] Stored regenerated embeddings for resume ID {resume_id}")
+
         matches = match_jobs_to_resume(resume_embeddings, jobs)
         return {m.job.url: int(m.similarity_score * 100) for m in matches}
+
     except Exception as e:
         logger.error(f"Error computing match percentages: {str(e)}")
         return {}
+
+
 

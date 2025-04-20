@@ -58,6 +58,44 @@ function handleJobToggleEvents() {
   });
 }
 
+function setActiveResume(resumeId) {
+  fetch('/api/set_resume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resume_id: resumeId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("✅ Set resume response:", data);
+    if (data.success) {
+      fetch(`/api/match_percentages/${resumeId}`)
+        .then(res => res.json())
+        .then(matchData => {
+          console.log("🎯 Match API response:", matchData);  // << Log match result
+          if (matchData.success) {
+            updateMatchPercentages(matchData.matches);
+          } else {
+            console.warn("⚠️ Match API failed:", matchData.error);
+          }
+        })
+        .catch(err => console.error("❌ Error in match fetch:", err));
+    } else {
+      console.warn("⚠️ Failed to set active resume:", data.error);
+    }
+  })
+  .catch(err => console.error("❌ Error setting active resume:", err));
+}
+
+
+function updateMatchPercentages(matchMap) {
+  $('tr.job-row').each(function () {
+    const jobId = String($(this).data('job-id') || "");
+    const cleanId = jobId.replace(/^remote-/, '');
+    const match = matchMap[cleanId] || 0;
+    $(this).find('td').eq(6).text(`${match}%`);
+  });
+}
+
 function initJobTables() {
   try {
     // Generic table initializer
@@ -163,6 +201,12 @@ $(document).ready(function () {
   }
 
   handleJobToggleEvents();
+  $('.resume-select-link').on('click', function (e) {
+    e.preventDefault();
+    const resumeId = $(this).data('resume-id');
+    setActiveResume(resumeId);
+  });
+
 });
 
 

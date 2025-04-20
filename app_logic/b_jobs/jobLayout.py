@@ -106,8 +106,8 @@ def generate_table_context(session):
         ]
 
         remote_jobs = _filter_remote_jobs(jobs)
-        jobs_dict = {i: job for i, job in enumerate(jobs)}
-        remote_dict = {i: job for i, job in enumerate(remote_jobs)}
+        jobs_dict = {job["url"]: job for job in jobs if job.get("url")}
+        remote_dict = {job["url"]: job for job in remote_jobs if job.get("url")}
 
         return {
             "jobs": jobs_dict,
@@ -178,3 +178,12 @@ def get_storage_status() -> dict:
         logger.error(f"[get_storage_status] Failed to generate batch summary: {str(e)}")
     return {"batches": batches}
 
+@layout_bp.route("/api/match_percentages/<resume_id>", methods=["GET"])
+def get_match_percentages_for_resume(resume_id):
+    try:
+        jobs = get_all_jobs(force_refresh=True)
+        matches = get_match_percentages(resume_id, jobs)
+        return jsonify({"success": True, "matches": matches})
+    except Exception as e:
+        logger.error(f"Error fetching matches for resume {resume_id}: {str(e)}")
+        return jsonify({"success": False, "error": str(e)})
