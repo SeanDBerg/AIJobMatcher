@@ -1,211 +1,200 @@
-// jobSection.js – Handles cleanup and export buttons in the jobSection
 
-function initBatchDeleteHandlers() {
-  $('.delete-batch').click(function () {
-    const batchId = $(this).data('batch-id');
-    if (!confirm(`Delete batch ${batchId}? This cannot be undone.`)) return;
 
-    $('#syncStatus').show().removeClass().addClass('alert alert-info');
-    $('#syncStatusText').text(`Deleting batch ${batchId}...`);
 
-    fetch(`/api/adzuna/batch/${batchId}`, {
-      method: 'DELETE'
-    }).then(res => res.json()).then(data => {
-      if (data.success) {
-        $('#syncStatus').removeClass().addClass('alert alert-success');
-        $('#syncStatusText').html(`Batch ${batchId} deleted successfully. Reloading...`);
-        setTimeout(() => location.reload(), 1500);
-      } else {
-        $('#syncStatus').removeClass().addClass('alert alert-danger');
-        $('#syncStatusText').html(`Error deleting batch: ${data.error}`);
-      }
-    }).catch(err => {
-      $('#syncStatus').removeClass().addClass('alert alert-danger');
-      $('#syncStatusText').html(`Request failed: ${err}`);
-    });
-  });
-}
 
-function attachTableStatusHandlers(tableId) {
-  const table = $(`#${tableId}`).DataTable();
 
-  table.on('draw', function () {
-    const pageInfo = table.page.info();
 
-    const container = $(`#${tableId}`).closest('.tab-pane');
-    container.find('.currentPageValue').text(pageInfo.page + 1);
-    container.find('.totalPagesValue').text(pageInfo.pages);
-    container.find('.jobsFoundValue').text(pageInfo.recordsDisplay);
-  });
 
-  // Trigger draw immediately on load
-  table.draw();
-}
 
-function handleJobToggleEvents() {
-  $('.toggle-job-details').off('click').on('click', function () {
-    const jobId = $(this).data('job-id');
-    const jobRow = $(this).closest('tr');
-    const existingDetailRow = $(`#inline-detail-row`);
 
-    if (existingDetailRow.length) {
-      if (existingDetailRow.data('job-id') === jobId) {
-        existingDetailRow.remove();
-        $(this).html('<i class="fas fa-eye"></i> View');
-        return;
-      } else {
-        existingDetailRow.remove();
-        $('.toggle-job-details').html('<i class="fas fa-eye"></i> View');
-      }
-    }
 
-    $(this).html('<i class="fas fa-eye-slash"></i> Hide');
 
-    const job = window.allJobs?.[jobId] || window.recentJobs?.[jobId] || window.remoteJobs?.[jobId];
-    if (!job) return;
 
-    const breakdownHtml = job.breakdown ? `
-      <div class="mt-3">
-        <strong>Scoring Breakdown:</strong>
-        <ul class="mb-0">
-          <li><strong>Similarity:</strong> ${(job.breakdown.similarity_score * 100).toFixed(2)}%</li>
-          <li><strong>Token Bonus:</strong> ${(job.breakdown.token_bonus * 100).toFixed(2)}%</li>
-          <li><strong>Category Bonus:</strong> ${(job.breakdown.category_bonus * 100).toFixed(2)}%</li>
-          <li><strong>Title Bonus:</strong> ${(job.breakdown.title_bonus * 100).toFixed(2)}%</li>
-          <li><strong>Total Bonus:</strong> ${(job.breakdown.total_bonus * 100).toFixed(2)}%</li>
-        </ul>
-      </div>
-    ` : '';
 
-    const detailsHtml = `
-      <tr id="inline-detail-row" class="bg-light" data-job-id="${jobId}">
-        <td colspan="8">
-          <div class="job-details-content p-3">
-            <h5>${job.title} at ${job.company}</h5>
-            ${job.skills?.length ? `
-              <div class="mb-3">
-                <strong>Skills:</strong>
-                <div class="mt-1">
-                  ${job.skills.map(skill => `<span class="badge bg-secondary me-1 mb-1">${skill}</span>`).join('')}
-                </div>
-              </div>` : ''}
-            <div class="mb-3">
-              <strong>Description:</strong>
-              <div class="job-description mt-2">
-                ${job.description || 'No description available.'}
-              </div>
-            </div>
-            ${breakdownHtml}
-            <div class="text-end">
-              <a href="${job.url}" target="_blank" class="btn btn-primary">
-                <i class="fas fa-external-link-alt me-1"></i> Apply for This Position
-              </a>
-            </div>
-          </div>
-        </td>
-      </tr>
-    `;
 
-    const $newRow = $(detailsHtml);
-    jobRow.after($newRow);
-    $newRow.find('.job-details-content').hide().fadeIn(200);
-  });
-}
 
-function setActiveResume(resumeId) {
-  $('#syncStatus').show().removeClass().addClass('alert alert-info');
-  $('#syncStatusText').text(`⏳ Matching jobs to your resume... Please wait.`);
 
-  fetch('/api/set_resume', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ resume_id: resumeId })
-  })
-  .then(res => res.json())
-  .then(data => {
-    console.log("✅ Set resume response:", data);
-    if (data.success) {
-      fetch(`/api/match_percentages/${resumeId}`)
-        .then(res => res.json())
-        .then(matchData => {
-          console.log("🎯 Match API response:", matchData);
-          if (matchData.success) {
-            updateMatchPercentages(matchData.matches);
-            $('#syncStatus').removeClass().addClass('alert alert-success');
-            $('#syncStatusText').html(`✅ Matches loaded.`);
-          } else {
-            $('#syncStatus').removeClass().addClass('alert alert-danger');
-            $('#syncStatusText').html(`⚠️ Match failed: ${matchData.error}`);
-          }
-        })
-        .catch(err => {
-          $('#syncStatus').removeClass().addClass('alert alert-danger');
-          $('#syncStatusText').html(`❌ Error: ${err}`);
-        });
-    } else {
-      $('#syncStatus').removeClass().addClass('alert alert-danger');
-      $('#syncStatusText').html(`⚠️ Failed to set resume: ${data.error}`);
-    }
-  })
-  .catch(err => {
-    $('#syncStatus').removeClass().addClass('alert alert-danger');
-    $('#syncStatusText').html(`❌ Network error: ${err}`);
-  });
-}
 
-function updateMatchPercentages(matchMap) {
-  $('tr.job-row').each(function () {
-    const jobId = String($(this).data('job-id') || "");
-    const cleanId = jobId.replace(/^remote-/, '');
-    const match = matchMap[cleanId] || 0;
-    $(this).find('td').eq(6).text(`${match}%`);
-  });
-}
 
-function initJobTables() {
-  try {
-    function setupTable(tableId, orderColumn) {
-      if ($.fn.DataTable.isDataTable(`#${tableId}`)) {
-        $(`#${tableId}`).DataTable().destroy();
-      }
 
-      if ($(`#${tableId} tbody tr`).length > 1) {
-        const table = $(`#${tableId}`).DataTable({
-          pageLength: 10,
-          lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-          order: [[orderColumn, 'desc']]
-        });
 
-        attachTableStatusHandlers(tableId);
-      }
-    }
 
-    setupTable('jobsTable', 4);
-    setupTable('remoteJobsTable', 4);
-    setupTable('batchSummaryTable', 1);
+# Maybe from jobLayout.py
+def _filter_remote_jobs(jobs):
+  return [job for job in jobs if job.get("is_remote")]
+# Format salary range as a human-readable string
+def format_salary_range(min_salary, max_salary) -> Optional[str]:
+  if min_salary is None and max_salary is None:
+      return None
+  if min_salary and max_salary:
+      if min_salary == max_salary:
+          return f"${min_salary:,.0f}"
+      return f"${min_salary:,.0f} - £{max_salary:,.0f}"
+  elif min_salary:
+      return f"${min_salary:,.0f}+"
+  elif max_salary:
+      return f"Up to ${max_salary:,.0f}"
+  return None
+@layout_bp.route("/api/match_percentages/<resume_id>", methods=["GET"])
+def get_match_percentages_for_resume(resume_id):
+  try:
+      jobs = get_all_jobs(force_refresh=True)
+      matches = get_match_percentages(resume_id, jobs)
+      return jsonify({"success": True, "matches": matches})
+  except Exception as e:
+      logger.error(f"Error fetching matches for resume {resume_id}: {str(e)}")
+      return jsonify({"success": False, "error": str(e)})
 
-    $('.view-job').click(function () {
-      const jobId = $(this).data('job-id');
-      showJobDetails(jobId);
-    });
-  } catch (e) {
-    console.error("Error initializing DataTables:", e);
-  }
-}
 
-$(document).ready(function () {
-  console.log('✅ jobSection.js loaded and DOM ready');
 
-  initBatchDeleteHandlers();
 
-  if (!window.APP_CONTEXT || !window.APP_CONTEXT.isDemo) {
-    initJobTables();
-  }
+# Maybes from JobMatch.py
 
-  handleJobToggleEvents();
-  $('.resume-select-link').on('click', function (e) {
-    e.preventDefault();
-    const resumeId = $(this).data('resume-id');
-    setActiveResume(resumeId);
-  });
-});
+# === Match Caching Utilities ===
+def _load_match_cache() -> dict:
+    if os.path.exists(MATCH_CACHE_PATH):
+        try:
+            with open(MATCH_CACHE_PATH, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"[cache] Failed to load match cache: {e}")
+    return {}
+def _save_match_cache(cache: dict) -> None:
+    try:
+        with open(MATCH_CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, indent=2)
+    except Exception as e:
+        logger.warning(f"[cache] Failed to save match cache: {e}")
+def _hash_jobs(jobs: List[Job]) -> str:
+    job_data = "".join(sorted(job.url for job in jobs if job.url))
+    return hashlib.sha256(job_data.encode('utf-8')).hexdigest()
+def _hash_filters(filters: Optional[dict]) -> str:
+    if not filters:
+        return "nofilters"
+    return hashlib.sha256(json.dumps(filters, sort_keys=True).encode('utf-8')).hexdigest()
+# Extract matching skills from text using a known skills list.
+def extract_skills(text: str, skill_map: Dict[str, str]) -> set:
+    tokens = text.lower().split()
+    known_skills = set(skill_map.keys())
+    return {token for token in tokens if token in known_skills}
+# Apply filters to job listings
+def apply_filters(jobs, filters):
+    filtered = jobs.copy()
+    if filters.get('remote'):
+        filtered = [job for job in filtered if job.is_remote]
+    loc = filters.get('location', '').strip().lower()
+    if loc:
+        filtered = [job for job in filtered if loc in job.location.lower()]
+    keywords = filters.get('keywords', '').strip()
+    if keywords:
+        kw_list = [k.strip().lower() for k in keywords.split(',')]
+        filtered = [job for job in filtered if any(kw in f"{job.title} {job.description} {job.company} {' '.join(job.skills)}".lower() for kw in kw_list)]
+    return filtered
+# Assigns match percentage to each job based on resume embeddings
+def get_resume_embeddings(resume_id):
+    try:
+        metadata = get_resume_content(resume_id)
+        if isinstance(metadata, dict) and "metadata" in metadata:
+            inner = metadata.get("metadata", {})
+            if isinstance(inner, dict) and "embedding_narrative" in inner and "embedding_skills" in inner:
+                return {
+                    "narrative": np.array(inner["embedding_narrative"], dtype=np.float32),
+                    "skills": np.array(inner["embedding_skills"], dtype=np.float32)
+                }
+        return None
+    except Exception as e:
+        logger.error(f"Error retrieving resume embeddings for ID {resume_id}: {str(e)}")
+        return None
+# Extract skills from job data
+def extract_skills_from_job(job_data: Dict, skill_map: Optional[Dict[str, str]] = None) -> List[str]:
+    skills = []
+    # Fallback to empty dict if none provided
+    if skill_map is None:
+        skill_map = {}
+    all_possible_skills = set(skill_map.keys())
+    # Simple skill detection based on job category and text
+    if "category" in job_data and "tag" in job_data["category"]:
+        category = job_data["category"]["tag"].lower()
+        if any(k in category for k in ["it", "software", "developer"]):
+            description = job_data.get("description", "").lower()
+            title = job_data.get("title", "").lower()
+            combined = f"{title} {description}"
+            skills += [skill for skill in all_possible_skills if skill in combined]
+    return list(set(skills))
+# Returns {job.url: match_percentage} mapping for a given resume and job list
+def get_match_percentages(resume_id: str, jobs: List[Job]) -> Dict[str, int]:
+    try:
+        resume_text = get_resume_content(resume_id)
+        if not resume_text:
+            logger.warning(f"No resume content found for ID {resume_id}")
+            return {}
+        resume_metadata = resume_storage._index["resumes"].get(resume_id)
+        if not resume_metadata:
+            logger.warning(f"No metadata found for resume ID {resume_id}")
+            return {}
+        if not isinstance(resume_metadata, dict):
+            logger.warning(f"resume_metadata is not a dict for ID {resume_id}")
+            return {}
+        emb_narr = resume_metadata.get("embedding_narrative")
+        emb_skill = resume_metadata.get("embedding_skills")
+
+        if (
+            isinstance(emb_narr, list)
+            and isinstance(emb_skill, list)
+            and len(emb_narr) == 384
+            and len(emb_skill) == 384
+        ):
+            resume_embeddings = {
+                "narrative": np.array(emb_narr, dtype=np.float32),
+                "skills": np.array(emb_skill, dtype=np.float32)
+            }
+        else:
+            logger.warning(f"[get_match_percentages] No valid embeddings for resume ID {resume_id}, generating...")
+            embeddings = generate_dual_embeddings(resume_text)
+            resume_embeddings = {
+                "narrative": embeddings["narrative"],
+                "skills": embeddings["skills"]
+            }
+            resume_metadata["embedding_narrative"] = embeddings["narrative"].tolist()
+            resume_metadata["embedding_skills"] = embeddings["skills"].tolist()
+            resume_storage._index["resumes"][resume_id] = resume_metadata
+            resume_storage._save_index()
+            logger.info(f"[get_match_percentages] Stored regenerated embeddings for resume ID {resume_id}")
+
+        resume_title_raw = extract_resume_title(resume_text)
+
+        job_hash = _hash_jobs(jobs)
+        filters_hash = "nofilters"
+        cache = _load_match_cache()
+        cached = cache.get(resume_id, {}).get(job_hash, {}).get(filters_hash)
+
+        if cached and "matches" in cached:
+            logger.info(f"[cache] Using cached match results for resume {resume_id}")
+            return cached["matches"]
+
+        skill_map = load_skill_map()
+        title_map = load_title_map()
+        resume_title_raw = extract_resume_title(resume_text)
+
+        matches = match_jobs_to_resume(
+            resume_embeddings,
+            jobs,
+            resume_text=resume_text,
+            skill_map=skill_map,
+            title_map=title_map,
+            resume_title=resume_title_raw  # ✅ Pass it here too
+        )
+
+        match_result = {m.job.url: int(m.similarity_score * 100) for m in matches}
+
+        cache.setdefault(resume_id, {}).setdefault(job_hash, {})[filters_hash] = {
+            "timestamp": time.time(),
+            "matches": match_result
+        }
+        _save_match_cache(cache)
+
+        return match_result
+
+    except Exception as e:
+        logger.error(f"Error computing match percentages: {str(e)}")
+        return {}

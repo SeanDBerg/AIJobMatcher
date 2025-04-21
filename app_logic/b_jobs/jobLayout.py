@@ -3,25 +3,22 @@ import logging
 import os
 import json
 import random
+import numpy as np
 from datetime import datetime, timedelta
-from typing import Optional
 from flask import Blueprint, jsonify
-from app_logic.a_resume.resumeHistory import get_all_resumes
-from app_logic.b_jobs.jobMatch import get_all_jobs, get_match_percentages
+from app_logic.a_resume.resumeHistory import get_all_resumes, get_resume_content
+from app_logic.b_jobs.jobMatch import Job, get_all_jobs, resolve_resume_embeddings, extract_resume_title, load_skill_map, load_title_map, match_jobs_to_resume
 logger = logging.getLogger(__name__)
 # Define the blueprint
 layout_bp = Blueprint("layout_bp", __name__)
 # === Constants ===
 ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
 ADZUNA_INDEX_FILE = os.path.join(ADZUNA_DATA_DIR, 'index.json')
-# === Table Context Generation ===
-# 
-def _filter_remote_jobs(jobs):
-    return [job for job in jobs if job.get("is_remote")]
-#
+# === Helpers ===
+# Generate a random date within the last N days
 def _random_date_within(days: int) -> str:
     return (datetime.now() - timedelta(days=random.randint(0, days))).isoformat()
-# 
+# Load a fixed number of jobs from demo batches
 def _load_jobs_from_batches(count=25):
     jobs = []
     try:
@@ -29,13 +26,15 @@ def _load_jobs_from_batches(count=25):
             if filename.startswith("batch_") and filename.endswith(".json"):
                 path = os.path.join(ADZUNA_DATA_DIR, filename)
                 with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    for job in data:
-                        job_copy = job.copy()
-                        job_copy["posted_date"] = _random_date_within(10)
-                        jobs.append(job_copy)
-                        if len(jobs) >= count:
-                            return jobs
+                    for job in json.load(f):
+                        try:
+                            job_obj = Job(**job)
+                            job_obj.posted_date = _random_date_within(10)
+                            jobs.append(job_obj)
+                            if len(jobs) >= count:
+                                return jobs
+                        except Exception as e:
+                            logger.warning(f"[demo job load] Failed to parse job: {e}")
     except Exception as e:
         logger.error(f"Error loading demo batch jobs: {str(e)}")
     return jobs[:count]
@@ -49,19 +48,7 @@ def normalize_job(job):
     except Exception as e:
         logger.error(f"[normalize_job] Failed to convert job: {e}")
     return {"title": "Unknown", "url": "", "match_percentage": 0}
-# Format salary range as a human-readable string
-def format_salary_range(min_salary, max_salary) -> Optional[str]:
-    if min_salary is None and max_salary is None:
-        return None
-    if min_salary and max_salary:
-        if min_salary == max_salary:
-            return f"${min_salary:,.0f}"
-        return f"${min_salary:,.0f} - £{max_salary:,.0f}"
-    elif min_salary:
-        return f"${min_salary:,.0f}+"
-    elif max_salary:
-        return f"Up to ${max_salary:,.0f}"
-    return None
+# === Table Context Generation ===
 # Public function to assemble the context for index.html
 def generate_table_context(session):
     try:
@@ -71,13 +58,10 @@ def generate_table_context(session):
         country = session.get("job_search_country", "us")
         remote_only = session.get("job_search_remote_only", "") == "1"
 
-        if is_demo:
-            jobs = _load_jobs_from_batches()
-        else:
-            jobs = get_all_jobs(force_refresh=True)
-
+        jobs = _load_jobs_from_batches() if is_demo else get_all_jobs()
         stored_resumes = get_all_resumes()
         resume_id = session.get("resume_id")
+
         if resume_id and not any(r["id"] == resume_id for r in stored_resumes):
             logger.warning(f"Session resume_id {resume_id} is invalid. Clearing it.")
             session.pop("resume_id", None)
@@ -86,16 +70,39 @@ def generate_table_context(session):
         if not resume_id and stored_resumes:
             resume_id = stored_resumes[0]["id"]
             session["resume_id"] = resume_id
-            logger.info(f"No resume_id in session. Defaulting to first available: {resume_id}")
+            logger.info(f"No resume_id in session. Defaulting to: {resume_id}")
 
         match_map = {}
         if resume_id:
-            match_map = get_match_percentages(resume_id, jobs)
-            logger.debug("Match percentages applied to %d jobs", len(match_map))
-        else:
-            logger.warning("No resume ID provided, match percentages will be 0")
+            resume_embeddings, resume_text, err = resolve_resume_embeddings(resume_id=resume_id)
+            if not err and resume_embeddings and "narrative" in resume_embeddings and "skills" in resume_embeddings:
+                original_count = len(jobs)
+                jobs = [j for j in jobs if isinstance(j, Job)]
+                filtered_count = len(jobs)
+                if filtered_count < original_count:
+                    logger.debug(f"Filtered out {original_count - filtered_count} non-Job entries before matching")
 
-        # Normalize and clean all jobs before use
+                resume_title = extract_resume_title(resume_text or "")
+                skill_map = load_skill_map()
+                title_map = load_title_map()
+                matches = match_jobs_to_resume(
+                    embeddings=resume_embeddings,
+                    jobs=jobs,
+                    resume_text=resume_text or "",
+                    skill_map=skill_map,
+                    title_map=title_map,
+                    resume_title=resume_title
+                )
+                match_map = {
+                    getattr(m.job, 'url', str(id(m.job))): int(m.similarity_score * 100)
+                    for m in matches if not np.isnan(m.similarity_score)
+                }
+                logger.debug("Match percentages applied to %d jobs", len(match_map))
+            else:
+                logger.warning(f"[generate_table_context] Embedding error: {err['error'] if err else 'unknown'}")
+        else:
+            logger.warning("No resume ID provided, skipping match percentages")
+
         jobs = [
             {
                 **normalize_job(job),
@@ -105,7 +112,7 @@ def generate_table_context(session):
             for job in jobs
         ]
 
-        remote_jobs = _filter_remote_jobs(jobs)
+        remote_jobs = [job for job in jobs if job.get("is_remote")]
         jobs_dict = {job["url"]: job for job in jobs if job.get("url")}
         remote_dict = {job["url"]: job for job in remote_jobs if job.get("url")}
 
@@ -130,7 +137,7 @@ def generate_table_context(session):
 @layout_bp.route("/api/jobs", methods=["GET"])
 def get_jobs():
     try:
-        jobs = get_all_jobs(force_refresh=True)
+        jobs = get_all_jobs()
         logger.debug("Retrieved %d jobs for API", len(jobs))
         return jsonify({"success": True, "jobs": [normalize_job(job) for job in jobs]})
     except Exception as e:
@@ -149,6 +156,31 @@ def delete_batch(batch_id):
         return jsonify({"success": True, "batch_id": batch_id})
     except Exception as e:
         logger.error(f"Error deleting batch {batch_id}: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+# API endpoint to get match percentages for a specific resume
+@layout_bp.route("/api/match_percentages/<resume_id>", methods=["GET"])
+def get_match_percentages_for_resume(resume_id):
+    try:
+        resume_text = get_resume_content(resume_id)
+        embeddings, resume_text, err = resolve_resume_embeddings(resume_id=resume_id)
+        if err:
+            return jsonify({"success": False, "error": err["error"]}), 400
+        jobs = get_all_jobs()
+        resume_title = extract_resume_title(resume_text or "")
+        skill_map = load_skill_map()
+        title_map = load_title_map()
+        matches = match_jobs_to_resume(
+            embeddings, resume_text, jobs, skill_map, title_map, resume_title
+        )
+        return jsonify({
+            "success": True,
+            "matches": {
+                getattr(m.job, 'url', str(id(m.job))): int(m.similarity_score * 100)
+                for m in matches
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error fetching matches for resume {resume_id}: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 # Batch metadata summarization for frontend display
 def get_storage_status() -> dict:
@@ -177,13 +209,3 @@ def get_storage_status() -> dict:
     except Exception as e:
         logger.error(f"[get_storage_status] Failed to generate batch summary: {str(e)}")
     return {"batches": batches}
-
-@layout_bp.route("/api/match_percentages/<resume_id>", methods=["GET"])
-def get_match_percentages_for_resume(resume_id):
-    try:
-        jobs = get_all_jobs(force_refresh=True)
-        matches = get_match_percentages(resume_id, jobs)
-        return jsonify({"success": True, "matches": matches})
-    except Exception as e:
-        logger.error(f"Error fetching matches for resume {resume_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)})
