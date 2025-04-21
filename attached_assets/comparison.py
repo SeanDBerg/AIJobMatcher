@@ -1,176 +1,211 @@
-# Ol demoMode.js
-$(document).ready(function () {
-  const isDemo = window.APP_CONTEXT?.isDemo;
-  if (!isDemo) return;
+// jobSection.js – Handles cleanup and export buttons in the jobSection
 
-  function showStatus(message, type = 'info') {
-    $('#syncStatus').show()
-      .removeClass('alert-success alert-danger alert-info alert-warning')
-      .addClass(`alert-${type}`);
-    $('#syncStatusText').html(message);
-    setTimeout(() => $('#syncStatus').fadeOut(), 3000);
-  }
+function initBatchDeleteHandlers() {
+  $('.delete-batch').click(function () {
+    const batchId = $(this).data('batch-id');
+    if (!confirm(`Delete batch ${batchId}? This cannot be undone.`)) return;
 
-  function addDemoResume() {
-    const timestamp = new Date().toISOString().split('T')[0];
-    const randomName = `Resume_${Math.floor(Math.random() * 10000)}.pdf`;
-    const html = `
-      <div class="list-group-item d-flex justify-content-between align-items-center">
-        <a href="#" class="resume-select-link text-decoration-none">
-          <div>
-            <span>${randomName}</span>
-            <small class="d-block text-muted">${timestamp}</small>
-          </div>
-        </a>
-        <button type="button" class="btn btn-sm btn-danger delete-resume">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-    `;
-    $('#resumeList').prepend(html);
-    $('#noResumesAlert').hide();
-    showStatus("Resume added successfully (demo)", 'success');
-  }
+    $('#syncStatus').show().removeClass().addClass('alert alert-info');
+    $('#syncStatusText').text(`Deleting batch ${batchId}...`);
 
-  function addDemoJobs() {
-    const baseJobs = Object.values(window.allJobs || {});
-    if (!baseJobs.length) return;
-
-    const newJobs = [];
-    const now = new Date();
-
-    for (let i = 0; i < 7; i++) {
-      const job = { ...baseJobs[Math.floor(Math.random() * baseJobs.length)] };
-      job.title += " (Demo)";
-      job.posted_date = new Date(now - Math.random() * 86400000).toISOString().split("T")[0];
-      job.match_percentage = Math.floor(Math.random() * 40) + 60;
-      newJobs.push(job);
-    }
-
-    newJobs.forEach((job) => {
-      const row = `
-        <tr class="job-row">
-          <td>${job.title}</td>
-          <td>${job.company}</td>
-          <td>${job.location}</td>
-          <td>${job.is_remote ? "Yes" : "No"}</td>
-          <td>${job.posted_date}</td>
-          <td>${job.salary_range || 'Not specified'}</td>
-          <td>${job.match_percentage}%</td>
-          <td>
-            <button class="btn btn-sm btn-outline-info toggle-job-details">
-              <i class="fas fa-eye"></i> View
-            </button>
-            <a href="${job.url}" target="_blank" class="btn btn-sm btn-outline-primary">
-              <i class="fas fa-external-link-alt"></i> Apply
-            </a>
-          </td>
-        </tr>`;
-      $('#jobsTable tbody').prepend(row);
-    });
-
-    showStatus("Synced 7 sample jobs using default settings (demo)", 'success');
-  }
-
-  // ✅ Intercept Resume Upload Form
-  $('#resume').closest('form').off('submit').on('submit', function (e) {
-    e.preventDefault();
-    addDemoResume();
-  });
-
-  // ✅ Intercept Sync Button
-  $('#syncJobsBtn').off('click').on('click', function (e) {
-    e.preventDefault();
-    addDemoJobs();
-  });
-
-  // ✅ Enable everything for appearance
-  $('#resume').prop('disabled', false);
-  $('#jobSearchForm :input').prop('disabled', false);
-  $('.delete-batch, .toggle-job-details').prop('disabled', false);
-  $('.btn').removeClass('disabled');
-
-  // ✅ Resume deletion simulation
-  $(document).on('click', '.delete-resume', function () {
-    $(this).closest('.list-group-item').remove();
-    showStatus("Resume deleted (demo)", 'success');
-  });
-});
-
-
-
-
-
-# Ol syncSection.js
-
-function demoSyncJobs() {
-  $.getJSON('/static/job_data/adzuna/index.json', function (index) {
-    const allBatchIds = Object.keys(index.batches || {});
-    const selectedJobs = [];
-    const targetCount = Math.floor(Math.random() * 4) + 6;
-
-    function fetchFromRandomBatch(attempts = 0) {
-      if (selectedJobs.length >= targetCount || attempts >= 10) {
-        const demoBatch = {};
-        const timestamp = Date.now();
-        selectedJobs.forEach((job, i) => {
-          const jobId = `demo-${timestamp}-${i}`;
-          job.posted_date = new Date(Date.now() - Math.random() * 864000000).toISOString();
-          job.match_percentage = Math.floor(Math.random() * 21) + 70;
-          demoBatch[jobId] = job;
-        });
-
-        renderDemoJobs(demoBatch);
-        showStatus("Sync complete. Demo jobs added for this session.", "info");
-        return;
+    fetch(`/api/adzuna/batch/${batchId}`, {
+      method: 'DELETE'
+    }).then(res => res.json()).then(data => {
+      if (data.success) {
+        $('#syncStatus').removeClass().addClass('alert alert-success');
+        $('#syncStatusText').html(`Batch ${batchId} deleted successfully. Reloading...`);
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        $('#syncStatus').removeClass().addClass('alert alert-danger');
+        $('#syncStatusText').html(`Error deleting batch: ${data.error}`);
       }
-
-      const batchId = allBatchIds[Math.floor(Math.random() * allBatchIds.length)];
-      $.getJSON(`/static/job_data/adzuna/batch_${batchId}.json`, function (batchJobs) {
-        const sample = batchJobs.filter(j => j && typeof j === 'object');
-        const randomJob = sample[Math.floor(Math.random() * sample.length)];
-        if (randomJob) selectedJobs.push(randomJob);
-        fetchFromRandomBatch(attempts + 1);
-      }).fail(() => fetchFromRandomBatch(attempts + 1));
-    }
-
-    fetchFromRandomBatch();
+    }).catch(err => {
+      $('#syncStatus').removeClass().addClass('alert alert-danger');
+      $('#syncStatusText').html(`Request failed: ${err}`);
+    });
   });
 }
 
-function renderDemoJobs(demoJobs) {
-  // Merge into allJobs so that detail toggles and job lookups still work
-  window.allJobs = {
-    ...(window.allJobs || {}),
-    ...demoJobs
-  };
+function attachTableStatusHandlers(tableId) {
+  const table = $(`#${tableId}`).DataTable();
 
-  // Also refresh remoteJobs
-  window.remoteJobs = Object.fromEntries(
-    Object.entries(window.allJobs).filter(([_, job]) => job.is_remote)
-  );
+  table.on('draw', function () {
+    const pageInfo = table.page.info();
 
-  const $tbody = $('#jobsTable tbody');
-  $tbody.empty();
-
-  Object.entries(window.allJobs).forEach(([jobId, job]) => {
-    const tr = `
-      <tr class="job-row" data-job-id="${jobId}">
-        <td>${job.title}</td>
-        <td>${job.company}</td>
-        <td>${job.location}</td>
-        <td>${job.is_remote ? 'Yes' : 'No'}</td>
-        <td>${job.posted_date}</td>
-        <td>${job.salary_range || 'Not specified'}</td>
-        <td>${job.match_percentage || 0}%</td>
-        <td>
-          <button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="${jobId}">
-            <i class="fas fa-eye"></i> View
-          </button>
-          <a href="${job.url}" target="_blank" class="btn btn-sm btn-outline-primary">
-            <i class="fas fa-external-link-alt"></i> Apply
-          </a>
-        </td>
-      </tr>`;
-    $tbody.append(tr);
+    const container = $(`#${tableId}`).closest('.tab-pane');
+    container.find('.currentPageValue').text(pageInfo.page + 1);
+    container.find('.totalPagesValue').text(pageInfo.pages);
+    container.find('.jobsFoundValue').text(pageInfo.recordsDisplay);
   });
+
+  // Trigger draw immediately on load
+  table.draw();
+}
+
+function handleJobToggleEvents() {
+  $('.toggle-job-details').off('click').on('click', function () {
+    const jobId = $(this).data('job-id');
+    const jobRow = $(this).closest('tr');
+    const existingDetailRow = $(`#inline-detail-row`);
+
+    if (existingDetailRow.length) {
+      if (existingDetailRow.data('job-id') === jobId) {
+        existingDetailRow.remove();
+        $(this).html('<i class="fas fa-eye"></i> View');
+        return;
+      } else {
+        existingDetailRow.remove();
+        $('.toggle-job-details').html('<i class="fas fa-eye"></i> View');
+      }
+    }
+
+    $(this).html('<i class="fas fa-eye-slash"></i> Hide');
+
+    const job = window.allJobs?.[jobId] || window.recentJobs?.[jobId] || window.remoteJobs?.[jobId];
+    if (!job) return;
+
+    const breakdownHtml = job.breakdown ? `
+      <div class="mt-3">
+        <strong>Scoring Breakdown:</strong>
+        <ul class="mb-0">
+          <li><strong>Similarity:</strong> ${(job.breakdown.similarity_score * 100).toFixed(2)}%</li>
+          <li><strong>Token Bonus:</strong> ${(job.breakdown.token_bonus * 100).toFixed(2)}%</li>
+          <li><strong>Category Bonus:</strong> ${(job.breakdown.category_bonus * 100).toFixed(2)}%</li>
+          <li><strong>Title Bonus:</strong> ${(job.breakdown.title_bonus * 100).toFixed(2)}%</li>
+          <li><strong>Total Bonus:</strong> ${(job.breakdown.total_bonus * 100).toFixed(2)}%</li>
+        </ul>
+      </div>
+    ` : '';
+
+    const detailsHtml = `
+      <tr id="inline-detail-row" class="bg-light" data-job-id="${jobId}">
+        <td colspan="8">
+          <div class="job-details-content p-3">
+            <h5>${job.title} at ${job.company}</h5>
+            ${job.skills?.length ? `
+              <div class="mb-3">
+                <strong>Skills:</strong>
+                <div class="mt-1">
+                  ${job.skills.map(skill => `<span class="badge bg-secondary me-1 mb-1">${skill}</span>`).join('')}
+                </div>
+              </div>` : ''}
+            <div class="mb-3">
+              <strong>Description:</strong>
+              <div class="job-description mt-2">
+                ${job.description || 'No description available.'}
+              </div>
+            </div>
+            ${breakdownHtml}
+            <div class="text-end">
+              <a href="${job.url}" target="_blank" class="btn btn-primary">
+                <i class="fas fa-external-link-alt me-1"></i> Apply for This Position
+              </a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    const $newRow = $(detailsHtml);
+    jobRow.after($newRow);
+    $newRow.find('.job-details-content').hide().fadeIn(200);
+  });
+}
+
+function setActiveResume(resumeId) {
+  $('#syncStatus').show().removeClass().addClass('alert alert-info');
+  $('#syncStatusText').text(`⏳ Matching jobs to your resume... Please wait.`);
+
+  fetch('/api/set_resume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resume_id: resumeId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("✅ Set resume response:", data);
+    if (data.success) {
+      fetch(`/api/match_percentages/${resumeId}`)
+        .then(res => res.json())
+        .then(matchData => {
+          console.log("🎯 Match API response:", matchData);
+          if (matchData.success) {
+            updateMatchPercentages(matchData.matches);
+            $('#syncStatus').removeClass().addClass('alert alert-success');
+            $('#syncStatusText').html(`✅ Matches loaded.`);
+          } else {
+            $('#syncStatus').removeClass().addClass('alert alert-danger');
+            $('#syncStatusText').html(`⚠️ Match failed: ${matchData.error}`);
+          }
+        })
+        .catch(err => {
+          $('#syncStatus').removeClass().addClass('alert alert-danger');
+          $('#syncStatusText').html(`❌ Error: ${err}`);
+        });
+    } else {
+      $('#syncStatus').removeClass().addClass('alert alert-danger');
+      $('#syncStatusText').html(`⚠️ Failed to set resume: ${data.error}`);
+    }
+  })
+  .catch(err => {
+    $('#syncStatus').removeClass().addClass('alert alert-danger');
+    $('#syncStatusText').html(`❌ Network error: ${err}`);
+  });
+}
+
+function updateMatchPercentages(matchMap) {
+  $('tr.job-row').each(function () {
+    const jobId = String($(this).data('job-id') || "");
+    const cleanId = jobId.replace(/^remote-/, '');
+    const match = matchMap[cleanId] || 0;
+    $(this).find('td').eq(6).text(`${match}%`);
+  });
+}
+
+function initJobTables() {
+  try {
+    function setupTable(tableId, orderColumn) {
+      if ($.fn.DataTable.isDataTable(`#${tableId}`)) {
+        $(`#${tableId}`).DataTable().destroy();
+      }
+
+      if ($(`#${tableId} tbody tr`).length > 1) {
+        const table = $(`#${tableId}`).DataTable({
+          pageLength: 10,
+          lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+          order: [[orderColumn, 'desc']]
+        });
+
+        attachTableStatusHandlers(tableId);
+      }
+    }
+
+    setupTable('jobsTable', 4);
+    setupTable('remoteJobsTable', 4);
+    setupTable('batchSummaryTable', 1);
+
+    $('.view-job').click(function () {
+      const jobId = $(this).data('job-id');
+      showJobDetails(jobId);
+    });
+  } catch (e) {
+    console.error("Error initializing DataTables:", e);
+  }
+}
+
+$(document).ready(function () {
+  console.log('✅ jobSection.js loaded and DOM ready');
+
+  initBatchDeleteHandlers();
+
+  if (!window.APP_CONTEXT || !window.APP_CONTEXT.isDemo) {
+    initJobTables();
+  }
+
+  handleJobToggleEvents();
+  $('.resume-select-link').on('click', function (e) {
+    e.preventDefault();
+    const resumeId = $(this).data('resume-id');
+    setActiveResume(resumeId);
+  });
+});

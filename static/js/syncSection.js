@@ -194,6 +194,7 @@ function renderRemoteJobs() {
   }
 
   initJobTables();
+  handleJobToggleEvents();
 }
 
 

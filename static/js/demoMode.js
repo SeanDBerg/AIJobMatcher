@@ -99,6 +99,7 @@
           </td>
         </tr>
       `);
+      handleJobToggleEvents();
     });
 
     // Destroy and defer reinit

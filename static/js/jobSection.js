@@ -45,96 +45,9 @@ function attachTableStatusHandlers(tableId) {
 function handleJobToggleEvents() {
   $('.toggle-job-details').off('click').on('click', function () {
     const jobId = $(this).data('job-id');
-    const detailsRow = $(`#job-details-${jobId}`);
-
-    if (detailsRow.hasClass('d-none')) {
-      $('.job-details-row').addClass('d-none'); // Hide others
-      detailsRow.removeClass('d-none');
-      $(this).html('<i class="fas fa-eye-slash"></i> Hide');
-    } else {
-      detailsRow.addClass('d-none');
-      $(this).html('<i class="fas fa-eye"></i> View');
-    }
-  });
-}
-
-function setActiveResume(resumeId) {
-  fetch('/api/set_resume', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ resume_id: resumeId })
-  })
-  .then(res => res.json())
-  .then(data => {
-    console.log("✅ Set resume response:", data);
-    if (data.success) {
-      fetch(`/api/match_percentages/${resumeId}`)
-        .then(res => res.json())
-        .then(matchData => {
-          console.log("🎯 Match API response:", matchData);  // << Log match result
-          if (matchData.success) {
-            updateMatchPercentages(matchData.matches);
-          } else {
-            console.warn("⚠️ Match API failed:", matchData.error);
-          }
-        })
-        .catch(err => console.error("❌ Error in match fetch:", err));
-    } else {
-      console.warn("⚠️ Failed to set active resume:", data.error);
-    }
-  })
-  .catch(err => console.error("❌ Error setting active resume:", err));
-}
-
-
-function updateMatchPercentages(matchMap) {
-  $('tr.job-row').each(function () {
-    const jobId = String($(this).data('job-id') || "");
-    const cleanId = jobId.replace(/^remote-/, '');
-    const match = matchMap[cleanId] || 0;
-    $(this).find('td').eq(6).text(`${match}%`);
-  });
-}
-
-function initJobTables() {
-  try {
-    // Generic table initializer
-    function setupTable(tableId, orderColumn) {
-      if ($.fn.DataTable.isDataTable(`#${tableId}`)) {
-        $(`#${tableId}`).DataTable().destroy();
-      }
-
-      if ($(`#${tableId} tbody tr`).length > 1) {
-        const table = $(`#${tableId}`).DataTable({
-          pageLength: 10,
-          lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-          order: [[orderColumn, 'desc']]
-        });
-
-        attachTableStatusHandlers(tableId);  // ✅ From previous step
-      }
-    }
-
-    setupTable('jobsTable', 4);          
-    setupTable('remoteJobsTable', 4);    
-    setupTable('batchSummaryTable', 1);
-
-    $('.view-job').click(function () {
-      const jobId = $(this).data('job-id');
-      showJobDetails(jobId);  // ✅ Assumes showJobDetails is defined globally
-    });
-  } catch (e) {
-    console.error("Error initializing DataTables:", e);
-  }
-}
-
-function handleJobToggleEvents() {
-  $('.toggle-job-details').off('click').on('click', function () {
-    const jobId = $(this).data('job-id');
     const jobRow = $(this).closest('tr');
     const existingDetailRow = $(`#inline-detail-row`);
 
-    // Hide previous detail row if it's showing
     if (existingDetailRow.length) {
       if (existingDetailRow.data('job-id') === jobId) {
         existingDetailRow.remove();
@@ -148,9 +61,21 @@ function handleJobToggleEvents() {
 
     $(this).html('<i class="fas fa-eye-slash"></i> Hide');
 
-    // Reconstruct the HTML dynamically to look up the job
     const job = window.allJobs?.[jobId] || window.recentJobs?.[jobId] || window.remoteJobs?.[jobId];
     if (!job) return;
+
+    const breakdownHtml = job.breakdown ? `
+      <div class="mt-3">
+        <strong>Scoring Breakdown:</strong>
+        <ul class="mb-0">
+          <li><strong>Similarity:</strong> ${(job.breakdown.similarity_score * 100).toFixed(2)}%</li>
+          <li><strong>Token Bonus:</strong> ${(job.breakdown.token_bonus * 100).toFixed(2)}%</li>
+          <li><strong>Category Bonus:</strong> ${(job.breakdown.category_bonus * 100).toFixed(2)}%</li>
+          <li><strong>Title Bonus:</strong> ${(job.breakdown.title_bonus * 100).toFixed(2)}%</li>
+          <li><strong>Total Bonus:</strong> ${(job.breakdown.total_bonus * 100).toFixed(2)}%</li>
+        </ul>
+      </div>
+    ` : '';
 
     const detailsHtml = `
       <tr id="inline-detail-row" class="bg-light" data-job-id="${jobId}">
@@ -170,6 +95,7 @@ function handleJobToggleEvents() {
                 ${job.description || 'No description available.'}
               </div>
             </div>
+            ${breakdownHtml}
             <div class="text-end">
               <a href="${job.url}" target="_blank" class="btn btn-primary">
                 <i class="fas fa-external-link-alt me-1"></i> Apply for This Position
@@ -182,12 +108,91 @@ function handleJobToggleEvents() {
 
     const $newRow = $(detailsHtml);
     jobRow.after($newRow);
-
-    // Animate only the inner content, not the row
     $newRow.find('.job-details-content').hide().fadeIn(200);
   });
 }
 
+function setActiveResume(resumeId) {
+  $('#syncStatus').show().removeClass().addClass('alert alert-info');
+  $('#syncStatusText').text(`⏳ Matching jobs to your resume... Please wait.`);
+
+  fetch('/api/set_resume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resume_id: resumeId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("✅ Set resume response:", data);
+    if (data.success) {
+      fetch(`/api/match_percentages/${resumeId}`)
+        .then(res => res.json())
+        .then(matchData => {
+          console.log("🎯 Match API response:", matchData);
+          if (matchData.success) {
+            updateMatchPercentages(matchData.matches);
+            $('#syncStatus').removeClass().addClass('alert alert-success');
+            $('#syncStatusText').html(`✅ Matches loaded.`);
+          } else {
+            $('#syncStatus').removeClass().addClass('alert alert-danger');
+            $('#syncStatusText').html(`⚠️ Match failed: ${matchData.error}`);
+          }
+        })
+        .catch(err => {
+          $('#syncStatus').removeClass().addClass('alert alert-danger');
+          $('#syncStatusText').html(`❌ Error: ${err}`);
+        });
+    } else {
+      $('#syncStatus').removeClass().addClass('alert alert-danger');
+      $('#syncStatusText').html(`⚠️ Failed to set resume: ${data.error}`);
+    }
+  })
+  .catch(err => {
+    $('#syncStatus').removeClass().addClass('alert alert-danger');
+    $('#syncStatusText').html(`❌ Network error: ${err}`);
+  });
+}
+
+
+function updateMatchPercentages(matchMap) {
+  $('tr.job-row').each(function () {
+    const jobId = String($(this).data('job-id') || "");
+    const cleanId = jobId.replace(/^remote-/, '');
+    const match = matchMap[cleanId] || 0;
+    $(this).find('td').eq(6).text(`${match}%`);
+  });
+}
+
+function initJobTables() {
+  try {
+    function setupTable(tableId, orderColumn) {
+      if ($.fn.DataTable.isDataTable(`#${tableId}`)) {
+        $(`#${tableId}`).DataTable().destroy();
+      }
+
+      if ($(`#${tableId} tbody tr`).length > 1) {
+        const table = $(`#${tableId}`).DataTable({
+          pageLength: 10,
+          lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+          order: [[orderColumn, 'desc']]
+        });
+
+        attachTableStatusHandlers(tableId);
+      }
+    }
+
+    setupTable('jobsTable', 4);
+    setupTable('remoteJobsTable', 4);
+    setupTable('batchSummaryTable', 1);
+
+    $('.view-job').click(function () {
+      const jobId = $(this).data('job-id');
+      showJobDetails(jobId);
+    });
+  } catch (e) {
+    console.error("Error initializing DataTables:", e);
+  }
+}
 
 // ✅ Attach handlers after DOM is ready
 $(document).ready(function () {

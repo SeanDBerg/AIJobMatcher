@@ -4,13 +4,18 @@ import json
 import logging
 import numpy as np
 import re
+import hashlib
+import time
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 from datetime import datetime
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional
 from sklearn.feature_extraction.text import HashingVectorizer
+from sentence_transformers import SentenceTransformer
 from app_logic.a_resume.resumeHistory import get_resume_content, get_resume, resume_storage
 logger = logging.getLogger(__name__)
 ADZUNA_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../static/job_data/adzuna')
+model = SentenceTransformer('all-MiniLM-L6-v2')
+MATCH_CACHE_PATH = os.path.join(ADZUNA_DATA_DIR, 'match_cache.json')
 # === Job Model ===
 class Job:
     def __init__(self, title, company, description, location, is_remote=False,
@@ -25,6 +30,8 @@ class Job:
         self.skills = skills or []
         self.salary_range = salary_range or ""
         self.match_percentage = match_percentage
+        self.embedding_narrative: Optional[np.ndarray] = None
+        self.embedding_skills: Optional[np.ndarray] = None
     def to_dict(self, include_embeddings=False):
         return {
             'title': self.title,
@@ -38,6 +45,106 @@ class Job:
             'salary_range': self.salary_range,
             'match_percentage': self.match_percentage
         }
+# === Resume-to-Job Matching Engine ===
+class JobMatch:
+    def __init__(self, job, similarity_score: float, breakdown: Optional[Dict] = None):
+        self.job = job
+        self.similarity_score = similarity_score
+        self.breakdown = breakdown or {}
+
+    def to_dict(self):
+        return {
+            'job': self.job.to_dict(),
+            'similarity_score': self.similarity_score,
+            'breakdown': self.breakdown
+        }
+# === Title Normalization ===
+def normalize_title(title: str, title_map: Dict[str, str]) -> str:
+    return title_map.get(title.lower().strip(), title)
+# === Guess resume title from the first role-like line in resume text ===
+def extract_resume_title(text: str) -> str:
+    lines = text.lower().splitlines()
+    for line in lines:
+        if any(term in line for term in ["developer", "engineer", "manager", "scientist", "analyst", "designer", "consultant"]):
+            return line.strip()
+    return "unknown"
+# === Boost Similarity with Skill and Title Matching ===
+def boost_score_with_skills(
+    similarity: float,
+    resume_text: str,
+    job_text: str,
+    skill_map: Optional[Dict[str, str]] = None,
+    resume_title: Optional[str] = None,
+    job_title: Optional[str] = None,
+    title_map: Optional[Dict[str, str]] = None
+) -> tuple[float, Dict]:
+    breakdown = {
+        "raw_similarity": similarity,
+        "matched_tokens": [],
+        "matched_categories": [],
+        "bonus_breakdown": {},
+        "title_match": False,
+        "normalized_resume_title": resume_title,
+        "normalized_job_title": job_title
+    }
+    score = similarity
+    try:
+        resume_tokens = tokenize_clean(resume_text)
+        job_tokens = tokenize_clean(job_text)
+        token_overlap = resume_tokens & job_tokens
+        if token_overlap:
+            bonus = min(0.02 * len(token_overlap), 0.10)
+            score += bonus
+            breakdown["matched_tokens"] = sorted(token_overlap)
+            breakdown["bonus_breakdown"]["token_overlap_bonus"] = round(bonus, 4)
+        if skill_map:
+            resume_categories = find_skill_categories_in_text(resume_text, skill_map)
+            job_categories = find_skill_categories_in_text(job_text, skill_map)
+            category_overlap = resume_categories & job_categories
+            if category_overlap:
+                cat_bonus = min(0.05 * len(category_overlap), 0.20)
+                score += cat_bonus
+                breakdown["matched_categories"] = sorted(category_overlap)
+                breakdown["bonus_breakdown"]["category_overlap_bonus"] = round(cat_bonus, 4)
+        if resume_title and job_title and title_map:
+            norm_resume_title = normalize_title(resume_title, title_map)
+            norm_job_title = normalize_title(job_title, title_map)
+            breakdown["normalized_resume_title"] = norm_resume_title
+            breakdown["normalized_job_title"] = norm_job_title
+            if norm_resume_title == norm_job_title:
+                score += 0.05
+                breakdown["title_match"] = True
+                breakdown["bonus_breakdown"]["title_match_bonus"] = 0.05
+        final_score = min(score, 1.0)
+        return final_score, breakdown
+    except Exception as e:
+        logger.error(f"Error in boost_score_with_skills: {str(e)}")
+        return similarity, breakdown
+# === Match Caching Utilities ===
+def _load_match_cache() -> dict:
+    if os.path.exists(MATCH_CACHE_PATH):
+        try:
+            with open(MATCH_CACHE_PATH, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"[cache] Failed to load match cache: {e}")
+    return {}
+
+def _save_match_cache(cache: dict) -> None:
+    try:
+        with open(MATCH_CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, indent=2)
+    except Exception as e:
+        logger.warning(f"[cache] Failed to save match cache: {e}")
+
+def _hash_jobs(jobs: List[Job]) -> str:
+    job_data = "".join(sorted(job.url for job in jobs if job.url))
+    return hashlib.sha256(job_data.encode('utf-8')).hexdigest()
+
+def _hash_filters(filters: Optional[dict]) -> str:
+    if not filters:
+        return "nofilters"
+    return hashlib.sha256(json.dumps(filters, sort_keys=True).encode('utf-8')).hexdigest()
 # === Embedding Utilities ===
 EMBEDDING_DIM = 384 # Default embedding dimension for the all-MiniLM-L6-v2 model
 vectorizer = HashingVectorizer(n_features=384, alternate_sign=False, norm='l2', stop_words='english', lowercase=True)
@@ -85,12 +192,13 @@ def tokenize_clean(text: str) -> set:
 def generate_embedding(text: str) -> np.ndarray:
     cleaned = clean_text(text)
     if not cleaned or len(cleaned) < 10:
-        return np.zeros(EMBEDDING_DIM)
+        return np.zeros((EMBEDDING_DIM,), dtype=np.float32)
     try:
-        return vectorizer.transform([cleaned]).toarray()[0]
+        encoded = model.encode(cleaned)
+        return np.asarray(encoded, dtype=np.float32)
     except Exception as e:
         logger.error(f"Embedding generation failed: {e}")
-        return np.zeros(EMBEDDING_DIM)
+        return np.zeros((EMBEDDING_DIM,), dtype=np.float32)
 # Sentence-aware chunking that splits text into chunks close to max_length.
 def chunk_text(text, max_length=512, overlap=50):
     sentences = re.split(r'(?<=[.!?]) +', text)
@@ -106,14 +214,21 @@ def chunk_text(text, max_length=512, overlap=50):
     if current_chunk:
         chunks.append(current_chunk.strip())
     return chunks
-# 
-def generate_embedding_for_long_text(text, max_length=512, overlap=50):
+# Generate an averaged embedding over multiple text chunks using SentenceTransformer
+def generate_embedding_for_long_text(text: str, max_length: int = 512, overlap: int = 50) -> np.ndarray:
     cleaned = clean_text(text)
     if len(cleaned) <= max_length:
         return generate_embedding(cleaned)
+
     chunks = chunk_text(cleaned, max_length, overlap)
-    embeddings = [generate_embedding(chunk) for chunk in chunks if len(chunk.strip()) >= 10]
-    return np.mean(embeddings, axis=0) if embeddings else np.zeros(EMBEDDING_DIM)
+    try:
+        embeddings = model.encode(chunks)
+        if isinstance(embeddings, list):  # sometimes model.encode returns list
+            embeddings = np.asarray(embeddings, dtype=np.float32)
+        return np.mean(embeddings, axis=0)
+    except Exception as e:
+        logger.error(f"Embedding generation failed for long text: {e}")
+        return np.zeros((EMBEDDING_DIM,), dtype=np.float32)
 # Generate two embeddings: one for the full narrative, one for just the skills section.
 def generate_dual_embeddings(text: str) -> dict:
     cleaned = clean_text(text)
@@ -131,14 +246,13 @@ def generate_dual_embeddings(text: str) -> dict:
         skill_blocks.append(line.strip())
     skill_text = " ".join(skill_blocks) if skill_blocks else cleaned
     return {
-        "narrative": generate_embedding(cleaned),
-        "skills": generate_embedding(clean_text(skill_text))
+        "narrative": generate_embedding_for_long_text(cleaned),
+        "skills": generate_embedding_for_long_text(skill_text)
     }
-# === Scoring and Filtering ===
-DEFAULT_SKILLS = {"python", "java", "c++", "c#", "javascript", "typescript", "react", "node", "sql", "postgresql", "mysql", "mongodb", "aws", "azure", "gcp", "docker", "kubernetes", "git", "flask", "django", "linux", "pandas", "numpy", "tensorflow", "scikit", "html", "css", "bash", "redis", "graphql"}
 # Extract matching skills from text using a known skills list.
-def extract_skills(text: str, known_skills: set) -> set:
+def extract_skills(text: str, skill_map: Dict[str, str]) -> set:
     tokens = text.lower().split()
+    known_skills = set(skill_map.keys())
     return {token for token in tokens if token in known_skills}
 
 def find_skill_categories_in_text(text: str, skill_map: Dict[str, str]) -> set:
@@ -148,44 +262,9 @@ def find_skill_categories_in_text(text: str, skill_map: Dict[str, str]) -> set:
         if skill.lower() in lower_text:
             found_categories.add(category)
     return found_categories
-# Boost similarity score based on skill overlap
-def boost_score_with_skills(
-    similarity: float,
-    resume_text: str,
-    job_text: str,
-    known_skills: set = None,
-    skill_map: Optional[Dict[str, str]] = None
-) -> float:
-    try:
-        resume_tokens = tokenize_clean(resume_text)
-        job_tokens = tokenize_clean(job_text)
-        token_overlap = resume_tokens & job_tokens
 
-        score = similarity
-        if token_overlap:
-            bonus = min(0.02 * len(token_overlap), 0.10)
-            score += bonus
-            logger.debug(f"[Scoring] 🔍 Token overlap ({len(token_overlap)}): {sorted(token_overlap)} (+{bonus:.2f})")
 
-        if skill_map:
-            resume_categories = find_skill_categories_in_text(resume_text, skill_map)
-            job_categories = find_skill_categories_in_text(job_text, skill_map)
 
-            category_overlap = resume_categories & job_categories
-            if category_overlap:
-                cat_bonus = min(0.05 * len(category_overlap), 0.20)
-                score += cat_bonus
-                logger.debug(f"[Scoring] 📘 Category overlap ({len(category_overlap)}): {sorted(category_overlap)} (+{cat_bonus:.2f})")
-            else:
-                logger.debug(f"[Scoring] 📘 Category overlap (0): []")
-
-        final_score = min(score, 1.0)
-        logger.debug(f"[Scoring] 🎯 Combined score: {similarity:.4f} → {final_score:.4f}")
-        return final_score
-
-    except Exception as e:
-        logger.error(f"Error in boost_score_with_skills: {str(e)}")
-        return similarity
 
 # Calculate cosine similarity between resume and job embeddings
 def calculate_similarity(resume_embedding, job_embedding):
@@ -218,31 +297,27 @@ def apply_filters(jobs, filters):
 def get_resume_embeddings(resume_id):
     try:
         metadata = get_resume_content(resume_id)
-        if metadata and "metadata" in metadata:
-            return {
-                "narrative": np.array(metadata["metadata"]["embedding_narrative"]),
-                "skills": np.array(metadata["metadata"]["embedding_skills"])
-            }
+        if isinstance(metadata, dict) and "metadata" in metadata:
+            inner = metadata.get("metadata", {})
+            if isinstance(inner, dict) and "embedding_narrative" in inner and "embedding_skills" in inner:
+                return {
+                    "narrative": np.array(inner["embedding_narrative"], dtype=np.float32),
+                    "skills": np.array(inner["embedding_skills"], dtype=np.float32)
+                }
         return None
     except Exception as e:
         logger.error(f"Error retrieving resume embeddings for ID {resume_id}: {str(e)}")
         return None
-# === Resume-to-Job Matching Engine ===
-# Class representing a match between a resume and job
-class JobMatch:
-    def __init__(self, job, similarity_score):
-        self.job = job
-        self.similarity_score = similarity_score
 
-    def to_dict(self):
-        return {'job': self.job.to_dict(), 'similarity_score': self.similarity_score}
 # Match jobs to a resume
 def match_jobs_to_resume(
     resume_embeddings: Dict[str, np.ndarray],
     jobs: Optional[List[Job]],
     filters: Optional[Dict] = None,
     resume_text: Optional[str] = None,
-    skill_map: Optional[Dict[str, str]] = None
+    skill_map: Optional[Dict[str, str]] = None,
+    title_map: Optional[Dict[str, str]] = None,
+    resume_title: Optional[str] = None
 ) -> List[JobMatch]:
     if not resume_embeddings or not all(k in resume_embeddings for k in ["narrative", "skills"]):
         return []
@@ -258,7 +333,8 @@ def match_jobs_to_resume(
     matches = []
     for job in filtered_jobs:
         try:
-            job_text = f"{job.title}\n{job.company}\n{job.description}"
+            normalized_title = normalize_title(job.title, title_map) if title_map else job.title
+            job_text = f"{normalized_title}\n{job.company}\n{job.description}"
             if job.skills:
                 job_text += "\nSkills: " + ", ".join(job.skills)
 
@@ -272,39 +348,45 @@ def match_jobs_to_resume(
 
             if resume_text:
                 job_text = f"{job.title} {job.description} {' '.join(job.skills)}"
-                similarity = boost_score_with_skills(similarity, resume_text, job_text, DEFAULT_SKILLS, skill_map)
+                similarity = boost_score_with_skills(
+                    similarity,
+                    resume_text,
+                    job_text,
+                    skill_map=skill_map,
+                    resume_title=resume_title,
+                    job_title=job.title,
+                    title_map=title_map
+                )
 
             matches.append(JobMatch(job, similarity))
         except Exception as e:
             logger.error(f"Error matching job '{job.title}': {str(e)}")
 
-    matches.sort(key=lambda m: m.similarity_score, reverse=True)
-    return matches
+    return sorted(matches, key=lambda m: m.similarity_score, reverse=True)
 
 # Extract skills from job data
-def extract_skills_from_job(job_data: Dict, known_skills: Optional[Set[str]] = None) -> List[str]:
+def extract_skills_from_job(job_data: Dict, skill_map: Optional[Dict[str, str]] = None) -> List[str]:
     skills = []
+    # Fallback to empty dict if none provided
+    if skill_map is None:
+        skill_map = {}
+    all_possible_skills = set(skill_map.keys())
+    # Simple skill detection based on job category and text
     if "category" in job_data and "tag" in job_data["category"]:
         category = job_data["category"]["tag"].lower()
         if any(k in category for k in ["it", "software", "developer"]):
-            tech_skills = DEFAULT_SKILLS
             description = job_data.get("description", "").lower()
             title = job_data.get("title", "").lower()
-            skills += [skill for skill in tech_skills if skill in description or skill in title]
-    if not skills and known_skills:
-        try:
-            from matching_engine import extract_skills as alt_extract
-            skills += list(alt_extract(job_data.get("description", ""), known_skills))
-        except ImportError:
-            logger.warning("Could not import extract_skills from matching_engine")
+            combined = f"{title} {description}"
+            skills += [skill for skill in all_possible_skills if skill in combined]
     return list(set(skills))
+# 
 def match_jobs(data: dict) -> tuple[dict, int]:
     try:
         resume_id = data.get('resume_id')
         resume_text = data.get('resume_text', '')
         filters = data.get('filters', {})
-        days = data.get('days', 30)
-        # === Get resume embeddings ===
+
         if resume_id:
             resume_metadata = get_resume(resume_id)
             if not resume_metadata:
@@ -325,28 +407,46 @@ def match_jobs(data: dict) -> tuple[dict, int]:
             embeddings = generate_dual_embeddings(resume_text)
             resume_embedding_narrative = embeddings['narrative']
             resume_embedding_skills = embeddings['skills']
-        # === Load job pool ===
+
+        resume_title_raw = extract_resume_title(resume_text)
+
         jobs = get_all_jobs(force_refresh=True)
         logger.debug(f"get_all_jobs returned {len(jobs)} jobs")
         if not jobs:
             return {"success": False, "error": "No job data available to match against"}, 500
-        # === Match jobs ===
+
         resume_embeddings = {
             "narrative": resume_embedding_narrative,
             "skills": resume_embedding_skills
         }
-        matching_jobs = match_jobs_to_resume(resume_embeddings, jobs, filters, resume_text=resume_text)
+
+        skill_map = load_skill_map()
+        title_map = load_title_map()
+        resume_title_raw = extract_resume_title(resume_text)
+
+        matching_jobs = match_jobs_to_resume(
+            resume_embeddings,
+            jobs,
+            filters=filters,
+            resume_text=resume_text,
+            skill_map=skill_map,
+            title_map=title_map,
+            resume_title=resume_title_raw  # ✅ Pass it here
+        )
+
         if not matching_jobs:
             return {
                 "success": True,
                 "matches": {},
                 "message": "No matching jobs found based on your filters. Try adjusting your search criteria."
             }, 200
+
         matches_dict = {}
         for job_match in matching_jobs:
             job_id = getattr(job_match.job, 'id', str(id(job_match.job)))
             match_percentage = int(job_match.similarity_score * 100)
             matches_dict[job_id] = match_percentage
+
         return {
             "success": True,
             "matches": matches_dict,
@@ -369,13 +469,22 @@ def get_match_percentages(resume_id: str, jobs: List[Job]) -> Dict[str, int]:
             logger.warning(f"No metadata found for resume ID {resume_id}")
             return {}
 
+        if not isinstance(resume_metadata, dict):
+            logger.warning(f"resume_metadata is not a dict for ID {resume_id}")
+            return {}
+
         emb_narr = resume_metadata.get("embedding_narrative")
         emb_skill = resume_metadata.get("embedding_skills")
 
-        if emb_narr and emb_skill and len(emb_narr) == 384 and len(emb_skill) == 384:
+        if (
+            isinstance(emb_narr, list)
+            and isinstance(emb_skill, list)
+            and len(emb_narr) == 384
+            and len(emb_skill) == 384
+        ):
             resume_embeddings = {
-                "narrative": np.array(emb_narr),
-                "skills": np.array(emb_skill)
+                "narrative": np.array(emb_narr, dtype=np.float32),
+                "skills": np.array(emb_skill, dtype=np.float32)
             }
         else:
             logger.warning(f"[get_match_percentages] No valid embeddings for resume ID {resume_id}, generating...")
@@ -384,25 +493,49 @@ def get_match_percentages(resume_id: str, jobs: List[Job]) -> Dict[str, int]:
                 "narrative": embeddings["narrative"],
                 "skills": embeddings["skills"]
             }
-            # Save regenerated embeddings
             resume_metadata["embedding_narrative"] = embeddings["narrative"].tolist()
             resume_metadata["embedding_skills"] = embeddings["skills"].tolist()
             resume_storage._index["resumes"][resume_id] = resume_metadata
             resume_storage._save_index()
             logger.info(f"[get_match_percentages] Stored regenerated embeddings for resume ID {resume_id}")
 
-        # ✅ Load the skills.json mapping once
-        skill_map = load_skill_map()
+        resume_title_raw = extract_resume_title(resume_text)
 
-        # ✅ Inject skill_map into matching
-        matches = match_jobs_to_resume(resume_embeddings, jobs, resume_text=resume_text, skill_map=skill_map)
-        return {m.job.url: int(m.similarity_score * 100) for m in matches}
+        job_hash = _hash_jobs(jobs)
+        filters_hash = "nofilters"
+        cache = _load_match_cache()
+        cached = cache.get(resume_id, {}).get(job_hash, {}).get(filters_hash)
+
+        if cached and "matches" in cached:
+            logger.info(f"[cache] Using cached match results for resume {resume_id}")
+            return cached["matches"]
+
+        skill_map = load_skill_map()
+        title_map = load_title_map()
+        resume_title_raw = extract_resume_title(resume_text)
+
+        matches = match_jobs_to_resume(
+            resume_embeddings,
+            jobs,
+            resume_text=resume_text,
+            skill_map=skill_map,
+            title_map=title_map,
+            resume_title=resume_title_raw  # ✅ Pass it here too
+        )
+
+        match_result = {m.job.url: int(m.similarity_score * 100) for m in matches}
+
+        cache.setdefault(resume_id, {}).setdefault(job_hash, {})[filters_hash] = {
+            "timestamp": time.time(),
+            "matches": match_result
+        }
+        _save_match_cache(cache)
+
+        return match_result
 
     except Exception as e:
         logger.error(f"Error computing match percentages: {str(e)}")
         return {}
-
-
 # === Skill Mapping Utility ===
 def load_skill_map() -> Dict[str, str]:
     path = os.path.join(os.path.dirname(__file__), '../../skills.json')
@@ -412,5 +545,13 @@ def load_skill_map() -> Dict[str, str]:
     except Exception as e:
         logger.warning(f"[load_skill_map] Failed to load skills.json: {e}")
         return {}
-
+# === Title Mapping Utility ===
+def load_title_map() -> Dict[str, str]:
+    path = os.path.join(os.path.dirname(__file__), '../../title_map.json')
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning(f"[load_title_map] Failed to load title_map.json: {e}")
+        return {}
 
