@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify
 from app_logic.a_resume.resumeHistory import get_all_resumes, get_resume_content
-from app_logic.b_jobs.jobMatch import Job, get_all_jobs, resolve_resume_embeddings, extract_resume_title, load_skill_map, load_title_map, match_jobs_to_resume
+from app_logic.b_jobs.jobMatch import Job, get_all_jobs, resolve_resume_embeddings, match_and_cache_jobs
 logger = logging.getLogger(__name__)
 # Define the blueprint
 layout_bp = Blueprint("layout_bp", __name__)
@@ -50,6 +50,7 @@ def normalize_job(job):
     return {"title": "Unknown", "url": "", "match_percentage": 0}
 # === Table Context Generation ===
 # Public function to assemble the context for index.html
+# Generate data context for job and match display in index.html
 def generate_table_context(session):
     try:
         is_demo = session.get("demo", False)
@@ -72,55 +73,34 @@ def generate_table_context(session):
             session["resume_id"] = resume_id
             logger.info(f"No resume_id in session. Defaulting to: {resume_id}")
 
-        match_map = {}
+        jobs_with_breakdown = []
         if resume_id:
             resume_embeddings, resume_text, err = resolve_resume_embeddings(resume_id=resume_id)
             if not err and resume_embeddings and "narrative" in resume_embeddings and "skills" in resume_embeddings:
-                original_count = len(jobs)
-                jobs = [j for j in jobs if isinstance(j, Job)]
-                filtered_count = len(jobs)
-                if filtered_count < original_count:
-                    logger.debug(f"Filtered out {original_count - filtered_count} non-Job entries before matching")
+                cached_matches = match_and_cache_jobs(jobs, resume_id, resume_text or "")
+                for match in cached_matches.values():
+                    job_dict = normalize_job(match.job)
+                    job_dict["match_percentage"] = int(match.similarity_score * 100)
+                    job_dict["breakdown"] = match.breakdown  # ✅ include breakdown explicitly
+                    jobs_with_breakdown.append(job_dict)
 
-                resume_title = extract_resume_title(resume_text or "")
-                skill_map = load_skill_map()
-                title_map = load_title_map()
-                matches = match_jobs_to_resume(
-                    embeddings=resume_embeddings,
-                    jobs=jobs,
-                    resume_text=resume_text or "",
-                    skill_map=skill_map,
-                    title_map=title_map,
-                    resume_title=resume_title
-                )
-                match_map = {
-                    getattr(m.job, 'url', str(id(m.job))): int(m.similarity_score * 100)
-                    for m in matches if not np.isnan(m.similarity_score)
-                }
-                logger.debug("Match percentages applied to %d jobs", len(match_map))
+                logger.debug("Match percentages and breakdowns applied to %d jobs", len(cached_matches))
             else:
                 logger.warning(f"[generate_table_context] Embedding error: {err['error'] if err else 'unknown'}")
+                jobs_with_breakdown = [normalize_job(job) for job in jobs]
         else:
             logger.warning("No resume ID provided, skipping match percentages")
+            jobs_with_breakdown = [normalize_job(job) for job in jobs]
 
-        jobs = [
-            {
-                **normalize_job(job),
-                "match_percentage": match_map.get(normalize_job(job).get("url") or "", 0),
-                "posted_date": str(normalize_job(job).get("posted_date") or "")
-            }
-            for job in jobs
-        ]
-
-        remote_jobs = [job for job in jobs if job.get("is_remote")]
-        jobs_dict = {job["url"]: job for job in jobs if job.get("url")}
+        remote_jobs = [job for job in jobs_with_breakdown if job.get("is_remote")]
+        jobs_dict = {job["url"]: job for job in jobs_with_breakdown if job.get("url")}
         remote_dict = {job["url"]: job for job in remote_jobs if job.get("url")}
 
         return {
             "jobs": jobs_dict,
             "remote_jobs_list": remote_dict,
             "stored_resumes": stored_resumes,
-            "total_jobs": len(jobs),
+            "total_jobs": len(jobs_with_breakdown),
             "next_sync": "Manual sync only",
             "keywords": keywords,
             "location": location,
@@ -132,6 +112,7 @@ def generate_table_context(session):
     except Exception as e:
         logger.error(f"Error generating table context: {str(e)}")
         return {}
+
 # === API Routes ===
 # API endpoint to get job listings
 @layout_bp.route("/api/jobs", methods=["GET"])
@@ -162,26 +143,24 @@ def delete_batch(batch_id):
 def get_match_percentages_for_resume(resume_id):
     try:
         resume_text = get_resume_content(resume_id)
-        embeddings, resume_text, err = resolve_resume_embeddings(resume_id=resume_id)
-        if err:
-            return jsonify({"success": False, "error": err["error"]}), 400
+        if not resume_text:
+            return jsonify({"success": False, "error": "Resume content not found"}), 404
+
         jobs = get_all_jobs()
-        resume_title = extract_resume_title(resume_text or "")
-        skill_map = load_skill_map()
-        title_map = load_title_map()
-        matches = match_jobs_to_resume(
-            embeddings, resume_text, jobs, skill_map, title_map, resume_title
-        )
+        cached_matches = match_and_cache_jobs(jobs, resume_id, resume_text or "")
+
         return jsonify({
             "success": True,
             "matches": {
-                getattr(m.job, 'url', str(id(m.job))): int(m.similarity_score * 100)
-                for m in matches
+                url: int(match.similarity_score * 100)
+                for url, match in cached_matches.items()
+                if not np.isnan(match.similarity_score)
             }
         })
     except Exception as e:
         logger.error(f"Error fetching matches for resume {resume_id}: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+
 # Batch metadata summarization for frontend display
 def get_storage_status() -> dict:
     batches = {}

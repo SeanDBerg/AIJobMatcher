@@ -68,14 +68,15 @@ function handleJobToggleEvents() {
       <div class="mt-3">
         <strong>Scoring Breakdown:</strong>
         <ul class="mb-0">
-          <li><strong>Similarity:</strong> ${(job.breakdown.similarity_score * 100).toFixed(2)}%</li>
-          <li><strong>Token Bonus:</strong> ${(job.breakdown.token_bonus * 100).toFixed(2)}%</li>
-          <li><strong>Category Bonus:</strong> ${(job.breakdown.category_bonus * 100).toFixed(2)}%</li>
-          <li><strong>Title Bonus:</strong> ${(job.breakdown.title_bonus * 100).toFixed(2)}%</li>
-          <li><strong>Total Bonus:</strong> ${(job.breakdown.total_bonus * 100).toFixed(2)}%</li>
+          <li><strong>Semantic Similarity:</strong> ${job.breakdown.similarity_score}%</li>
+          <li><strong>Additional Keyword Bonus:</strong> +${job.breakdown.token_bonus}%</li>
+          <li><strong>Category Match Bonus:</strong> +${job.breakdown.category_bonus}%</li>
+          <li><strong>Job Title Match Bonus:</strong> +${job.breakdown.title_bonus}%</li>
+          <li><strong>Final Match Score:</strong> ${(job.breakdown.similarity_score + job.breakdown.total_bonus).toFixed(2)}%</li>
         </ul>
       </div>
     ` : '';
+
 
     const detailsHtml = `
       <tr id="inline-detail-row" class="bg-light" data-job-id="${jobId}">

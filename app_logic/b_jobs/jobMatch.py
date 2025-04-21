@@ -1,5 +1,4 @@
 # logic/b_jobs/jobMatch.py - Comprehensive matching logic
-import os
 import re
 import json
 import logging
@@ -7,6 +6,9 @@ from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 import numpy as np
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, HashingVectorizer
+import os
+os.environ["TRANSFORMERS_NO_TQDM"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from sentence_transformers import SentenceTransformer
 from app_logic.a_resume.resumeHistory import get_resume_content, get_resume, resume_storage
 logger = logging.getLogger(__name__)
@@ -19,10 +21,13 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 vectorizer = HashingVectorizer(n_features=384, alternate_sign=False, norm='l2', stop_words='english', lowercase=True)
 # === Job Model ===
 class Job:
+    # Track ignored field occurrences for batch logging
+    _ignored_field_counts: Dict[str, int] = {}
     def __init__(self, title, company, description, location, is_remote=False,
                  posted_date=None, url="", skills=None, salary_range=None, match_percentage=None, **kwargs):
         if kwargs:
-            logger.debug(f"Ignoring extra job fields: {list(kwargs.keys())}")
+            for key in kwargs.keys():
+                Job._ignored_field_counts[key] = Job._ignored_field_counts.get(key, 0) + 1
         self.title = title
         self.company = company
         self.description = description
@@ -35,6 +40,7 @@ class Job:
         self.match_percentage = match_percentage
         self.embedding_narrative: Optional[np.ndarray] = None
         self.embedding_skills: Optional[np.ndarray] = None
+    # Serialize job object to dictionary
     def to_dict(self, include_embeddings=False):
         return {
             'title': self.title,
@@ -48,6 +54,13 @@ class Job:
             'salary_range': self.salary_range,
             'match_percentage': self.match_percentage
         }
+    # Log summary of ignored fields
+    @classmethod
+    def log_ignored_field_summary(cls):
+        if cls._ignored_field_counts:
+            summary = ", ".join(f"{k} ({v}x)" for k, v in cls._ignored_field_counts.items())
+            logger.debug(f"[Job] Ignored extra fields: {summary}")
+            cls._ignored_field_counts.clear()
 # === Resume-to-Job Matching Model ===
 class JobMatch:
     def __init__(self, job, similarity_score: float, breakdown: Optional[Dict] = None):
@@ -110,7 +123,7 @@ def generate_embedding_for_long_text(text: str) -> np.ndarray:
         return np.zeros((EMBEDDING_DIM,), dtype=np.float32)
     chunks = chunk_text(cleaned)
     try:
-        embeddings = model.encode(chunks)
+        embeddings = model.encode(chunks, show_progress_bar=False)
         return np.mean(np.asarray(embeddings, dtype=np.float32), axis=0)
     except Exception as e:
         logger.error(f"[embedding_long] Failed: {e}")
@@ -146,43 +159,84 @@ def normalize_title(title: str, title_map: Dict[str, str]) -> str:
 # === Skill Category Matching ===
 def find_skill_categories_in_text(text: str, skill_map: Dict[str, str]) -> set:
     return {cat for skill, cat in skill_map.items() if skill in text.lower()}
+# === Aggregates boost_score_with_skills logs ===
+class BoostScoreLogCounter:
+    count = 0
+    max_logs = 5
+    # Log individual breakdowns
+    @classmethod
+    def log_breakdown(cls, breakdown: dict):
+        cls.count += 1
+        if cls.count <= cls.max_logs:
+            logger.debug(f"[boost_score_with_skills] Breakdown calculated: {json.dumps(breakdown, indent=2)}")
+    # Log summary of boost score calculations
+    @classmethod
+    def log_summary(cls):
+        if cls.count > cls.max_logs:
+            logger.info(f"[boost_score_with_skills] Breakdown suppressed for {cls.count - cls.max_logs} jobs")
+        logger.info(f"[boost_score_with_skills] Total jobs scored: {cls.count}")
+        cls.count = 0
 # === Boost Similarity with Skill and Title Matching ===
-def boost_score_with_skills(similarity: float, resume_text: str, job_text: str, skill_map, resume_title, job_title, title_map) -> Tuple[float, Dict]:
+def boost_score_with_skills(similarity, resume_text, job_text, skill_map, resume_title, job_title, title_map):
     breakdown = {
         "raw_similarity": similarity,
         "matched_tokens": [],
         "matched_categories": [],
-        "bonus_breakdown": {},
+        "similarity_score": 0.0,
+        "token_bonus": 0.0,
+        "category_bonus": 0.0,
+        "title_bonus": 0.0,
+        "total_bonus": 0.0,
         "title_match": False,
         "normalized_resume_title": resume_title,
         "normalized_job_title": job_title
     }
-    score = similarity
+    similarity_score = similarity if not np.isnan(similarity) else 0.0
+    total_bonus = 0.0
+
+    # Token matching
     resume_tokens = tokenize_clean(resume_text)
     job_tokens = tokenize_clean(job_text)
     token_overlap = resume_tokens & job_tokens
+    token_bonus = 0.0
     if token_overlap:
-        bonus = min(0.02 * len(token_overlap), 0.10)
-        score += bonus
+        token_bonus = min(0.02 * len(token_overlap), 0.10)
         breakdown["matched_tokens"] = sorted(token_overlap)
-        breakdown["bonus_breakdown"]["token_overlap"] = round(bonus, 4)
+
+    # Category matching
     resume_cats = find_skill_categories_in_text(resume_text, skill_map)
     job_cats = find_skill_categories_in_text(job_text, skill_map)
-    if resume_cats & job_cats:
-        cat_bonus = min(0.05 * len(resume_cats & job_cats), 0.20)
-        score += cat_bonus
-        breakdown["matched_categories"] = sorted(resume_cats & job_cats)
-        breakdown["bonus_breakdown"]["category_overlap"] = round(cat_bonus, 4)
+    category_overlap = resume_cats & job_cats
+    category_bonus = 0.0
+    if category_overlap:
+        category_bonus = min(0.05 * len(category_overlap), 0.20)
+        breakdown["matched_categories"] = sorted(category_overlap)
+
+    # Title matching
+    title_bonus = 0.0
     if resume_title and job_title:
         norm_resume = normalize_title(resume_title, title_map)
         norm_job = normalize_title(job_title, title_map)
         breakdown["normalized_resume_title"] = norm_resume
         breakdown["normalized_job_title"] = norm_job
         if norm_resume == norm_job:
-            score += 0.05
+            title_bonus = 0.05
             breakdown["title_match"] = True
-            breakdown["bonus_breakdown"]["title_match"] = 0.05
-    return min(score, 1.0), breakdown
+
+    # Calculate total bonus and update breakdown safely
+    total_bonus = token_bonus + category_bonus + title_bonus
+    breakdown.update({
+        "similarity_score": round(similarity_score * 100, 2),
+        "token_bonus": round(token_bonus * 100, 2),
+        "category_bonus": round(category_bonus * 100, 2),
+        "title_bonus": round(title_bonus * 100, 2),
+        "total_bonus": round(total_bonus * 100, 2)
+    })
+    BoostScoreLogCounter.log_breakdown(breakdown)
+    final_score = min(similarity_score + total_bonus, 1.0)
+
+    return final_score, breakdown
+
 # Calculate cosine similarity between resume and job embeddings
 def calculate_similarity(a, b):
     try:
@@ -213,9 +267,11 @@ def get_all_jobs() -> List[Job]:
                             jobs.append(Job(**job))
                         except Exception as err:
                             logger.warning(f"[get_all_jobs] Failed to parse job: {err}")
+        Job.log_ignored_field_summary()
     except Exception as e:
         logger.error(f"[get_all_jobs] {e}")
     return jobs
+
 # Resolve resume embeddings (narrative + skills) and text   
 def resolve_resume_embeddings(resume_id: str) -> Tuple[Optional[Dict[str, np.ndarray]], Optional[str], Optional[Dict]]:
   try:
@@ -268,25 +324,79 @@ def match_jobs_to_resume(embeddings, resume_text, jobs, skill_map, title_map, re
         final_score, breakdown = boost_score_with_skills(
             raw_similarity, resume_text, job_text, skill_map, resume_title, job.title, title_map)
         matches.append(JobMatch(job, final_score, breakdown))
+    BoostScoreLogCounter.log_summary()
     return sorted(matches, key=lambda m: m.similarity_score, reverse=True)
-# === Main Matching Function ===
-def match_jobs(data: dict) -> Tuple[dict, int]:
-    resume_id = data.get("resume_id")
-    resume_text = data.get("resume_text")
-    filters = data.get("filters", {})
-    embeddings, resume_text, err = resolve_resume_embeddings(resume_id, resume_text)
+# Match jobs to resume and cache results to avoid recomputation in future runs
+def match_and_cache_jobs(jobs: List[Job], resume_id: str, resume_text: str) -> Dict[str, JobMatch]:
+    logger.info(f"🟢 Starting job match and caching for resume {resume_id}")
+
+    cache_file = os.path.join(ADZUNA_DATA_DIR, f"matchcache_{resume_id}.json")
+
+    # Try to load cache
+    cached = {}
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                raw = json.load(f)
+                cached = {
+                    url: JobMatch(Job(**data['job']), data['similarity_score'], data.get('breakdown', {}))
+                    for url, data in raw.items()
+                }
+            logger.info(f"📂 Loaded cache with {len(cached)} entries for resume {resume_id}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to load cache for resume {resume_id}: {e}")
+
+    # Only calculate matches for uncached jobs
+    cached_urls = set(cached.keys())
+    job_urls = [job.url for job in jobs if job.url]
+    new_jobs = [job for job in jobs if job.url not in cached_urls]
+
+    logger.debug(f"[match_and_cache_jobs] {len(cached_urls)} cached URLs loaded")
+    logger.debug(f"[match_and_cache_jobs] Job URLs in request: {len(job_urls)}")
+    logger.debug(f"[match_and_cache_jobs] Uncached jobs: {len(new_jobs)}")
+
+    if not new_jobs:
+        logger.info("✅ All jobs found in cache, skipping match calculations")
+        return cached
+
+    logger.info(f"🧠 Matching {len(new_jobs)} new jobs for resume {resume_id}")
+
+    # Generate embeddings for resume
+    embeddings, _, err = resolve_resume_embeddings(resume_id)
     if err:
-        return {"success": False, "error": err["error"]}, 400
-    jobs = get_all_jobs()
-    if not jobs:
-        return {"success": False, "error": "No jobs available."}, 500
-    resume_title = extract_resume_title(resume_text)
+        logger.error(f"❌ Could not resolve resume embeddings: {err}")
+        return cached
+
     skill_map = load_skill_map()
     title_map = load_title_map()
-    matches = match_jobs_to_resume(embeddings, resume_text, jobs, skill_map, title_map, resume_title)
-    return {
-        "success": True,
-        "matches": {getattr(m.job, 'url', str(id(m.job))): int(m.similarity_score * 100) for m in matches},
-        "count": len(matches),
-        "resume_id": resume_id
-    }, 200
+    resume_title = extract_resume_title(resume_text)
+
+    new_matches = match_jobs_to_resume(
+        embeddings, resume_text, new_jobs, skill_map, title_map, resume_title
+    )
+
+    for i, match in enumerate(new_matches[:10]):
+        logger.debug(f"📝 Cached: {match.job.title} ({match.job.url}) [{int(match.similarity_score * 100)}%]")
+
+    for match in new_matches:
+        cached[match.job.url] = match
+
+    logger.info(f"📦 Cached {len(new_matches)} new matches (Total: {len(cached)}) for resume {resume_id}")
+
+    # Save updated cache
+    try:
+        serializable = {
+            url: {
+                "job": match.job.to_dict(),
+                "similarity_score": match.similarity_score,
+                "breakdown": match.breakdown
+            }
+            for url, match in cached.items()
+        }
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump(serializable, f, indent=2)
+        logger.info("💾 Match cache saved successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to save cache: {e}")
+
+    return cached

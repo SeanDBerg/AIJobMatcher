@@ -151,14 +151,14 @@ def parse_adzuna_results(data: Dict, page: int) -> List[Job]:
         except Exception as e:
             logger.warning(f"Skipping job result due to error: {str(e)}")
     return results
-# Converts raw numeric salary data into a readable range string, like "£40,000 - £60,000"
+# Converts raw numeric salary data into a readable range string, like "$40,000 - $60,000"
 def format_salary(min_salary, max_salary):
     if min_salary and max_salary:
-        return f"\u00a3{min_salary:,.0f} - \u00a3{max_salary:,.0f}"
+        return f"${min_salary:,.0f} - ${max_salary:,.0f}"
     elif min_salary:
-        return f"\u00a3{min_salary:,.0f}+"
+        return f"${min_salary:,.0f}+"
     elif max_salary:
-        return f"Up to \u00a3{max_salary:,.0f}"
+        return f"Up to ${max_salary:,.0f}"
     return None
 # === Index and Batch Handling ===
 def _load_index() -> Dict:

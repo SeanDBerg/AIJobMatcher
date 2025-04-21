@@ -190,36 +190,6 @@ class ResumeStorage:
     # """Save resume index from memory to disk"""
     def _save_index(self):
         _save_index(self._index)
-    # """Scan for content files not in index and restore them"""
-    def _recover_missing_resumes(self):
-        try:
-            content_files = [f for f in os.listdir(RESUME_DIR) if f.endswith('_content.txt')]
-            for content_file in content_files:
-                resume_id = content_file.split('_')[0]
-                if resume_id in self._index["resumes"]:
-                    continue
-                resume_files = [f for f in os.listdir(RESUME_DIR) if f.startswith(resume_id + '_') and not f.endswith('_content.txt')]
-                if not resume_files:
-                    continue
-                original_filename = resume_files[0][len(resume_id) + 1:]
-                content_path = os.path.join(RESUME_DIR, content_file)
-                with open(content_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                resume_metadata = {
-                    "id": resume_id,
-                    "original_filename": original_filename,
-                    "stored_filename": resume_files[0],
-                    "upload_date": datetime.fromtimestamp(os.path.getctime(content_path)).isoformat(),
-                    "content_preview": content[:200] + "..." if len(content) > 200 else content,
-                    "file_extension": os.path.splitext(original_filename)[1].lower(),
-                }
-                self._index["resumes"][resume_id] = resume_metadata
-                self._index["count"] = len(self._index["resumes"])
-                if not self._index["last_added"] or os.path.getctime(content_path) > os.path.getctime(os.path.join(RESUME_DIR, f"{self._index['last_added']}_content.txt")):
-                    self._index["last_added"] = resume_id
-                logger.info(f"Recovered resume {original_filename} with ID {resume_id}")
-        except Exception as e:
-            logger.error(f"Error recovering missing resumes: {str(e)}")
     # """Store a resume permanently and update index"""
     def store_resume(self, temp_filepath: str, filename: str, content: str, metadata: Optional[Dict] = None, user_id: Optional[str] = None) -> str:
         try:
