@@ -9,9 +9,10 @@ from app_logic.a_resume.resumeHistory import get_all_resumes
 from app_logic.b_jobs.jobLayout import layout_bp
 from app_logic.b_jobs.jobSync import job_sync_bp
 from app_logic.c_user.userLogin import user_login_bp
-import Tools.js_tree_mapper  # This will auto-run on import
 import Tools.call_tree_mapper  # Automatically runs at startup
+import Tools.js_tree_mapper  # This will auto-run on import
 import Tools.js_flask_bridge  # Automatically runs at startup
+import Tools.unified_tree_mapper
 
 # Set up logging
 logging.basicConfig(

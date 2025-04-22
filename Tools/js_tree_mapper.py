@@ -8,9 +8,10 @@ JS_DIR = "static/js"
 COMMON_JS_GLOBALS = {
     'append', 'remove', 'html', 'val', 'empty', 'fadeIn', 'fadeOut', 'on', 'off',
     'addClass', 'removeClass', 'setTimeout', 'forEach', 'map', 'filter', 'reduce',
-    'if', 'catch', 'then', 'log', 'alert', 'function', 'console', 'data', 'text', 'eq', 'find', 'join'
+    'if', 'catch', 'then', 'log', 'alert', 'function', 'console', 'data', 'text', 'eq', 'find', 'join',
+    'show', 'hide', 'click', 'confirm', 'json', 'reload', 'ajax', 'parse', 'String', 'each', 'replace',
+    'closest', 'after', 'draw', 'info', 'error', 'accepted', 'is', 'entries', 'clear', 'destroy', 'DataTable', 'keys', 'stringify', 'setItem', 'trim'
 }
-
 # === JS Call Tree Collector ===
 class JSCallAnalyzer:
     def __init__(self):
@@ -19,68 +20,89 @@ class JSCallAnalyzer:
         self.defined_funcs = set()
         self.func_file_map = {}
         self.api_calls = defaultdict(list)
-
+    # Analyze a single JavaScript file
     def analyze_file(self, filepath):
+        JS_API_PATTERNS = {
+            "fetch": r"fetch\s*\(\s*[`'\"](?P<url>[^`'\"]+)",
+            "axios_shorthand": r"axios\.\w+\s*\(\s*[`'\"](?P<url>[^`'\"]+)",
+            "axios_object": r"axios\s*\(\s*\{\s*[^}]*['\"]url['\"]\s*:\s*[`'\"](?P<url>[^`'\"]+)",
+            "jquery": r"\$\.(post|get|ajax|getJSON)\s*\(\s*[`'\"](?P<url>[^`'\"]+)",
+            "xhr": r"\.open\s*\(\s*[`'\"][A-Z]+[`'\"]\s*,\s*[`'\"](?P<url>[^`'\"]+)"
+        }
         try:
             with open(filepath, "r", encoding="utf-8", errors="replace") as f:
                 lines = f.readlines()
-
             current_func = None
             for i, line in enumerate(lines):
+                stripped = line.strip()
                 # Match function declarations
-                func_decl = re.match(r"function (\w+)\s*\(", line)
+                func_decl = re.match(r"function (\w+)\s*\(", stripped)
                 if func_decl:
                     current_func = func_decl.group(1)
                     self.defined_funcs.add(current_func)
                     self.func_file_map[current_func] = filepath
                     continue
-
                 # Match arrow or assigned functions
-                assigned = re.match(r"const (\w+)\s*=\s*(?:function|\(.*\)\s*=>)", line)
+                assigned = re.match(r"const (\w+)\s*=\s*(?:function|\(.*\)\s*=>)", stripped)
                 if assigned:
                     current_func = assigned.group(1)
                     self.defined_funcs.add(current_func)
                     self.func_file_map[current_func] = filepath
                     continue
-
-                # Match function calls inside current function
+                # Track function calls
                 if current_func:
-                    call_match = re.findall(r"(\w+)\s*\(", line)
+                    call_match = re.findall(r"(\w+)\s*\(", stripped)
                     for called in call_match:
                         if called in COMMON_JS_GLOBALS:
                             continue
                         self.call_map[current_func].add(called)
                         self.call_counts[called] += 1
-
-                    # Match fetch/axios/$ API calls with literal or template strings
-                    api_match = re.search(r"(?P<caller>fetch|axios\.\w+|\$\.\w+)\s*\(\s*[`'\"](?P<url>[^`'\"]+)", line)
-                    if api_match:
-                        url = api_match.group("url")
-                        self.call_map[current_func].add(f"API: {url}")
-                        self.api_calls[current_func].append(url)
+                    # Match API calls
+                    for label, pattern in JS_API_PATTERNS.items():
+                        match = re.search(pattern, stripped)
+                        if match:
+                            url = match.group("url")
+                            tag = f"API: {url}"
+                            self.call_map[current_func].add(tag)
+                            self.api_calls[current_func].append(tag)
+                            self.call_counts[tag] += 1
         except Exception as e:
             print(f"[js_tree_mapper] ⚠️ Skipped {filepath}: {e}")
-
 # === JS Tree Printer ===
 def print_js_call_tree(analyzer: JSCallAnalyzer):
     printed = set()
-
     def print_branch(func, indent=0):
         if func in printed:
             return
         printed.add(func)
-        callees = sorted(analyzer.call_map.get(func, []))
+        callees = sorted([
+            c for c in analyzer.call_map.get(func, [])
+            if c in analyzer.defined_funcs or c.startswith("API: ")
+        ])
         location = f" [{os.path.basename(analyzer.func_file_map.get(func, '?'))}]"
         line = f"{'  ' * indent}{func}{location} (called {analyzer.call_counts.get(func, 0)}x): {', '.join(callees) or 'None'}"
         print(line[:150])
         for callee in callees:
-            if callee in analyzer.defined_funcs or callee.startswith("API: "):
-                print_branch(callee, indent + 1)
+            print_branch(callee, indent + 1)
 
     print("=== 🌐 JavaScript Function Call Tree ===")
     roots = [f for f in analyzer.defined_funcs if analyzer.call_counts.get(f, 0) == 0]
     for root in sorted(roots):
         print_branch(root)
+
+    print("\n=== 🧩 JavaScript Orphaned Functions ===")
+    traced = set(analyzer.call_map.keys()) | {c for cs in analyzer.call_map.values() for c in cs}
+    orphans = sorted(f for f in analyzer.defined_funcs if f not in traced)
+    for orphan in orphans:
+        print(f"{orphan} (called 0x)")
+
+    api_all = set()
+    for url_list in analyzer.api_calls.values():
+        api_all.update(url_list)
+
+    api_unattached = sorted([api for api in api_all if api not in traced])
+    for api in api_unattached:
+        print(f"{api} (called 0x)")
 
 # === Entry Point ===
 def generate_js_call_map():
