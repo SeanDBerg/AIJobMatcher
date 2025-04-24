@@ -27,21 +27,32 @@ class JSApiAnalyzer:
         try:
             with open(filepath, "r", encoding="utf-8", errors="replace") as f:
                 lines = f.readlines()
+
             current_func = None
             for i, line in enumerate(lines):
                 stripped = line.strip()
-                func_decl = re.match(r"function (\w+)\s*\(", stripped)
-                if func_decl:
-                    current_func = func_decl.group(1)
+
+                # Capture standard declarations
+                decl = re.match(r"function (\w+)\s*\(", stripped)
+                assigned = re.match(r"const (\w+)\s*=\s*(?:function|\(.*\)\s*=>)", stripped)
+                method_assign = re.match(r"(?:\w+\.)?(\w+)\s*=\s*function", stripped)
+
+                if decl:
+                    current_func = decl.group(1)
                     self.caller_file_map[current_func] = filepath
                     continue
-                assigned = re.match(r"const (\w+)\s*=\s*(?:function|\(.*\)\s*=>)", stripped)
-                if assigned:
+                elif assigned:
                     current_func = assigned.group(1)
                     self.caller_file_map[current_func] = filepath
                     continue
+                elif method_assign:
+                    current_func = method_assign.group(1)
+                    self.caller_file_map[current_func] = filepath
+                    continue
+
                 if not current_func:
                     continue
+
                 window = "".join(lines[i:i+10])
                 for pattern in self.api_patterns:
                     match = re.search(pattern, window)
