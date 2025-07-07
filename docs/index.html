@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+
+<html data-bs-theme="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Job Matcher</title>
+<!-- Bootstrap CSS (Replit-themed) -->
+<link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet"/>
+<!-- Custom CSS -->
+<link href="/AIJobMatcher/static/css/custom.css" rel="stylesheet"/>
+<!-- Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="container mb-3">
+<div class="d-flex justify-content-end align-items-center">
+<form action="/login" class="d-flex gap-2 align-items-center" method="POST">
+<input class="form-control w-auto" name="username" placeholder="Username" required="" type="text"/>
+<input class="form-control w-auto" name="password" placeholder="Password" required="" type="password"/>
+<button class="btn btn-primary" type="submit">Login</button>
+</form>
+</div>
+</div>
+<!-- Hero Section -->
+<div class="container mt-4">
+<div class="row">
+<div class="col-lg-12 text-center mb-5">
+<h1 class="display-4 fw-bold">AI-Powered Job Matching</h1>
+<p class="lead">Find the perfect job opportunities that match your skills and experience</p>
+</div>
+</div>
+<!-- Alert Messages -->
+<div class="row mb-4">
+<!-- Upload Resume -->
+<div class="col-md-8">
+<div class="card h-100">
+<div class="card-body">
+<form action="/upload_resume" class="row" enctype="multipart/form-data" id="uploadResumeForm" method="POST">
+<div class="col-md-12">
+<div class="mb-3">
+<label class="form-label" for="resume">Upload Resume (DOCX, or TXT)</label>
+<input accept=".pdf,.docx,.txt" class="form-control" id="resume" name="resume" required="" type="file"/>
+</div>
+</div>
+<div class="col-12">
+<button class="btn btn-primary" type="submit">
+<i class="fas fa-upload me-1"></i> Upload Resume &amp; Find Matches
+            </button>
+</div>
+</form>
+</div>
+</div>
+</div>
+<!-- Resume History -->
+<div class="col-md-4">
+<div class="card h-100 shadow">
+<div class="card-header py-3">
+<h6 class="m-0 font-weight-bold">Resume History</h6>
+</div>
+<div class="card-body">
+<div class="list-group" id="resumeList">
+<div class="list-group-item d-flex justify-content-between align-items-center">
+<a class="resume-select-link text-decoration-none" data-resume-id="demo-tech" href="#">
+<div>
+<span>Tech Resume</span>
+<small class="d-block text-muted">April 17, 2025</small>
+</div>
+</a>
+<button class="btn btn-sm btn-danger delete-resume" type="button">
+<i class="fas fa-trash"></i>
+</button>
+</div>
+<div class="list-group-item d-flex justify-content-between align-items-center">
+<a class="resume-select-link text-decoration-none" data-resume-id="demo-sales" href="#">
+<div>
+<span>Sales Resume</span>
+<small class="d-block text-muted">April 16, 2025</small>
+</div>
+</a>
+<button class="btn btn-sm btn-danger delete-resume" type="button">
+<i class="fas fa-trash"></i>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="card-body">
+<div class="alert d-none" id="syncStatus" role="alert">
+<span id="syncStatusText"></span>
+</div>
+<ul class="nav nav-tabs" id="jobsTab" role="tablist">
+<li class="nav-item" role="presentation">
+<button aria-controls="all-jobs" aria-selected="true" class="nav-link active" data-bs-target="#all-jobs" data-bs-toggle="tab" id="all-jobs-tab" role="tab" type="button">All Jobs</button>
+</li>
+<li class="nav-item" role="presentation">
+<button aria-controls="remote" aria-selected="false" class="nav-link" data-bs-target="#remote" data-bs-toggle="tab" id="remote-tab" role="tab" type="button">Remote Only</button>
+</li>
+<li class="nav-item" role="presentation">
+<button aria-controls="batch-summary" aria-selected="false" class="nav-link" data-bs-target="#batch-summary" data-bs-toggle="tab" id="batch-summary-tab" role="tab" type="button">Batch Summary</button>
+</li>
+</ul>
+<div class="tab-content mt-4" id="jobsTabContent">
+<div aria-labelledby="all-jobs-tab" class="tab-pane fade show active" id="all-jobs" role="tabpanel">
+<div class="table-responsive">
+<table cellspacing="0" class="table table-bordered job-table" id="jobsTable" width="100%">
+<thead>
+<tr>
+<th>Title</th>
+<th>Company</th>
+<th>Location</th>
+<th>Remote</th>
+<th>Date Posted</th>
+<th>Salary</th>
+<th>Match %</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5151099245?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Network Manager</td>
+<td>CyberCoders</td>
+<td>Bethlehem, Northampton County</td>
+<td>No</td>
+<td>2025-07-06T18:00:56.964105</td>
+<td>£130,000 - £150,000</td>
+<td>98%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5151099245?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5151099245?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5149773997?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=CD1757CA80F2EF9AF6E04F857D5FC171874D1E9A">
+<td>Software Developer Engineer</td>
+<td>TRINITY GLOBAL CONSULTING</td>
+<td>Chantilly, Fairfax County</td>
+<td>No</td>
+<td>2025-07-05T18:00:56.963885</td>
+<td>£145,152 - £145,152</td>
+<td>97%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5149773997?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=CD1757CA80F2EF9AF6E04F857D5FC171874D1E9A">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5149773997?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=CD1757CA80F2EF9AF6E04F857D5FC171874D1E9A" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5149363874?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Junior Developer</td>
+<td>Summit Sky Consulting</td>
+<td>Allentown, Lehigh County</td>
+<td>No</td>
+<td>2025-06-28T18:00:56.964016</td>
+<td>£68,308 - £68,308</td>
+<td>97%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5149363874?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5149363874?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5150188226?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=DC50E8035E30D172F960228FA95DBC2ABD3FC0AD">
+<td>Marketing Product Manager</td>
+<td>Aquent Talent</td>
+<td>Washington, Washington, D.C.</td>
+<td>No</td>
+<td>2025-07-04T18:00:56.963896</td>
+<td>£121,830 - £121,830</td>
+<td>97%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5150188226?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=DC50E8035E30D172F960228FA95DBC2ABD3FC0AD">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5150188226?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=DC50E8035E30D172F960228FA95DBC2ABD3FC0AD" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5149758586?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Senior Engineer Salesforce</td>
+<td>GAF</td>
+<td>Wind Gap, Northampton County</td>
+<td>No</td>
+<td>2025-07-04T18:00:56.964089</td>
+<td>£140,009 - £140,009</td>
+<td>96%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5149758586?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5149758586?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5149758582?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Senior Engineer Salesforce</td>
+<td>GAF</td>
+<td>Lehigh Valley, Northampton County</td>
+<td>No</td>
+<td>2025-06-27T18:00:56.964093</td>
+<td>£145,077 - £145,077</td>
+<td>96%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5149758582?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5149758582?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5149822559?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=23B80C33C9B40D356D6CC73FD271B6790395F035">
+<td>IT Systems Development Supervisor</td>
+<td>Great West Casualty Company</td>
+<td>Sioux City, Woodbury County</td>
+<td>No</td>
+<td>2025-07-01T18:00:56.963903</td>
+<td>£87,455 - £87,455</td>
+<td>96%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5149822559?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=23B80C33C9B40D356D6CC73FD271B6790395F035">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5149822559?se=ur4-Uvcb8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=23B80C33C9B40D356D6CC73FD271B6790395F035" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5149759124?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Agile Product Owner II</td>
+<td>Guardian Life</td>
+<td>Bethlehem, Northampton County</td>
+<td>No</td>
+<td>2025-06-27T18:00:56.963701</td>
+<td>£120,613 - £120,613</td>
+<td>96%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5149759124?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5149759124?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5150487564?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Web Developer III</td>
+<td>MITSUBISHI LOGISNEXT AMERICAS INC</td>
+<td>Grand Rapids, Kent County</td>
+<td>No</td>
+<td>2025-06-30T18:00:56.963939</td>
+<td>£84,068 - £84,068</td>
+<td>94%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5150487564?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5150487564?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5149756955?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Asset Management Specialist</td>
+<td>CAI</td>
+<td>Lehigh Valley, Northampton County</td>
+<td>No</td>
+<td>2025-07-07T18:00:56.964101</td>
+<td>£64,817 - £64,817</td>
+<td>93%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5149756955?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5149756955?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5148996282?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Software/Firmware Developer- Warehouse Automation</td>
+<td>CyberCoders</td>
+<td>Easton, Northampton County</td>
+<td>No</td>
+<td>2025-07-01T18:00:56.964025</td>
+<td>£90,000 - £120,000</td>
+<td>92%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5148996282?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5148996282?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5151717738?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Life &amp; Annuity Actuarial Illustrations Project Manager</td>
+<td>Guardian Life</td>
+<td>Bethlehem, Northampton County</td>
+<td>No</td>
+<td>2025-07-01T18:00:56.964030</td>
+<td>£103,923 - £103,923</td>
+<td>90%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5151717738?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5151717738?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5151717737?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Life &amp; Annuity Actuarial Illustrations Systems Analyst</td>
+<td>Guardian Life</td>
+<td>Bethlehem, Northampton County</td>
+<td>No</td>
+<td>2025-07-02T18:00:56.964097</td>
+<td>£98,289 - £98,289</td>
+<td>88%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5151717737?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5151717737?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5153341941?se=XHzRKFAd8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=51CE45BD277DAF62DB96AF76EF6ADF3D2CC51C72">
+<td>IAM Business Analyst</td>
+<td>Cognisol</td>
+<td>Oley Furnace, Berks County</td>
+<td>No</td>
+<td>2025-07-02T18:00:56.964296</td>
+<td>£83,930 - £83,930</td>
+<td>79%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5153341941?se=XHzRKFAd8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=51CE45BD277DAF62DB96AF76EF6ADF3D2CC51C72">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5153341941?se=XHzRKFAd8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=51CE45BD277DAF62DB96AF76EF6ADF3D2CC51C72" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=LFD_4X8c8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<td>IAM Business Analyst - w2 only</td>
+<td>Cognisol</td>
+<td>Oley Furnace, Berks County</td>
+<td>No</td>
+<td>2025-06-28T18:00:56.964083</td>
+<td>£86,321 - £86,321</td>
+<td>79%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=LFD_4X8c8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5151780529?se=LFD_4X8c8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=YlMFtKoc8BG_XLfW0bWCew&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<td>IAM Business Analyst - w2 only</td>
+<td>Cognisol</td>
+<td>Oley Furnace, Berks County</td>
+<td>No</td>
+<td>2025-07-04T18:00:56.964145</td>
+<td>£86,321 - £86,321</td>
+<td>79%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=YlMFtKoc8BG_XLfW0bWCew&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5151780529?se=YlMFtKoc8BG_XLfW0bWCew&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=mj13x7Ic8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<td>IAM Business Analyst - w2 only</td>
+<td>Cognisol</td>
+<td>Oley Furnace, Berks County</td>
+<td>No</td>
+<td>2025-07-01T18:00:56.964191</td>
+<td>£86,321 - £86,321</td>
+<td>79%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=mj13x7Ic8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5151780529?se=mj13x7Ic8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=Ao9Msrsc8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<td>IAM Business Analyst - w2 only</td>
+<td>Cognisol</td>
+<td>Oley Furnace, Berks County</td>
+<td>No</td>
+<td>2025-06-29T18:00:56.964225</td>
+<td>£86,321 - £86,321</td>
+<td>79%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=Ao9Msrsc8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5151780529?se=Ao9Msrsc8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=-vDcIs8c8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<td>IAM Business Analyst - w2 only</td>
+<td>Cognisol</td>
+<td>Oley Furnace, Berks County</td>
+<td>No</td>
+<td>2025-07-03T18:00:56.964256</td>
+<td>£86,321 - £86,321</td>
+<td>79%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=-vDcIs8c8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5151780529?se=-vDcIs8c8BG-i3PTGXcHCQ&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=XHzRKFAd8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<td>IAM Business Analyst - w2 only</td>
+<td>Cognisol</td>
+<td>Oley Furnace, Berks County</td>
+<td>No</td>
+<td>2025-07-03T18:00:56.964301</td>
+<td>£86,321 - £86,321</td>
+<td>79%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5151780529?se=XHzRKFAd8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5151780529?se=XHzRKFAd8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=0BBB5D260E04468125C2A19A21696D15307911B8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5149420704?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Mulesoft Developer</td>
+<td>TMS</td>
+<td>East Lake-Orient Park, Hillsborough County</td>
+<td>No</td>
+<td>2025-07-04T18:00:56.963925</td>
+<td>£114,400+</td>
+<td>77%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5149420704?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5149420704?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5149756520?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Senior Developer</td>
+<td>TD Bank</td>
+<td>Grand Central, Manhattan</td>
+<td>No</td>
+<td>2025-06-27T18:00:56.963944</td>
+<td>£114,258 - £114,258</td>
+<td>74%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5149756520?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5149756520?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/land/ad/5150718800?se=mtb-k_Mb8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=20F6804B8260558B33B26003F3A4957E002A07D3">
+<td>Developer - Software</td>
+<td>Maximus</td>
+<td>Allentown, Lehigh County</td>
+<td>No</td>
+<td>2025-07-01T18:00:56.963804</td>
+<td>£78,170 - £78,170</td>
+<td>70%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/land/ad/5150718800?se=mtb-k_Mb8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=20F6804B8260558B33B26003F3A4957E002A07D3">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/land/ad/5150718800?se=mtb-k_Mb8BGla2k9OSZXLA&amp;utm_medium=api&amp;utm_source=71cf92b8&amp;v=20F6804B8260558B33B26003F3A4957E002A07D3" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5150834601?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Senior Software Developer</td>
+<td>Noblis</td>
+<td>Ocean Beach, San Diego County</td>
+<td>No</td>
+<td>2025-07-01T18:00:56.963934</td>
+<td>£200,489 - £200,489</td>
+<td>51%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5150834601?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5150834601?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+<tr class="job-row" data-job-id="https://www.adzuna.com/details/5150823630?utm_medium=api&amp;utm_source=71cf92b8">
+<td>Software Engineer / Developer</td>
+<td>Global C2 Integration Technologies</td>
+<td>Ocean Beach, San Diego County</td>
+<td>No</td>
+<td>2025-06-27T18:00:56.963908</td>
+<td>£140,000 - £170,000</td>
+<td>50%</td>
+<td>
+<button class="btn btn-sm btn-outline-info toggle-job-details" data-job-id="https://www.adzuna.com/details/5150823630?utm_medium=api&amp;utm_source=71cf92b8">
+<i class="fas fa-eye"></i> View
+                                            </button>
+<a class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" href="https://www.adzuna.com/details/5150823630?utm_medium=api&amp;utm_source=71cf92b8" target="_blank" title="Visit Job Listing">
+<i class="fas fa-external-link-alt"></i> Apply
+                                            </a>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="row text-center mb-2 small">
+<div class="col">
+<span class="text-muted">Current Page: </span>
+<span class="currentPageValue">0</span>/<span class="totalPagesValue">0</span>
+</div>
+<div class="col">
+<span class="text-muted">Jobs Found: </span>
+<span class="jobsFoundValue">0</span>
+</div>
+</div>
+</div>
+</div>
+<div aria-labelledby="remote-tab" class="tab-pane fade" id="remote" role="tabpanel">
+<div class="table-responsive">
+<table cellspacing="0" class="table table-bordered job-table" id="remoteJobsTable" width="100%">
+<thead>
+<tr>
+<th>Title</th>
+<th>Company</th>
+<th>Location</th>
+<th>Remote</th>
+<th>Date Posted</th>
+<th>Salary</th>
+<th>Match %</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="7">No remote jobs found.</td>
+</tr>
+</tbody>
+</table>
+<div class="row text-center mb-2 small">
+<div class="col">
+<span class="text-muted">Current Page: </span>
+<span class="currentPageValue">0</span>/<span class="totalPagesValue">0</span>
+</div>
+<div class="col">
+<span class="text-muted">Jobs Found: </span>
+<span class="jobsFoundValue">0</span>
+</div>
+</div>
+</div>
+</div>
+<div aria-labelledby="batch-summary-tab" class="tab-pane fade" id="batch-summary" role="tabpanel">
+<div class="table-responsive">
+<table cellspacing="0" class="table table-bordered job-table" id="batchSummaryTable" width="100%">
+<thead>
+<tr>
+<th>Batch ID</th>
+<th>Timestamp</th>
+<th>Job Count</th>
+<th>Keywords</th>
+<th>Location</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>d6707a54-84cd-4172-ac04-2707ab9da52c</td>
+<td>2025-04-17 12:55 AM</td>
+<td>0</td>
+<td></td>
+<td></td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="d6707a54-84cd-4172-ac04-2707ab9da52c">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>e337aad1-9346-4a06-81d9-1eb3aea4921b</td>
+<td>2025-04-17 08:38 PM</td>
+<td>1</td>
+<td></td>
+<td>Bethlehem, Northampton County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="e337aad1-9346-4a06-81d9-1eb3aea4921b">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>1ae034d9-1f84-491b-b179-9cb0414061a6</td>
+<td>2025-04-18 01:22 AM</td>
+<td>1</td>
+<td></td>
+<td>Allentown, Lehigh County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="1ae034d9-1f84-491b-b179-9cb0414061a6">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>1b58b1fe-9a10-4acc-b5ac-9e8e68660860</td>
+<td>2025-04-18 01:49 AM</td>
+<td>8</td>
+<td></td>
+<td>Chantilly, Fairfax County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="1b58b1fe-9a10-4acc-b5ac-9e8e68660860">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>26c9bb8c-e566-4ee4-8f0f-28b843d92d6d</td>
+<td>2025-04-18 05:59 PM</td>
+<td>3</td>
+<td></td>
+<td>Allentown, Lehigh County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="26c9bb8c-e566-4ee4-8f0f-28b843d92d6d">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>83ab1d36-f511-48f7-9c1c-fb1b600f8976</td>
+<td>2025-04-18 06:06 PM</td>
+<td>6</td>
+<td></td>
+<td>Oley Furnace, Berks County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="83ab1d36-f511-48f7-9c1c-fb1b600f8976">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>887890f0-8917-4901-ae5c-9681acf171e8</td>
+<td>2025-04-18 11:13 PM</td>
+<td>1</td>
+<td></td>
+<td>Oley Furnace, Berks County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="887890f0-8917-4901-ae5c-9681acf171e8">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>83fd4b93-5134-46fb-828e-265e82a78c38</td>
+<td>2025-04-19 12:11 AM</td>
+<td>1</td>
+<td></td>
+<td>Oley Furnace, Berks County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="83fd4b93-5134-46fb-828e-265e82a78c38">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>dca6f004-278c-47eb-8f9d-ac545bbe2b70</td>
+<td>2025-04-19 01:14 AM</td>
+<td>1</td>
+<td></td>
+<td>Oley Furnace, Berks County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="dca6f004-278c-47eb-8f9d-ac545bbe2b70">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>0a34944c-bb24-4bb0-a59c-ee09170067be</td>
+<td>2025-04-19 03:34 AM</td>
+<td>1</td>
+<td></td>
+<td>Oley Furnace, Berks County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="0a34944c-bb24-4bb0-a59c-ee09170067be">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>b51b8c6e-d2d6-464a-a372-4d2a993e20bb</td>
+<td>2025-04-19 06:57 PM</td>
+<td>5</td>
+<td></td>
+<td>Oley Furnace, Berks County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="b51b8c6e-d2d6-464a-a372-4d2a993e20bb">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>b6f7a3af-ee03-4ee0-b08a-973f08b1ac6d</td>
+<td>2025-04-20 12:35 AM</td>
+<td>1</td>
+<td></td>
+<td>Oley Furnace, Berks County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="b6f7a3af-ee03-4ee0-b08a-973f08b1ac6d">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>23ceca51-2f0f-4c3a-b26c-e68cace06084</td>
+<td>2025-04-20 01:24 AM</td>
+<td>11</td>
+<td></td>
+<td>Bloomfield, Allegheny County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="23ceca51-2f0f-4c3a-b26c-e68cace06084">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>0d548b7d-d436-4eee-88d6-75bea33096c3</td>
+<td>2025-04-20 01:26 AM</td>
+<td>26</td>
+<td></td>
+<td>Bloomfield, Allegheny County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="0d548b7d-d436-4eee-88d6-75bea33096c3">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+<tr>
+<td>f3d18235-8d6e-4426-baae-b50a00d730f7</td>
+<td>2025-04-21 01:01 AM</td>
+<td>3</td>
+<td></td>
+<td>Harleysville, Montgomery County</td>
+<td>
+<button class="btn btn-sm btn-danger delete-batch" data-batch-id="f3d18235-8d6e-4426-baae-b50a00d730f7">
+<i class="fas fa-trash"></i> Delete
+                                            </button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="row text-center mb-2 small">
+<div class="col">
+<span class="text-muted">Current Page: </span>
+<span class="currentPageValue">0</span>/<span class="totalPagesValue">0</span>
+</div>
+<div class="col">
+<span class="text-muted">Jobs Found: </span>
+<span class="jobsFoundValue">0</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Job Details Modal -->
+<div aria-hidden="true" aria-labelledby="jobDetailsModalLabel" class="modal fade" id="jobDetailsModal" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title" id="jobDetailsModalLabel">Job Details</h5>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<div id="jobDetails"></div>
+</div>
+<div class="modal-footer">
+<a class="btn btn-success" href="#" id="jobApplyLink" target="_blank">
+<i class="fas fa-external-link-alt me-1"></i> View Job
+                </a>
+<button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Close</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  window.allJobs = {"https://www.adzuna.com/details/5148996282?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["allentown", "experienced", "full-time"], "normalized_job_title": "Software/Firmware Developer- Warehouse Automation", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8683614134788513, "similarity_score": 86.84, "title_bonus": 0.0, "title_match": false, "token_bonus": 6.0, "total_bonus": 6.0}, "company": "CyberCoders", "description": "Software/Firmware Developer- Warehouse Automation Software/Firmware Developer - Warehouse Automation Job Position: Full-Time Software/Firmware Developer - Warehouse Automation Job Overview: Are you an experienced software/firmware developer passionate about creating innovative solutions? We\u0027re seeking a driven individual to enhance existing software and develop new applications for supply chain automation clients. Located in the Allentown/Easton, PA area, this role offers the opportunity to mak\u2026", "is_remote": false, "location": "Easton, Northampton County", "match_percentage": 92, "posted_date": "2025-07-01T18:00:56.964025", "salary_range": "\u00a390,000 - \u00a3120,000", "skills": [], "title": "Software/Firmware Developer- Warehouse Automation", "url": "https://www.adzuna.com/details/5148996282?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5149363874?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["company", "consulting", "experienced", "hiring", "supporting", "team"], "normalized_job_title": "Junior Developer", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8759812712669373, "similarity_score": 87.6, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Summit Sky Consulting", "description": "Company Overview: At Summit Sky Consulting, we engineer reliable, scalable, and secure software systems for clients across industries. Our remote-first team thrives on technical excellence and collaboration, delivering solutions that stand the test of time. Position Summary: We are hiring an experienced Junior Backend Developer to design and maintain robust backend systems, APIs, and databases. This role is crucial in supporting enterprise-level applications and integrating various services int\u2026", "is_remote": false, "location": "Allentown, Lehigh County", "match_percentage": 97, "posted_date": "2025-06-28T18:00:56.964016", "salary_range": "\u00a368,308 - \u00a368,308", "skills": [], "title": "Junior Developer", "url": "https://www.adzuna.com/details/5149363874?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5149420704?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["experienced", "professional", "strong", "team"], "normalized_job_title": "Mulesoft Developer", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6983041167259216, "similarity_score": 69.83, "title_bonus": 0.0, "title_match": false, "token_bonus": 8.0, "total_bonus": 8.0}, "company": "TMS", "description": "Role: Mulesoft Developer Duration: Long Term Location: 1 st Choice- Tampa, FL \u0026 2 nd Choice- New York City, NY- Remote (Need Local) Job Description Bank is seeking an experienced Lead Software Developer to join our team with a strong background doing significant implementations using Java /MuleSoft products in a high-volume professional environment. This position is responsible for performing the duties of Lead Software Developer working closely with onshore/offshore team. Responsibilities incl\u2026", "is_remote": false, "location": "East Lake-Orient Park, Hillsborough County", "match_percentage": 77, "posted_date": "2025-07-04T18:00:56.963925", "salary_range": "\u00a3114,400+", "skills": [], "title": "Mulesoft Developer", "url": "https://www.adzuna.com/details/5149420704?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5149756520?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["000", "business", "development", "experience", "growth", "hours", "senior", "technology", "work"], "normalized_job_title": "Senior Developer", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.640033632516861, "similarity_score": 64.0, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "TD Bank", "description": "Work Location : New York, New York, United States of America Hours: 40 Line of Business: Technology Solutions Pay Detail: $115,000 - $160,000 USD TD is committed to providing fair and equitable compensation opportunities to all colleagues. Growth opportunities and skill development are defining features of the colleague experience at TD. Our compensation policies and practices have been designed to allow colleagues to progress through the salary range over time as they progress in their role. T\u2026", "is_remote": false, "location": "Grand Central, Manhattan", "match_percentage": 74, "posted_date": "2025-06-27T18:00:56.963944", "salary_range": "\u00a3114,258 - \u00a3114,258", "skills": [], "title": "Senior Developer", "url": "https://www.adzuna.com/details/5149756520?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5149756955?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["maintaining", "management", "reporting", "track"], "normalized_job_title": "Asset Management Specialist", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8588824570178986, "similarity_score": 85.89, "title_bonus": 0.0, "title_match": false, "token_bonus": 8.0, "total_bonus": 8.0}, "company": "CAI", "description": "Job ID Number R5178 Employment Type Full time Worksite Flexibility Hybrid Job Summary As an Asset Management and Policy Specialist, you will be responsible for implementing and maintaining asset lifecycle information, tracking and reporting on hardware and software assets, and coordinating with procurement to create policies and procedures related to purchasing. Job Description We are looking for an Asset Management Specialist to implement and maintain asset lifecycle information, track and rep\u2026", "is_remote": false, "location": "Lehigh Valley, Northampton County", "match_percentage": 93, "posted_date": "2025-07-07T18:00:56.964101", "salary_range": "\u00a364,817 - \u00a364,817", "skills": [], "title": "Asset Management Specialist", "url": "https://www.adzuna.com/details/5149756955?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5149758582?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["leader", "leading", "present", "senior", "support", "track", "work"], "normalized_job_title": "Senior Engineer Salesforce", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8686794638633728, "similarity_score": 86.87, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "GAF", "description": "At GAF, we cover more than buildings. We cover each other. No matter what role, tenure, or track, under this roof you are empowered to be there for your teammates, your customers, and especially your community. Under this roof, we don\u0027t back down from hard work- we support one another in pursuit of something bigger. We define the future while leading the present. And under this roof, we own our opportunities. Becoming the market leader only happens when everyone feels they have the opportunity,\u2026", "is_remote": false, "location": "Lehigh Valley, Northampton County", "match_percentage": 96, "posted_date": "2025-06-27T18:00:56.964093", "salary_range": "\u00a3145,077 - \u00a3145,077", "skills": [], "title": "Senior Engineer Salesforce", "url": "https://www.adzuna.com/details/5149758582?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5149758586?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["leader", "leading", "present", "senior", "support", "track", "work"], "normalized_job_title": "Senior Engineer Salesforce", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8686794638633728, "similarity_score": 86.87, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "GAF", "description": "At GAF, we cover more than buildings. We cover each other. No matter what role, tenure, or track, under this roof you are empowered to be there for your teammates, your customers, and especially your community. Under this roof, we don\u0027t back down from hard work- we support one another in pursuit of something bigger. We define the future while leading the present. And under this roof, we own our opportunities. Becoming the market leader only happens when everyone feels they have the opportunity,\u2026", "is_remote": false, "location": "Wind Gap, Northampton County", "match_percentage": 96, "posted_date": "2025-07-04T18:00:56.964089", "salary_range": "\u00a3140,009 - \u00a3140,009", "skills": [], "title": "Senior Engineer Salesforce", "url": "https://www.adzuna.com/details/5149758586?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5149759124?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "key", "launches", "process", "product", "success", "team", "technology"], "normalized_job_title": "Agile Product Owner II", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8641486763954163, "similarity_score": 86.41, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Guardian Life", "description": "Overview Individual Markets Business Technology Services - at Guardian is seeking a Product Owner to join our dynamic team and play a pivotal role in shaping the success of our products within the Individual Markets organization. This position will play a key role in delivering integrated solutions and services that meet business initiatives, product launches, process improvements, and strategic objectives, by eliciting, defining, and prioritizing business requirements, translating business req\u2026", "is_remote": false, "location": "Bethlehem, Northampton County", "match_percentage": 96, "posted_date": "2025-06-27T18:00:56.963701", "salary_range": "\u00a3120,613 - \u00a3120,613", "skills": [], "title": "Agile Product Owner II", "url": "https://www.adzuna.com/details/5149759124?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5150487564?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["helped", "support", "technology", "years"], "normalized_job_title": "Web Developer III", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8675771355628967, "similarity_score": 86.76, "title_bonus": 0.0, "title_match": false, "token_bonus": 8.0, "total_bonus": 8.0}, "company": "MITSUBISHI LOGISNEXT AMERICAS INC", "description": "Job Details Job Location Grand Rapids - GRAND RAPIDS, MI Position Type Full Time Job Category Information Technology Description About Us: Mitsubishi Logisnext Americas Inc. has helped customers Move The World Forward for more than 100 years as a technology-driven forklift manufacturer. In addition to being a forklift manufacturer, we are also a total solutions provider offering scalable products and services from material handling and automation to extensive fleet support. About the role: The \u2026", "is_remote": false, "location": "Grand Rapids, Kent County", "match_percentage": 94, "posted_date": "2025-06-30T18:00:56.963939", "salary_range": "\u00a384,068 - \u00a384,068", "skills": [], "title": "Web Developer III", "url": "https://www.adzuna.com/details/5150487564?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5150823630?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["development", "full-time", "global", "management"], "normalized_job_title": "Software Engineer / Developer", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.4276946783065796, "similarity_score": 42.77, "title_bonus": 0.0, "title_match": false, "token_bonus": 8.0, "total_bonus": 8.0}, "company": "Global C2 Integration Technologies", "description": "SOFTWARE ENGINEER / DEVELOPER San Diego, CA - Full-time - Not a remote position Global C2 Integration Technologies is looking for talented and enthusiastic Software Engineer / Developer. You will be responsible for the design, development, documentation, implementation, integration, and management of the multi-tiered components associated with mobile tactical command and control (C2) and communications systems, fundamental to providing robust, scalable, and efficient communication services and \u2026", "is_remote": false, "location": "Ocean Beach, San Diego County", "match_percentage": 50, "posted_date": "2025-06-27T18:00:56.963908", "salary_range": "\u00a3140,000 - \u00a3170,000", "skills": [], "title": "Software Engineer / Developer", "url": "https://www.adzuna.com/details/5150823630?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5150834601?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["managers", "senior", "staff", "strategies", "support", "technology", "work"], "normalized_job_title": "Senior Software Developer", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.41595083475112915, "similarity_score": 41.6, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Noblis", "description": "This position is for potential upcoming work . Protecting our nation\u2019s security requires the best and brightest minds our country has to offer. Noblis MSD scientists, engineers, technical staff, analysts, and program managers identify and deploy new shipboard technologies, integrate information technology across shipboard platforms and shipboard systems, and develop computing and networking strategies to support the Warfighter. Noblis MSD employees create strategic solutions to help our US Navy\u2026", "is_remote": false, "location": "Ocean Beach, San Diego County", "match_percentage": 51, "posted_date": "2025-07-01T18:00:56.963934", "salary_range": "\u00a3200,489 - \u00a3200,489", "skills": [], "title": "Senior Software Developer", "url": "https://www.adzuna.com/details/5150834601?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5151099245?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["company", "experience", "global", "growth", "leader", "leading", "manager", "strong", "team"], "normalized_job_title": "Computer Operators", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8868919610977173, "similarity_score": 88.69, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "CyberCoders", "description": "Network Manager If you are a Network Manager with experience, please read on We will relocate We are a strong, global, manufacturing company looking for a Network Manager to lead our networking team. You will be a hands-on leader, not only leading by example, you will be part of the strategic direction of our networking, leading the way to successful solutioning. You will manage a six person team initially, with team growth as we evolve This role is onsite 5 days a week. If you are located a li\u2026", "is_remote": false, "location": "Bethlehem, Northampton County", "match_percentage": 98, "posted_date": "2025-07-06T18:00:56.964105", "salary_range": "\u00a3130,000 - \u00a3150,000", "skills": [], "title": "Network Manager", "url": "https://www.adzuna.com/details/5151099245?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5151717737?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["product", "team"], "normalized_job_title": "Life \u0026 Annuity Actuarial Illustrations Systems Analyst", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8428256809711456, "similarity_score": 84.28, "title_bonus": 0.0, "title_match": false, "token_bonus": 4.0, "total_bonus": 4.0}, "company": "Guardian Life", "description": "Guardian is seeking an Actuarial Illustrations Systems Analyst to join the Individual Life and Annuity Product Illustrations Team. Working with a team of professionals, you will complete plans to implement new life and annuity products, features, and enhancements in Guardian\u0027s innovative, critically important illustration system, the Guardian Proposal System (GPS). You will be responsible for translating life \u0026 annuity actuarial product descriptions into detailed and comprehensive illustration \u2026", "is_remote": false, "location": "Bethlehem, Northampton County", "match_percentage": 88, "posted_date": "2025-07-02T18:00:56.964097", "salary_range": "\u00a398,289 - \u00a398,289", "skills": [], "title": "Life \u0026 Annuity Actuarial Illustrations Systems Analyst", "url": "https://www.adzuna.com/details/5151717737?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/details/5151717738?utm_medium=api\u0026utm_source=71cf92b8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["manager", "product", "team"], "normalized_job_title": "Life \u0026 Annuity Actuarial Illustrations Project Manager", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.849381148815155, "similarity_score": 84.94, "title_bonus": 0.0, "title_match": false, "token_bonus": 6.0, "total_bonus": 6.0}, "company": "Guardian Life", "description": "Guardian is seeking an Actuarial Illustrations Project Manager to join the Individual Life and Annuity Product Illustrations Team. Working with a team of professionals, you will complete plans to implement new life and annuity products, features, and enhancements in Guardian\u0027s innovative, critically important illustration system, the Guardian Proposal System (GPS). You will be responsible for translating life \u0026 annuity actuarial product descriptions into detailed and comprehensive illustration \u2026", "is_remote": false, "location": "Bethlehem, Northampton County", "match_percentage": 90, "posted_date": "2025-07-01T18:00:56.964030", "salary_range": "\u00a3103,923 - \u00a3103,923", "skills": [], "title": "Life \u0026 Annuity Actuarial Illustrations Project Manager", "url": "https://www.adzuna.com/details/5151717738?utm_medium=api\u0026utm_source=71cf92b8"}, "https://www.adzuna.com/land/ad/5149773997?se=ur4-Uvcb8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=CD1757CA80F2EF9AF6E04F857D5FC171874D1E9A": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["consulting", "development", "experience", "global", "strong", "support"], "normalized_job_title": "Software Developer Engineer", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8777599930763245, "similarity_score": 87.78, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "TRINITY GLOBAL CONSULTING", "description": "Job Description Job Description THIS ROLE IS 100% ON-SITE IN CHANTILLY, VA THIS ROLE IS NOT REMOTE. Clearance: TS, SCI/Poly eligible Level: T2 DESCRIPTION: We have an IMMEDIATE NEED for a Mid-Level Software Development Engineer to provide Agile DevOps support to mission critical systems. As a Software Development Engineer on this program, you will have the opportunity to build strong systems and software utilizing cloud capabilities and gain agile development experience in support of an Enterpr\u2026", "is_remote": false, "location": "Chantilly, Fairfax County", "match_percentage": 97, "posted_date": "2025-07-05T18:00:56.963885", "salary_range": "\u00a3145,152 - \u00a3145,152", "skills": [], "title": "Software Developer Engineer", "url": "https://www.adzuna.com/land/ad/5149773997?se=ur4-Uvcb8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=CD1757CA80F2EF9AF6E04F857D5FC171874D1E9A"}, "https://www.adzuna.com/land/ad/5149822559?se=ur4-Uvcb8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=23B80C33C9B40D356D6CC73FD271B6790395F035": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["company", "development", "experienced", "focused", "leadership", "professional", "skilled", "supporting", "team", "work"], "normalized_job_title": "IT Systems Development Supervisor", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8665169477462769, "similarity_score": 86.65, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Great West Casualty Company", "description": "This position offers an optional hybrid work schedule, with three days working in the office and two days working remotely. Are you an experienced IT professional with a passion for leadership and innovation? Do you thrive in a dynamic, fast-paced environment where you can make a significant impact? If so, apply to join our growing team as a IT Systems Development Supervisor. As the IT Systems Development Supervisor, you will lead a team of 6 to 8 skilled developers focused on supporting the Ac\u2026", "is_remote": false, "location": "Sioux City, Woodbury County", "match_percentage": 96, "posted_date": "2025-07-01T18:00:56.963903", "salary_range": "\u00a387,455 - \u00a387,455", "skills": [], "title": "IT Systems Development Supervisor", "url": "https://www.adzuna.com/land/ad/5149822559?se=ur4-Uvcb8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=23B80C33C9B40D356D6CC73FD271B6790395F035"}, "https://www.adzuna.com/land/ad/5150188226?se=ur4-Uvcb8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=DC50E8035E30D172F960228FA95DBC2ABD3FC0AD": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "client", "key", "launches", "manager", "product", "support", "team", "teams"], "normalized_job_title": "Marketing Product Manager", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.8717268407344818, "similarity_score": 87.17, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Aquent Talent", "description": "Our client offers an exciting opportunity to contribute across their business, living at the intersection of hardware, games and community. As a key member of the team, you\u2019ll provide critical go-to-market (GTM) support for devices, helping to drive impactful launch and sustain campaigns. You\u2019ll collaborate closely with cross-functional teams to execute outbound marketing plans, ensuring seamless execution of product launches and ongoing initiatives. Responsibilities: End-to-end product launch \u2026", "is_remote": false, "location": "Washington, Washington, D.C.", "match_percentage": 97, "posted_date": "2025-07-04T18:00:56.963896", "salary_range": "\u00a3121,830 - \u00a3121,830", "skills": [], "title": "Marketing Product Manager", "url": "https://www.adzuna.com/land/ad/5150188226?se=ur4-Uvcb8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=DC50E8035E30D172F960228FA95DBC2ABD3FC0AD"}, "https://www.adzuna.com/land/ad/5150718800?se=mtb-k_Mb8BGla2k9OSZXLA\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=20F6804B8260558B33B26003F3A4957E002A07D3": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["green", "programs", "quality", "staff", "support"], "normalized_job_title": "Developer - Software", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6064415574073792, "similarity_score": 60.64, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Maximus", "description": "Description \u0026 Requirements We are seeking a Developer- Software Engineer. Per VES contract requirements, staff working on the VES project must be a US Citizen or US Legal Resident (green card holders) Essential Duties and Responsibilities: - Develop, test, debug, implement, and document moderately complex software programs - Research and analyze existing systems and program requirements - Resolve production support problems. - Conduct quality assurance activities such as peer reviews. - Develop\u2026", "is_remote": false, "location": "Allentown, Lehigh County", "match_percentage": 70, "posted_date": "2025-07-01T18:00:56.963804", "salary_range": "\u00a378,170 - \u00a378,170", "skills": [], "title": "Developer - Software", "url": "https://www.adzuna.com/land/ad/5150718800?se=mtb-k_Mb8BGla2k9OSZXLA\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=20F6804B8260558B33B26003F3A4957E002A07D3"}, "https://www.adzuna.com/land/ad/5151780529?se=-vDcIs8c8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "client", "com", "experience", "key", "work"], "normalized_job_title": "IAM Business Analyst - w2 only", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6902651190757751, "similarity_score": 69.03, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Cognisol", "description": "Job Description Job Description Job Title : IAM Business Analyst Client : Bank of New York Mellon Corp Experience: 5 yrs Notice: Immediate Client Location : \u0026 Pittsburgh, PA OR Nashville, TN OR Lake Mary, FL (Need Local Candidates only) Interview Type : Webcam Work Mode : Hybrid Contract for 12 months Note : Local to PA/TN/FL Preferred Banking experience preferred. Must Have: SailPoint IIQ, IAM, Cybersecurity If Interested, please share your resume to divya.scognisolglobal.com Key Responsibilit\u2026", "is_remote": false, "location": "Oley Furnace, Berks County", "match_percentage": 79, "posted_date": "2025-07-03T18:00:56.964256", "salary_range": "\u00a386,321 - \u00a386,321", "skills": [], "title": "IAM Business Analyst - w2 only", "url": "https://www.adzuna.com/land/ad/5151780529?se=-vDcIs8c8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8"}, "https://www.adzuna.com/land/ad/5151780529?se=Ao9Msrsc8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "client", "com", "experience", "key", "work"], "normalized_job_title": "IAM Business Analyst - w2 only", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6902651190757751, "similarity_score": 69.03, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Cognisol", "description": "Job Description Job Description Job Title : IAM Business Analyst Client : Bank of New York Mellon Corp Experience: 5 yrs Notice: Immediate Client Location : \u0026 Pittsburgh, PA OR Nashville, TN OR Lake Mary, FL (Need Local Candidates only) Interview Type : Webcam Work Mode : Hybrid Contract for 12 months Note : Local to PA/TN/FL Preferred Banking experience preferred. Must Have: SailPoint IIQ, IAM, Cybersecurity If Interested, please share your resume to divya.scognisolglobal.com Key Responsibilit\u2026", "is_remote": false, "location": "Oley Furnace, Berks County", "match_percentage": 79, "posted_date": "2025-06-29T18:00:56.964225", "salary_range": "\u00a386,321 - \u00a386,321", "skills": [], "title": "IAM Business Analyst - w2 only", "url": "https://www.adzuna.com/land/ad/5151780529?se=Ao9Msrsc8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8"}, "https://www.adzuna.com/land/ad/5151780529?se=LFD_4X8c8BGla2k9OSZXLA\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "client", "com", "experience", "key", "work"], "normalized_job_title": "IAM Business Analyst - w2 only", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6902651190757751, "similarity_score": 69.03, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Cognisol", "description": "Job Description Job Description Job Title : IAM Business Analyst Client : Bank of New York Mellon Corp Experience: 5 yrs Notice: Immediate Client Location : \u0026 Pittsburgh, PA OR Nashville, TN OR Lake Mary, FL (Need Local Candidates only) Interview Type : Webcam Work Mode : Hybrid Contract for 12 months Note : Local to PA/TN/FL Preferred Banking experience preferred. Must Have: SailPoint IIQ, IAM, Cybersecurity If Interested, please share your resume to divya.scognisolglobal.com Key Responsibilit\u2026", "is_remote": false, "location": "Oley Furnace, Berks County", "match_percentage": 79, "posted_date": "2025-06-28T18:00:56.964083", "salary_range": "\u00a386,321 - \u00a386,321", "skills": [], "title": "IAM Business Analyst - w2 only", "url": "https://www.adzuna.com/land/ad/5151780529?se=LFD_4X8c8BGla2k9OSZXLA\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8"}, "https://www.adzuna.com/land/ad/5151780529?se=XHzRKFAd8BGla2k9OSZXLA\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "client", "com", "experience", "key", "work"], "normalized_job_title": "IAM Business Analyst - w2 only", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6902651190757751, "similarity_score": 69.03, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Cognisol", "description": "Job Description Job Description Job Title : IAM Business Analyst Client : Bank of New York Mellon Corp Experience: 5 yrs Notice: Immediate Client Location : \u0026 Pittsburgh, PA OR Nashville, TN OR Lake Mary, FL (Need Local Candidates only) Interview Type : Webcam Work Mode : Hybrid Contract for 12 months Note : Local to PA/TN/FL Preferred Banking experience preferred. Must Have: SailPoint IIQ, IAM, Cybersecurity If Interested, please share your resume to divya.scognisolglobal.com Key Responsibilit\u2026", "is_remote": false, "location": "Oley Furnace, Berks County", "match_percentage": 79, "posted_date": "2025-07-03T18:00:56.964301", "salary_range": "\u00a386,321 - \u00a386,321", "skills": [], "title": "IAM Business Analyst - w2 only", "url": "https://www.adzuna.com/land/ad/5151780529?se=XHzRKFAd8BGla2k9OSZXLA\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8"}, "https://www.adzuna.com/land/ad/5151780529?se=YlMFtKoc8BG_XLfW0bWCew\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "client", "com", "experience", "key", "work"], "normalized_job_title": "IAM Business Analyst - w2 only", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6902651190757751, "similarity_score": 69.03, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Cognisol", "description": "Job Description Job Description Job Title : IAM Business Analyst Client : Bank of New York Mellon Corp Experience: 5 yrs Notice: Immediate Client Location : \u0026 Pittsburgh, PA OR Nashville, TN OR Lake Mary, FL (Need Local Candidates only) Interview Type : Webcam Work Mode : Hybrid Contract for 12 months Note : Local to PA/TN/FL Preferred Banking experience preferred. Must Have: SailPoint IIQ, IAM, Cybersecurity If Interested, please share your resume to divya.scognisolglobal.com Key Responsibilit\u2026", "is_remote": false, "location": "Oley Furnace, Berks County", "match_percentage": 79, "posted_date": "2025-07-04T18:00:56.964145", "salary_range": "\u00a386,321 - \u00a386,321", "skills": [], "title": "IAM Business Analyst - w2 only", "url": "https://www.adzuna.com/land/ad/5151780529?se=YlMFtKoc8BG_XLfW0bWCew\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8"}, "https://www.adzuna.com/land/ad/5151780529?se=mj13x7Ic8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "client", "com", "experience", "key", "work"], "normalized_job_title": "IAM Business Analyst - w2 only", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6902651190757751, "similarity_score": 69.03, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Cognisol", "description": "Job Description Job Description Job Title : IAM Business Analyst Client : Bank of New York Mellon Corp Experience: 5 yrs Notice: Immediate Client Location : \u0026 Pittsburgh, PA OR Nashville, TN OR Lake Mary, FL (Need Local Candidates only) Interview Type : Webcam Work Mode : Hybrid Contract for 12 months Note : Local to PA/TN/FL Preferred Banking experience preferred. Must Have: SailPoint IIQ, IAM, Cybersecurity If Interested, please share your resume to divya.scognisolglobal.com Key Responsibilit\u2026", "is_remote": false, "location": "Oley Furnace, Berks County", "match_percentage": 79, "posted_date": "2025-07-01T18:00:56.964191", "salary_range": "\u00a386,321 - \u00a386,321", "skills": [], "title": "IAM Business Analyst - w2 only", "url": "https://www.adzuna.com/land/ad/5151780529?se=mj13x7Ic8BG-i3PTGXcHCQ\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=0BBB5D260E04468125C2A19A21696D15307911B8"}, "https://www.adzuna.com/land/ad/5153341941?se=XHzRKFAd8BGla2k9OSZXLA\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=51CE45BD277DAF62DB96AF76EF6ADF3D2CC51C72": {"breakdown": {"category_bonus": 0.0, "matched_categories": [], "matched_tokens": ["business", "client", "com", "experience", "key", "work"], "normalized_job_title": "IAM Business Analyst", "normalized_resume_title": "operations manager | customer experience leader", "raw_similarity": 0.6987505853176117, "similarity_score": 69.88, "title_bonus": 0.0, "title_match": false, "token_bonus": 10.0, "total_bonus": 10.0}, "company": "Cognisol", "description": "Job Description Job Description Job Title : IAM Business Analyst Client : Bank of New York Mellon Corp Experience: 5 yrs Notice: Immediate Client Location : \u0026 Pittsburgh, PA OR Nashville, TN OR Lake Mary, FL (Need Local Candidates only) Interview Type : Webcam Work Mode : Hybrid Contract for 12 months Note : Local to PA/TN/FL Preferred Banking experience preferred. Must Have: SailPoint IIQ, IAM, Cybersecurity If Interested, please share your resume to divya.scognisolglobal.com Key Responsibilit\u2026", "is_remote": false, "location": "Oley Furnace, Berks County", "match_percentage": 79, "posted_date": "2025-07-02T18:00:56.964296", "salary_range": "\u00a383,930 - \u00a383,930", "skills": [], "title": "IAM Business Analyst", "url": "https://www.adzuna.com/land/ad/5153341941?se=XHzRKFAd8BGla2k9OSZXLA\u0026utm_medium=api\u0026utm_source=71cf92b8\u0026v=51CE45BD277DAF62DB96AF76EF6ADF3D2CC51C72"}};
+  window.remoteJobs = {};
+</script>
+<!-- Sync Status Alert -->
+<div class="alert alert-info alert-dismissible fade show mb-4" id="syncStatus" role="alert" style="display: none;">
+<span id="syncStatusText">Syncing jobs...</span>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="alert" type="button"></button>
+</div>
+<!-- Job Source Settings (moved from Settings page) -->
+<div class="card-body pb-0 border-bottom" id="jobSourceSettings">
+<div class="row">
+<div class="col-lg-9">
+<h6 class="mb-3">Job Sync</h6>
+<form class="row g-3" id="jobSearchForm">
+<div class="col-md-4">
+<label class="form-label" for="country">Country</label>
+<select class="form-select" id="country" name="country">
+<option value="gb">United Kingdom (gb)</option>
+<option selected="" value="us">United States (us)</option>
+<option value="ca">Canada (ca)</option>
+<option value="de">Germany (de)</option>
+<option value="fr">France (fr)</option>
+<option value="au">Australia (au)</option>
+</select>
+</div>
+<div class="col-md-4">
+<label class="form-label" for="location">Location</label>
+<input class="form-control" id="location" name="location" placeholder="e.g., London, New York" type="text" value=""/>
+</div>
+<div class="col-md-3">
+<label class="form-label" for="maxPages">Max Pages</label>
+<input class="form-control" id="maxPages" max="20" min="1" name="max_pages" type="number" value="5"/>
+<small class="text-muted">1-20 pages (50 jobs per page)</small>
+</div>
+<div class="col-md-4">
+<label class="form-label" for="category">Job Category</label>
+<select class="form-select" id="category" name="category">
+<option value="">Loading categories...</option>
+</select>
+</div>
+<div class="col-md-12">
+<label class="form-label" for="keywords">Keywords</label>
+<div class="input-group">
+<input class="form-control" id="keywords" name="keywords" placeholder="e.g., Python Developer" type="text" value=""/>
+<button class="btn btn-outline-secondary" id="addKeywordBtn" type="button">Add</button>
+</div>
+<div class="mt-2" id="keywordsList">
+<!-- Keywords will be displayed here -->
+</div>
+<input id="keywordsListData" name="keywordsListData" type="hidden" value="[]"/>
+</div>
+<div class="mb-3">
+<label class="form-label" for="profileName">New Profile Name</label>
+<div class="input-group">
+<input class="form-control" id="profileName" placeholder="Enter profile name" type="text"/>
+<button class="btn btn-outline-secondary" id="addProfileBtn">Add Profile</button>
+</div>
+</div>
+<div class="mb-3">
+<label class="form-label" for="profileDropdown">Active Profile</label>
+<select class="form-select" id="profileDropdown"></select>
+</div>
+<!-- Scheduler UI elements removed -->
+<div class="col-12 mt-2">
+<button class="btn btn-primary" onclick="saveJobSearch()" type="button">
+<i class="fas fa-save me-1"></i> Save Settings
+                    </button>
+<button class="btn btn-success ms-2" id="syncJobsBtn" type="button">
+<i class="fas fa-sync-alt me-1"></i> Sync Jobs
+                    </button>
+</div>
+</form>
+</div>
+</div>
+</div>
+
+<footer class="bg-dark text-center text-white p-3 mt-5">
+<div class="container">
+<p class="mb-0">© 2025 AI Job Matcher | Powered by Adzuna API</p>
+</div>
+</footer>
+<script>
+      window.APP_CONTEXT = {
+        isDemo: true
+      };
+    </script>
+<!-- Bootstrap JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- ✅ DataTables CSS -->
+<link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
+<!-- ✅ jQuery (already included) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- ✅ DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<!-- Custom JavaScript -->
+<script src="/AIJobMatcher/static/js/jobSection.js"></script>
+<script src="/AIJobMatcher/static/js/syncSection.js"></script>
+<script src="/AIJobMatcher/static/js/demoMode.js"></script>
+<script src="/AIJobMatcher/static/js/resumeSection.js"></script>
+<script>
+      // Ensure toggle handlers are re-applied when switching tabs
+      document.addEventListener('DOMContentLoaded', function () {
+        $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
+          handleJobToggleEvents();
+        });
+      });
+    </script>
+</link></body>
+</html>

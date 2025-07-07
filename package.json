@@ -1,0 +1,8 @@
+{
+  "name": "ai-job-matcher",
+  "version": "1.0.0",
+  "scripts": {
+    "freeze": "python build_static.py",
+    "deploy": "npm run freeze && git add docs && git commit -m \"build static demo\" && git push"
+  }
+}

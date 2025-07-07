@@ -1,4 +1,4 @@
-modules = ["python-3.11"]
+modules = ["nodejs-20", "python-3.11"]
 [nix]
 channel = "stable-24_05"
 packages = ["cacert", "glibcLocales", "libxcrypt", "pkg-config", "xcodebuild", "xsimd", "zlib"]
